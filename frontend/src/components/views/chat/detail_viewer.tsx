@@ -33,7 +33,7 @@ interface DetailViewerProps {
   isExpanded: boolean;
   currentIndex: number;
   onIndexChange: (index: number) => void;
-  novncPort?: string;
+  novncEndpoint?: string;
   onPause?: () => void;
   runStatus?: string;
   activeTab?: TabType;
@@ -46,7 +46,7 @@ interface DetailViewerProps {
   ) => void;
 }
 
-type TabType = "screenshots" | "live";
+type TabType = "live";
 
 const DetailViewer: React.FC<DetailViewerProps> = ({
   images,
@@ -54,7 +54,7 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
   onMinimize,
   currentIndex,
   onIndexChange,
-  novncPort,
+  novncEndpoint,
   onPause,
   runStatus,
   activeTab: controlledActiveTab,
@@ -176,7 +176,7 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
   );
 
   const renderLiveTab = React.useMemo(() => {
-    if (!novncPort) {
+    if (!novncEndpoint) {
       return (
         <div className="flex-1 w-full h-full min-h-0 flex items-center justify-center">
           <p>Waiting for browser session to start...</p>
@@ -188,7 +188,7 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
       <div className="flex-1 w-full h-full flex flex-col">
         {viewMode === "iframe" ? (
           <BrowserIframe
-            novncPort={novncPort}
+            novncEndpoint={novncEndpoint}
             style={{
               height: "100%",
               flex: "1 1 auto",
@@ -212,7 +212,7 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
           >
             <Suspense fallback={<div>Loading VNC viewer...</div>}>
               <VncScreen
-                url={`ws://localhost:${novncPort}`}
+                url={`ws://${novncEndpoint}`}
                 scaleViewport
                 background="#000000"
                 style={{
@@ -230,7 +230,7 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
         )}
       </div>
     );
-  }, [novncPort, viewMode, runStatus, onPause, isControlMode]);
+  }, [novncEndpoint, viewMode, runStatus, onPause, isControlMode]);
 
   return (
     <>
@@ -241,16 +241,6 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
         {/* Tabs and Controls */}
         <div className="flex justify-between items-center mb-4 border-b flex-shrink-0">
           <div className="flex">
-            <button
-              className={`px-6 py-2 font-medium rounded-t-lg transition-colors ${
-                activeTab === "screenshots"
-                  ? "bg-secondary text-primary border-2 border-b-0 border-primary"
-                  : "text-secondary hover:text-primary hover:bg-secondary/10"
-              }`}
-              onClick={() => handleTabChange("screenshots")}
-            >
-              Screenshots
-            </button>
             <button
               className={`px-6 py-2 font-medium rounded-t-lg transition-colors ${
                 activeTab === "live"
@@ -298,7 +288,7 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
         onClose={() => {
           setIsModalOpen(false);
         }}
-        novncPort={novncPort}
+        novncEndpoint={novncEndpoint}
         title="Browser View"
         onPause={onPause}
         runStatus={runStatus}

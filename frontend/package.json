@@ -1,8 +1,8 @@
 {
-  "name": "Magentic-UI",
+  "name": "ActionEngine-UI",
   "version": "1.0.0",
   "private": true,
-  "description": "Magentic-UI",
+  "description": "ActionEngine-UI",
   "author": "Microsoft",
   "keywords": [
     "gatsby"
@@ -11,7 +11,7 @@
     "develop": "gatsby clean && gatsby develop",
     "dev": "npm run develop",
     "start": "gatsby clean && gatsby develop",
-    "build": "gatsby clean && rm -rf ../src/magentic_ui/backend/web/ui && PREFIX_PATH_VALUE='' gatsby build --prefix-paths && rsync -a --delete public/ ../src/magentic_ui/backend/web/ui/",
+    "build": ".\\build.bat",
     "serve": "gatsby serve",
     "clean": "gatsby clean",
     "typecheck": "tsc --noEmit"

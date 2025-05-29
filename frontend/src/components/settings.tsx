@@ -369,78 +369,6 @@ action_guard_client: *client
                           ]}
                         />
                       </div>
-
-                      <Divider />
-
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-2">
-                            Allowed Websites List
-                            <Tooltip title="When enabled, Magentic-UI will only be able to visit websites you add to the list below.s">
-                              <InfoCircleOutlined className="text-secondary hover:text-primary cursor-help" />
-                            </Tooltip>
-                          </span>
-                          {cachedWebsites.length === 0 && (
-                            <Switch
-                              checked={allowedlistEnabled}
-                              checkedChildren="Restricted to List"
-                              unCheckedChildren="All Websites Allowed"
-                              onChange={(checked) => {
-                                setAllowedlistEnabled(checked);
-                                if (!checked) {
-                                  setCachedWebsites([]);
-                                  handleUpdateConfig({ allowed_websites: [] });
-                                  setValidationWarning(null);
-                                }
-                              }}
-                            />
-                          )}
-                        </div>
-
-                        <Space direction="vertical" style={{ width: "100%" }}>
-                          {allowedlistEnabled || cachedWebsites.length > 0 ? (
-                            <>
-                              <div className="flex w-full gap-2">
-                                <Input
-                                  placeholder="https://example.com"
-                                  value={websiteInput}
-                                  onChange={(
-                                    e: React.ChangeEvent<HTMLInputElement>
-                                  ) => setWebsiteInput(e.target.value)}
-                                  onPressEnter={addWebsite}
-                                  className="flex-1"
-                                />
-                                <Button
-                                  icon={<Plus size={16} />}
-                                  onClick={addWebsite}
-                                >
-                                  Add
-                                </Button>
-                              </div>
-                              <div>
-                                {cachedWebsites.length === 0 ? (
-                                  <div></div>
-                                ) : (
-                                  cachedWebsites.map(
-                                    (site: string, index: number) => (
-                                      <Tag
-                                        key={index}
-                                        closable
-                                        onClose={() => removeWebsite(site)}
-                                        style={{ margin: "0 8px 8px 0" }}
-                                      >
-                                        {site}
-                                      </Tag>
-                                    )
-                                  )
-                                )}
-                              </div>
-                            </>
-                          ) : (
-                            <div className="text-secondary italic"></div>
-                          )}
-                        </Space>
-                      </div>
                     </div>
                   </div>
                 ),
@@ -453,7 +381,7 @@ action_guard_client: *client
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-2">
                         Allow Replans
-                        <Tooltip title="When enabled, Magentic-UI will automatically replan if the current plan is not working or you change the original request">
+                        <Tooltip title="When enabled, ActionEngine-UI will automatically replan if the current plan is not working or you change the original request">
                           <InfoCircleOutlined className="text-secondary hover:text-primary cursor-help" />
                         </Tooltip>
                       </span>
@@ -464,65 +392,6 @@ action_guard_client: *client
                         onChange={(checked) =>
                           handleUpdateConfig({ allow_for_replans: checked })
                         }
-                      />
-                    </div>
-
-                    {/*<div className="flex items-center justify-between">
-                       <span className="flex items-center gap-2">
-                        Use Bing Search for Planning
-                        <Tooltip title="When enabled, Magentic-UI will use Bing Search when coming up with a plan. Note this adds 10 seconds to the planning time.">
-                          <InfoCircleOutlined className="text-secondary hover:text-primary cursor-help" />
-                        </Tooltip>
-                      </span> 
-                      <Switch
-                        checked={config.do_bing_search}
-                        checkedChildren="ON"
-                        unCheckedChildren="OFF"
-                        onChange={(checked) =>
-                          handleUpdateConfig({ do_bing_search: checked })
-                        }
-                      />
-                    </div>
-                    */}
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        Retrieve Relevant Plans
-                        <Tooltip title="Controls how Magentic-UI retrieves and uses relevant plans from previous sessions">
-                          <InfoCircleOutlined className="text-secondary hover:text-primary cursor-help" />
-                        </Tooltip>
-                      </span>
-                      <Select
-                        value={config.retrieve_relevant_plans}
-                        onChange={(value: string) =>
-                          handleUpdateConfig({ retrieve_relevant_plans: value })
-                        }
-                        style={{ width: 200 }}
-                        options={[
-                          {
-                            value: "never",
-                            label: (
-                              <Tooltip title="No plan retrieval">
-                                No plan retrieval
-                              </Tooltip>
-                            ),
-                          },
-                          {
-                            value: "hint",
-                            label: (
-                              <Tooltip title="Retrieve most relevant saved plan as hints for new plans">
-                                Retrieve plans as hints
-                              </Tooltip>
-                            ),
-                          },
-                          {
-                            value: "reuse",
-                            label: (
-                              <Tooltip title="Retrieve most relevant saved plan to be used directly">
-                                Retrieve plans to use directly
-                              </Tooltip>
-                            ),
-                          },
-                        ]}
                       />
                     </div>
                   </div>

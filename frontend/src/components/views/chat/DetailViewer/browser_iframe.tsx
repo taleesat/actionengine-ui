@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import SecurityBanner from "./SecurityBanner";
 
 interface BrowserIframeProps {
-  novncPort?: string;
+  novncEndpoint?: string;
   style?: React.CSSProperties;
   className?: string;
   showDimensions?: boolean;
@@ -17,7 +17,7 @@ interface BrowserIframeProps {
 }
 
 const BrowserIframe: React.FC<BrowserIframeProps> = ({
-  novncPort,
+  novncEndpoint,
   style = {},
   className = "",
   showDimensions = true,
@@ -57,7 +57,7 @@ const BrowserIframe: React.FC<BrowserIframeProps> = ({
     }
   };
 
-  if (!novncPort) {
+  if (!novncEndpoint) {
     return (
       <div className="flex items-center justify-center h-full">
         <p>Waiting for browser session to start...</p>
@@ -66,7 +66,7 @@ const BrowserIframe: React.FC<BrowserIframeProps> = ({
   }
 
   // Build VNC URL with parameters
-  const vncUrl = `http://localhost:${novncPort}/vnc.html?autoconnect=true&resize=${
+  const vncUrl = `http://${novncEndpoint}/vnc.html?autoconnect=true&resize=${
     scaling === "remote" ? "remote" : "scale"
   }&show_dot=true&scaling=${scaling}&quality=${quality}&compression=0&view_only=${
     viewOnly ? 1 : 0

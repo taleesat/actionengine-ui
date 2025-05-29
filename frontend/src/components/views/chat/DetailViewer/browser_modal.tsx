@@ -3,10 +3,11 @@ import ReactDOM from "react-dom";
 import { X } from "lucide-react";
 import BrowserIframe from "./browser_iframe";
 import { Button } from "antd";
+
 interface BrowserModalProps {
   isOpen: boolean;
   onClose: () => void;
-  novncPort?: string;
+  novncEndpoint?: string;
   title?: string;
   onPause?: () => void;
   runStatus?: string;
@@ -19,7 +20,7 @@ const BrowserModal: React.FC<BrowserModalProps> = (props) => {
   const {
     isOpen,
     onClose,
-    novncPort,
+    novncEndpoint,
     title = "Browser View",
     onPause,
     runStatus,
@@ -93,7 +94,7 @@ const BrowserModal: React.FC<BrowserModalProps> = (props) => {
                   className="font-medium shadow-md flex justify-center items-center"
                   size="large"
                 >
-                  Give control back to Magentic-UI 
+                  Give control back to ActionEngine-UI 
                 </Button>
               )}
             </div>
@@ -113,7 +114,7 @@ const BrowserModal: React.FC<BrowserModalProps> = (props) => {
           <div className="flex-grow p-2 h-full overflow-hidden">
             <div id={modalIframeId} className="h-full">
               <BrowserIframe
-                novncPort={novncPort}
+                novncEndpoint={novncEndpoint}
                 className="h-full"
                 showDimensions={true}
                 onPause={onPause}

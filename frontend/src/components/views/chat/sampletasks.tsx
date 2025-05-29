@@ -4,6 +4,7 @@ interface SampleTasksProps {
   onSelect: (task: string) => void;
 }
 
+/*
 const SAMPLE_TASKS = [
   "When does the post office near me close today?",
   "Find the latest publications from the the Microsoft Research AI Frontiers Lab on Human-Agent interaction",
@@ -11,6 +12,14 @@ const SAMPLE_TASKS = [
   "Can you make a Markdown file with python that summarizes the Microsoft AutoGen repo?",
   "Order me a custom pizza from Tangle Town Pub with sausage, pineapple, and black olives",
   "Search arXiv for the latest papers on computer use agents",
+];
+*/
+const SAMPLE_TASKS = [
+  "Change my reddit bio to \"I am a robot\"",
+  "Find a recipe for a vegetarian lasagna that has at least a four-star rating on https://www.allrecipes.com/.",
+  "Discover a suitable chocolate cupcake recipe on https://www.allrecipes.com that has a preparation time of under 1 hour.",
+  "Find out the starting price for the most recent model of the iMac on https://apple.com.",
+  "Check if there are trade-in offers for the latest model of iPhone on https://apple.com.",
 ];
 
 const SampleTasks: React.FC<SampleTasksProps> = ({ onSelect }) => {

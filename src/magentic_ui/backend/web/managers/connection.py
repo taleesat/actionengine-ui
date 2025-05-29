@@ -20,6 +20,7 @@ from autogen_agentchat.messages import (
 from ....input_func import InputFuncType, InputRequestType
 from autogen_core import CancellationToken
 from fastapi import WebSocket, WebSocketDisconnect
+from websockets.asyncio.client import connect, ClientConnection
 from pathlib import Path
 from ....types import CheckpointEvent
 from ...database import DatabaseManager
@@ -37,7 +38,6 @@ from ...teammanager import TeamManager
 from ...utils.utils import compress_state
 
 logger = logging.getLogger(__name__)
-
 
 class WebSocketManager:
     """
@@ -70,6 +70,7 @@ class WebSocketManager:
         self._closed_connections: set[int] = set()
         self._input_responses: Dict[int, asyncio.Queue[str]] = {}
         self._team_managers: Dict[int, TeamManager] = {}
+        self._action_engine_managers: Dict[int, ClientConnection] = {}
         self._cancel_message = TeamResult(
             task_result=TaskResult(
                 messages=[TextMessage(source="user", content="Run cancelled by user")],
@@ -88,6 +89,27 @@ class WebSocketManager:
             usage="",
             duration=0,
         ).model_dump()
+
+    async def send_format_message(self, run_id: int, message: ChatMessage | AgentEvent | LLMCallEventMessage) -> dict[str, Any] | None:
+        if isinstance(message, CheckpointEvent):
+            run = await self._get_run(run_id)
+            if run:
+                state_dict = json.loads(message.state)
+                run.state = compress_state(state_dict)
+                self.db_manager.upsert(run)
+            return
+
+        if (hasattr(message, "metadata") and message.metadata.get("internal") == "yes" ):
+            return
+
+        formatted_message = self._format_message(message)
+        if formatted_message:
+            await self._send_message(run_id, formatted_message)
+            if isinstance(message, (TextMessage, MultiModalMessage, StopMessage, HandoffMessage, ToolCallRequestEvent, ToolCallExecutionEvent, LLMCallEventMessage,),):
+                await self._save_message(run_id, message)
+            elif isinstance(message, TeamResult):
+                final_result = message.model_dump()
+                return final_result
 
     async def connect(self, websocket: WebSocket, run_id: int) -> bool:
         try:
@@ -110,6 +132,197 @@ class WebSocketManager:
         except Exception as e:
             logger.error(f"Connection error for run {run_id}: {e}")
             return False
+
+    async def process_answer(self, task: str, websocket_client: ClientConnection, run_id: int) -> None:
+        step = 0
+        while True:
+            answer = str(await websocket_client.recv())
+            answer = json.loads(answer)
+            content = answer.get("content", "")
+            if answer["type"] == "answer":
+                statistics = answer.get("statistics", {})
+                response = f"{content}\n- #LLM Calls: {statistics.get('lm_calls', 0)}\n- #Input tokens: {statistics.get('prompt_tokens', 0)}\n- #Output tokents: {statistics.get('completion_tokens', 0)}"
+                answer_message = TextMessage(
+                    source="Orchestrator",
+                    models_usage=None,
+                    content=response,
+                    metadata={
+                        "internal": "no",
+                        "type": "final_anwer",
+                    }
+                )
+                final_result = await self.send_format_message(run_id, answer_message)
+                return final_result
+            elif answer["type"] == "plan":
+                plan = [ { "title": i, "details": i, "agent_name": "" } for i in content]
+                #plan_text = json.dumps(plan)
+                answer_message = TextMessage(
+                    source="Orchestrator",
+                    models_usage=None,
+                    content=json.dumps({
+                        "response": "",
+                        "task": task,
+                        "plan_summary": "Summary",
+                        "needs_plan": False,
+                        "steps": plan,
+                    }),
+                    metadata={
+                        "internal": "no",
+                        "type": "plan_message",
+                    }
+                )
+                final_result = await self.send_format_message(run_id, answer_message)
+            elif answer["type"] == "step":
+                answer_message = TextMessage(
+                    source="Orchestrator",
+                    models_usage=None,
+                    content=json.dumps({
+                        "index": step,
+                        "title": content,
+                        "details": content,
+                        "agent_name": answer.get("engine", ""),
+                        "instruction": content,
+                        "progress_summary": "",
+                    }),
+                    metadata={
+                        "internal": "no",
+                        "type": "step_execution",
+                    }
+                )
+                final_result = await self.send_format_message(run_id, answer_message)
+                step += 1
+
+    async def call_action_engine(self, run_id: int, task: str | ChatMessage | Sequence[ChatMessage] | None,) -> None:
+        """
+        Start streaming task execution with proper run management
+
+        Args:
+            run_id (int): ID of the run
+            task (str | ChatMessage | Sequence[ChatMessage] | None): Task to execute
+            team_config (Dict[str, Any]): Configuration for the team
+            settings_config (Dict[str, Any]): Configuration for settings
+            user_settings (Settings, optional): User settings for the run
+        """
+        if run_id not in self._connections or run_id in self._closed_connections:
+            raise ValueError(f"No active connection for run {run_id}")
+        if run_id not in self._action_engine_managers:
+            websocket_client: ClientConnection = await connect("ws://localhost:8000/api/ws/index-magenticone")
+            self._action_engine_managers[run_id] = websocket_client
+        else:
+            websocket_client: ClientConnection = self._action_engine_managers[run_id]
+
+        cancellation_token = CancellationToken()
+        self._cancellation_tokens[run_id] = cancellation_token
+        final_result = None
+
+        try:
+            # Update run with task and status
+            run = await self._get_run(run_id)
+            assert run is not None, f"Run {run_id} not found in database"
+            assert run.user_id is not None, f"Run {run_id} has no user ID"
+
+            # Get user Settings
+            #user_settings = await self._get_settings(run.user_id)
+            #env_vars = (SettingsConfig(**user_settings.config).environment if user_settings else None)
+            #state = None
+            if run:
+                run.task = MessageConfig(content=task, source="user").model_dump()
+                run.status = RunStatus.ACTIVE
+                #state = run.state
+                self.db_manager.upsert(run)
+                await self._update_run_status(run_id, RunStatus.ACTIVE)
+
+            # add task as message
+            if isinstance(task, str):
+                await self._send_message(run_id, self._format_message(TextMessage(source="user_proxy", content=task)) or {},)
+                await self._save_message(run_id, TextMessage(source="user_proxy", content=task))
+            elif isinstance(task, Sequence):
+                for task_message in task:
+                    if isinstance(task_message, TextMessage) or isinstance(task_message, MultiModalMessage):
+                        if (hasattr(task_message, "metadata") and task_message.metadata.get("internal") == "yes"):
+                            continue
+                        await self._send_message(run_id, self._format_message(task_message) or {})
+                        await self._save_message(run_id, task_message)
+
+            _novnc_endpoint = self.config.get("novnc_endpoint", "localhost:9800"),
+            if isinstance(_novnc_endpoint, Sequence):
+                _novnc_endpoint = _novnc_endpoint[-1]
+            _playwright_port = self.config.get("playwright_port", 9801),
+            if isinstance(_playwright_port, Sequence):
+                _playwright_port = _playwright_port[-1]
+            vnc_message: TextMessage = TextMessage(
+                source="system",
+                content=f"Browser noVNC address can be found at http://{_novnc_endpoint}/vnc.html",
+                metadata={
+                    "internal": "no",
+                    "type": "browser_address",
+                    "novnc_endpoint": _novnc_endpoint,
+                    "playwright_port": str(_playwright_port),
+                },
+            )
+
+            final_result = await self.send_format_message(run_id, vnc_message)
+            if (cancellation_token.is_cancelled() or run_id in self._closed_connections):
+                logger.info(f"Stream cancelled or connection closed for run {run_id}")
+
+            #task_text = task if isinstance(task, str) else (task[0].content if isinstance(task, Sequence) and task else "")
+            if isinstance(task, Sequence):
+                actual_task = task[0] if task else None
+            else:
+                actual_task = task
+            if actual_task and isinstance(actual_task, TextMessage):
+                task_text = json.loads(actual_task.to_text())["content"]
+            else:
+                task_text = str(actual_task) if actual_task else ""
+            await websocket_client.send(task_text)
+            final_result = await self.process_answer(task_text, websocket_client, run_id)
+            input_func: InputFuncType = self.create_input_func(run_id)
+            while True:
+                await self._update_run_status(run_id, RunStatus.ACTIVE)
+                await self._update_run_status(run_id, RunStatus.AWAITING_INPUT)
+                next_task = await input_func(
+                    prompt="Waiting for the next task",
+                    cancellation_token=cancellation_token,
+                )
+                next_task = json.loads(next_task)
+                if isinstance(next_task, Sequence):
+                    actual_task = next_task[0] if next_task else None
+                else:
+                    actual_task = next_task
+                if actual_task and isinstance(actual_task, TextMessage):
+                    task_text = json.loads(actual_task.to_text())["content"]
+                elif isinstance(actual_task, str):
+                    task_text = json.loads(actual_task)["content"]
+                else:
+                    task_text = str(actual_task) if actual_task else ""
+                await self._send_message(run_id, self._format_message(TextMessage(source="user_proxy", content=task_text)) or {},)
+                await websocket_client.send(task_text)
+                final_result = await self.process_answer(task_text, websocket_client, run_id)
+            if (not cancellation_token.is_cancelled() and run_id not in self._closed_connections):
+                if final_result:
+                    await self._update_run(run_id, RunStatus.COMPLETE, team_result=final_result)
+                else:
+                    logger.warning(f"No final result captured for completed run {run_id}")
+                    await self._update_run_status(run_id, RunStatus.COMPLETE)
+            else:
+                await self._send_message(
+                    run_id,
+                    {
+                        "type": "completion",
+                        "status": "cancelled",
+                        "data": self._cancel_message,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
+                # Update run with cancellation result
+                await self._update_run(run_id, RunStatus.STOPPED, team_result=self._cancel_message)
+
+        except Exception as e:
+            logger.error(f"Stream error for run {run_id}: {e}")
+            traceback.print_exc()
+            await self._handle_stream_error(run_id, e)
+        finally:
+            self._cancellation_tokens.pop(run_id, None)
 
     async def start_stream(
         self,

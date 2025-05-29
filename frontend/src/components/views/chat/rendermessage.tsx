@@ -406,7 +406,7 @@ const RenderStepExecution: React.FC<RenderStepExecutionProps> = memo(
               )}
             </button>
             <div className="flex-1 mx-2">
-              <div className="font-semibold text-primary">
+              <div className="font-semibold text-primary" style={{color: content.agent_name === "actionengine" ? "green" : content.agent_name === "magenticone" ? "red" : "white"}}>
                 Step {content.index + 1}: {content.title}
               </div>
             </div>

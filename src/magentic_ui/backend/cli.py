@@ -64,6 +64,7 @@ def ui(
 
     typer.echo(typer.style("Starting Magentic-UI", fg=typer.colors.GREEN, bold=True))
 
+    """
     # Set things up for Docker
     typer.echo("Checking if Docker is running...", nl=False)
 
@@ -97,6 +98,7 @@ def ui(
         typer.echo(typer.style("Failed\n", fg=typer.colors.RED, bold=True))
         typer.echo("Docker images not found. Please build the images and try again.")
         raise typer.Exit(1)
+    """
 
     typer.echo("Launching Web Application...")
 

@@ -61,10 +61,10 @@ const RunView: React.FC<RunViewProps> = ({
   enable_upload = false,
 }) => {
   const threadContainerRef = useRef<HTMLDivElement | null>(null);
-  const [novncPort, setNovncPort] = useState<string | undefined>();
+  const [novncEndpoint, setNovncEndpoint] = useState<string | undefined>();
   const [detailViewerExpanded, setDetailViewerExpanded] = useState(false);
   const [detailViewerTab, setDetailViewerTab] = useState<
-    "screenshots" | "live"
+    "live"
   >("live");
   const [hiddenMessageIndices, setHiddenMessageIndices] = useState<Set<number>>(
     new Set()
@@ -114,13 +114,13 @@ const RunView: React.FC<RunViewProps> = ({
     const lastBrowserAddressMsg =
       browserAddressMessages[browserAddressMessages.length - 1];
     console.log("Last browserAddressMsg", lastBrowserAddressMsg);
-    // only update if novncPort is it is different from the current novncPort
+    // only update if novncEndpoint is it is different from the current novncEndpoint
     if (
       lastBrowserAddressMsg &&
-      lastBrowserAddressMsg.config.metadata?.novnc_port !== novncPort
+      lastBrowserAddressMsg.config.metadata?.novnc_endpoint !== novncEndpoint
     ) {
-      setNovncPort(lastBrowserAddressMsg.config.metadata?.novnc_port);
-      // Show DetailViewer when novncPort becomes available
+      setNovncEndpoint(lastBrowserAddressMsg.config.metadata?.novnc_endpoint);
+      // Show DetailViewer when novncEndpoint becomes available
       setShowDetailViewer(true);
       setIsDetailViewerMinimized(false);
     }
@@ -556,7 +556,7 @@ const RunView: React.FC<RunViewProps> = ({
       <div
         className={`items-start relative flex flex-col h-full ${
           showDetailViewer &&
-          novncPort !== undefined &&
+          novncEndpoint !== undefined &&
           !isDetailViewerMinimized
             ? detailViewerExpanded
               ? "w-0"
@@ -677,7 +677,7 @@ const RunView: React.FC<RunViewProps> = ({
       </div>
 
       {/* Detail Viewer section */}
-      {isDetailViewerMinimized && novncPort !== undefined && (
+      {isDetailViewerMinimized && novncEndpoint !== undefined && (
         <button
           onClick={() => setIsDetailViewerMinimized(false)}
           className="self-start sticky top-0 h-full inline-flex text-magenta-800 hover:text-magenta-900 cursor-pointer"
@@ -688,7 +688,7 @@ const RunView: React.FC<RunViewProps> = ({
       )}
 
       {showDetailViewer &&
-        novncPort !== undefined &&
+        novncEndpoint !== undefined &&
         !isDetailViewerMinimized && (
           <div
             className={`${
@@ -711,7 +711,7 @@ const RunView: React.FC<RunViewProps> = ({
                     currentIndex: index,
                   }))
                 }
-                novncPort={novncPort}
+                novncEndpoint={novncEndpoint}
                 onPause={onPause}
                 runStatus={run.status}
                 activeTab={detailViewerTab}

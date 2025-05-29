@@ -13,7 +13,6 @@ from ...utils.utils import construct_task
 
 router = APIRouter()
 
-
 @router.websocket("/runs/{run_id}")
 async def run_websocket(
     websocket: WebSocket,
@@ -55,14 +54,11 @@ async def run_websocket(
                         query=message.get("task"), files=message.get("files")
                     )
                     team_config = message.get("team_config")
-                    settings_config = message.get("settings_config")
+                    #settings_config = message.get("settings_config")
                     if task and team_config:
                         # await ws_manager.start_stream(run_id, task, team_config)
-                        asyncio.create_task(
-                            ws_manager.start_stream(
-                                run_id, task, team_config, settings_config
-                            )
-                        )
+                        #asyncio.create_task(ws_manager.start_stream(run_id, task, team_config, settings_config))
+                        asyncio.create_task(ws_manager.call_action_engine(run_id, task))
                     else:
                         logger.warning(f"Invalid start message format for run {run_id}")
                         await websocket.send_json(
