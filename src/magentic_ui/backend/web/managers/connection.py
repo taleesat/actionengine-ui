@@ -244,28 +244,8 @@ class WebSocketManager:
                         await self._send_message(run_id, self._format_message(task_message) or {})
                         await self._save_message(run_id, task_message)
 
-            _novnc_endpoint = self.config.get("novnc_endpoint", "localhost:9800"),
-            if isinstance(_novnc_endpoint, Sequence):
-                _novnc_endpoint = _novnc_endpoint[-1]
-            _playwright_port = self.config.get("playwright_port", 9801),
-            if isinstance(_playwright_port, Sequence):
-                _playwright_port = _playwright_port[-1]
-            vnc_message: TextMessage = TextMessage(
-                source="system",
-                content=f"Browser noVNC address can be found at http://{_novnc_endpoint}/vnc.html",
-                metadata={
-                    "internal": "no",
-                    "type": "browser_address",
-                    "novnc_endpoint": _novnc_endpoint,
-                    "playwright_port": str(_playwright_port),
-                },
-            )
-
-            final_result = await self.send_format_message(run_id, vnc_message)
-            if (cancellation_token.is_cancelled() or run_id in self._closed_connections):
-                logger.info(f"Stream cancelled or connection closed for run {run_id}")
-
             #task_text = task if isinstance(task, str) else (task[0].content if isinstance(task, Sequence) and task else "")
+
             if isinstance(task, Sequence):
                 actual_task = task[0] if task else None
             else:
@@ -275,6 +255,28 @@ class WebSocketManager:
             else:
                 task_text = str(actual_task) if actual_task else ""
             await websocket_client.send(task_text)
+
+            action_engine_novnc = json.loads(str(await websocket_client.recv()))
+            content = action_engine_novnc.get("content", {})
+            docker_address = content.get("docker_address", "localhost")
+            playwright_port = content.get("playwright_port", 9800)
+            novnc_port = content.get("novnc_port", 9801)
+            novnc_endpoint = f"{docker_address}:{novnc_port}"
+            vnc_message: TextMessage = TextMessage(
+                source="system",
+                content=f"Browser noVNC address can be found at http://{novnc_endpoint}/vnc.html",
+                metadata={
+                    "internal": "no",
+                    "type": "browser_address",
+                    "novnc_endpoint": novnc_endpoint,
+                    "playwright_port": str(playwright_port),
+                },
+            )
+
+            final_result = await self.send_format_message(run_id, vnc_message)
+            if (cancellation_token.is_cancelled() or run_id in self._closed_connections):
+                logger.info(f"Stream cancelled or connection closed for run {run_id}")
+
             final_result = await self.process_answer(task_text, websocket_client, run_id)
             input_func: InputFuncType = self.create_input_func(run_id)
             while True:
