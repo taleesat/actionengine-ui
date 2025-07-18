@@ -17,6 +17,9 @@ from autogen_agentchat.messages import (
     ToolCallExecutionEvent,
     ToolCallRequestEvent,
 )
+
+from mcpstudio import MCPStudioShell
+
 from ....input_func import InputFuncType, InputRequestType
 from autogen_core import CancellationToken
 from fastapi import WebSocket, WebSocketDisconnect
@@ -133,6 +136,19 @@ class WebSocketManager:
             logger.error(f"Connection error for run {run_id}: {e}")
             return False
 
+    async def process_shell_answer(self, shell_output: str, run_id: int) -> None:
+        answer_message = TextMessage(
+            source="Orchestrator",
+            models_usage=None,
+            content=shell_output,
+            metadata={
+                "internal": "no",
+                "type": "final_anwer",
+            }
+        )
+        final_result = await self.send_format_message(run_id, answer_message)
+        return final_result
+
     async def process_answer(self, task: str, websocket_client: ClientConnection, run_id: int) -> None:
         step = 0
         while True:
@@ -191,6 +207,78 @@ class WebSocketManager:
                 )
                 final_result = await self.send_format_message(run_id, answer_message)
                 step += 1
+
+    async def send_novnc_endpoint(self, run_id: int, docker_address: str, playwright_port: int, novnc_port: int) -> None:
+        novnc_endpoint = f"{docker_address}:{novnc_port}"
+        vnc_message: TextMessage = TextMessage(
+            source="system",
+            content=f"Browser noVNC address can be found at http://{novnc_endpoint}/vnc.html",
+            metadata={
+                "internal": "no",
+                "type": "browser_address",
+                "novnc_endpoint": novnc_endpoint,
+                "playwright_port": str(playwright_port),
+            },
+        )
+        await self.send_format_message(run_id, vnc_message)
+
+    async def execute_mcpstudio_command(self, run_id: int, mcpstudio_shell: MCPStudioShell, command: str) -> None:
+
+        cancellation_token = CancellationToken()
+        self._cancellation_tokens[run_id] = cancellation_token
+        final_result = None
+
+        try:
+            # Update run with task and status
+            run = await self._get_run(run_id)
+            assert run is not None, f"Run {run_id} not found in database"
+            assert run.user_id is not None, f"Run {run_id} has no user ID"
+
+            # Get user Settings
+            #user_settings = await self._get_settings(run.user_id)
+            #env_vars = (SettingsConfig(**user_settings.config).environment if user_settings else None)
+            #state = None
+            if run:
+                run.task = MessageConfig(content=command, source="user").model_dump()
+                run.status = RunStatus.ACTIVE
+                #state = run.state
+                self.db_manager.upsert(run)
+                await self._update_run_status(run_id, RunStatus.ACTIVE)
+
+            await self._send_message(run_id, self._format_message(TextMessage(source="user_proxy", content=command)) or {},)
+            await self._save_message(run_id, TextMessage(source="user_proxy", content=command))
+
+            mcpstudio_shell.output.truncate()
+            await mcpstudio_shell.execute(command)
+            mcpstudio_shell.output.flush()
+            shell_output = mcpstudio_shell.output.getvalue()
+            await self.process_shell_answer(shell_output, run_id)
+
+            if (not cancellation_token.is_cancelled() and run_id not in self._closed_connections):
+                if final_result:
+                    await self._update_run(run_id, RunStatus.COMPLETE, team_result=final_result)
+                else:
+                    logger.warning(f"No final result captured for completed run {run_id}")
+                    await self._update_run_status(run_id, RunStatus.COMPLETE)
+            else:
+                await self._send_message(
+                    run_id,
+                    {
+                        "type": "completion",
+                        "status": "cancelled",
+                        "data": self._cancel_message,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
+                # Update run with cancellation result
+                await self._update_run(run_id, RunStatus.STOPPED, team_result=self._cancel_message)
+
+        except Exception as e:
+            logger.error(f"Stream error for run {run_id}: {e}")
+            traceback.print_exc()
+            await self._handle_stream_error(run_id, e)
+        finally:
+            self._cancellation_tokens.pop(run_id, None)
 
     async def call_action_engine(self, run_id: int, task: str | ChatMessage | Sequence[ChatMessage] | None,) -> None:
         """

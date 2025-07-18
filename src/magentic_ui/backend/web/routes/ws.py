@@ -1,17 +1,42 @@
 # api/ws.py
+import os
+import io
 import asyncio
 import json
 from datetime import datetime
 
+from azure.identity import AzureCliCredential, get_bearer_token_provider
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+import litellm
 from loguru import logger
+from dotenv import load_dotenv
+
+from stagehand import StagehandConfig
+from mcpstudio import MCPStudioShell
 
 from ...datamodel import Run
 from ..deps import get_db, get_websocket_manager
-from ..managers import WebSocketManager
+from ..managers import WebSocketManager, playwright_manager
 from ...utils.utils import construct_task
 
 router = APIRouter()
+load_dotenv()
+
+def get_stagehand_config() -> StagehandConfig:
+    """Dependency provider for Stagehand configuration"""
+    azure_ad_token_provider = get_bearer_token_provider(
+        AzureCliCredential(),
+        "https://cognitiveservices.azure.com/.default"
+    )
+    config = StagehandConfig(
+        model_name="azure/gpt-4o-2",
+        model_api_base=os.getenv("AZURE_OPENAI_ENDPOINT"),
+        model_api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
+        azure_ad_token_provider=azure_ad_token_provider
+    )
+    return config
+
+default_stagehand_config = get_stagehand_config()
 
 @router.websocket("/runs/{run_id}")
 async def run_websocket(
@@ -42,22 +67,47 @@ async def run_websocket(
     try:
         logger.info(f"WebSocket connection established for run {run_id}")
 
+        playwright_server: playwright_manager.DockerPlaywrightServer = await playwright_manager.create_docker_playwright_from_env()
+        await playwright_server.create_container()
+        await playwright_server.start_container()
+        logger.info(f"Playwright server started for run {run_id} on ports {playwright_server.playwright_port} and {playwright_server.novnc_port}")
+        await asyncio.sleep(2)  # Allow some time for the container to start
+
+        stagehand_config: StagehandConfig = default_stagehand_config
+        shell_output = io.StringIO()
+        mcpstudio_shell = MCPStudioShell(output=shell_output)
+        await mcpstudio_shell.initialize(
+            config=stagehand_config,
+            env="REMOTE",
+            remote_browser_ws_endpoint=f"ws://{playwright_server.docker_address}:{playwright_server.playwright_port}{playwright_manager.playwright_ws_path}",
+        )
+
+        await ws_manager.send_novnc_endpoint(
+            run_id,
+            playwright_server.docker_address,
+            playwright_server.playwright_port,
+            playwright_server.novnc_port
+        )
+
         while True:
             try:
                 raw_message = await websocket.receive_text()
                 message = json.loads(raw_message)
+                task = json.loads(message.get("task"))
+                logger.debug(f"Received message for run {run_id}: {message}")
 
+                await ws_manager.execute_mcpstudio_command(
+                    run_id, mcpstudio_shell, task.get("content")
+                )
+
+                """
                 if message.get("type") == "start":
-                    # Handle start message
                     logger.info(f"Received start request for run {run_id}")
                     task = construct_task(
                         query=message.get("task"), files=message.get("files")
                     )
                     team_config = message.get("team_config")
-                    #settings_config = message.get("settings_config")
                     if task and team_config:
-                        # await ws_manager.start_stream(run_id, task, team_config)
-                        #asyncio.create_task(ws_manager.start_stream(run_id, task, team_config, settings_config))
                         asyncio.create_task(ws_manager.call_action_engine(run_id, task))
                     else:
                         logger.warning(f"Invalid start message format for run {run_id}")
@@ -96,6 +146,7 @@ async def run_websocket(
                 elif message.get("type") == "resume":
                     logger.info(f"Received resume request for run {run_id}")
                     await ws_manager.resume_run(run_id)
+                """
             except json.JSONDecodeError:
                 logger.warning(f"Invalid JSON received: {raw_message}")
                 await websocket.send_json(
@@ -112,3 +163,5 @@ async def run_websocket(
         logger.error(f"WebSocket error: {str(e)}")
     finally:
         await ws_manager.disconnect(run_id)
+        playwright_server.stop_container()
+        await playwright_manager.return_docker_playwright(playwright_server)

@@ -19,6 +19,3 @@ web_surfer_client: *client
 file_surfer_client: *client
 action_guard_client: *client
 user_proxy_client: *client
-
-novnc_endpoint: "4.155.4.13:9801"
-playwright_port: 9800
