@@ -424,6 +424,70 @@ export default function ChatView({
     });
   };
 
+  const executeCommand = async (command: string) => {
+    let run = currentRun;
+    if (!run) {
+      run = await loadSessionRun();
+      if (run) {
+        setCurrentRun(run);
+      } else {
+        throw new Error("Could not setup run");
+      }
+    }
+
+    if (run.status === "created") {
+      setError(null);
+      setNoMessagesYet(false);
+      // Load latest settings from database
+      let currentSettings = settingsConfig;
+      if (user?.email) {
+        try {
+          currentSettings = (await settingsAPI.getSettings(
+            user.email
+          )) as GeneralConfig;
+          useSettingsStore.getState().updateConfig(currentSettings);
+        } catch (error) {
+          console.error("Failed to load settings:", error);
+        }
+      }
+
+      // Setup websocket connection
+      const socket = setupWebSocket(run.id, false, false);
+      if (!socket) {
+        throw new Error("WebSocket connection not available");
+      }
+
+      // Wait for socket to be ready
+      await new Promise<void>((resolve, reject) => {
+        const checkState = () => {
+          if (socket.readyState === WebSocket.OPEN) {
+            resolve();
+          } else if (
+            socket.readyState === WebSocket.CLOSED ||
+            socket.readyState === WebSocket.CLOSING
+          ) {
+            reject(new Error("Socket failed to connect"));
+          } else {
+            setTimeout(checkState, 100);
+          }
+        };
+        checkState();
+      });
+      console.log("Socket connected");
+      const sessionData = {
+        id: session?.id,
+        name: command.slice(0, 50),
+      };
+      onSessionNameChange(sessionData);
+    }
+    activeSocketRef.current?.send(
+      JSON.stringify({
+        type: "command",
+        command: command,
+      })
+    );
+  };
+
   const handleInputResponse = async (
     response: string,
     accepted = false,
@@ -1010,6 +1074,7 @@ export default function ChatView({
                     onDeny={handleDeny}
                     onAcceptPlan={handleAcceptPlan}
                     // Add these to connect the functions from chat.tsx to RunView
+                    onExecuteCommand={executeCommand}
                     onInputResponse={handleInputResponse}
                     onRunTask={runTask}
                     onCancel={handleCancel}
@@ -1045,6 +1110,7 @@ export default function ChatView({
                     accepted = false,
                     plan?: IPlan
                   ) => {
+                    /*
                     if (
                       currentRun?.status === "awaiting_input" ||
                       currentRun?.status === "paused"
@@ -1053,6 +1119,8 @@ export default function ChatView({
                     } else {
                       runTask(query, files, plan, true);
                     }
+                      */
+                    executeCommand(query)
                   }}
                   error={error}
                   onCancel={handleCancel}

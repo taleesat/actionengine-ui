@@ -223,11 +223,8 @@ class WebSocketManager:
         await self.send_format_message(run_id, vnc_message)
 
     async def execute_mcpstudio_command(self, run_id: int, mcpstudio_shell: MCPStudioShell, command: str) -> None:
-
         cancellation_token = CancellationToken()
         self._cancellation_tokens[run_id] = cancellation_token
-        final_result = None
-
         try:
             # Update run with task and status
             run = await self._get_run(run_id)
@@ -248,18 +245,15 @@ class WebSocketManager:
             await self._send_message(run_id, self._format_message(TextMessage(source="user_proxy", content=command)) or {},)
             await self._save_message(run_id, TextMessage(source="user_proxy", content=command))
 
-            mcpstudio_shell.output.truncate()
+            mcpstudio_shell.output.truncate(0)
+            mcpstudio_shell.output.seek(0)
             await mcpstudio_shell.execute(command)
             mcpstudio_shell.output.flush()
             shell_output = mcpstudio_shell.output.getvalue()
             await self.process_shell_answer(shell_output, run_id)
 
             if (not cancellation_token.is_cancelled() and run_id not in self._closed_connections):
-                if final_result:
-                    await self._update_run(run_id, RunStatus.COMPLETE, team_result=final_result)
-                else:
-                    logger.warning(f"No final result captured for completed run {run_id}")
-                    await self._update_run_status(run_id, RunStatus.COMPLETE)
+                await self._update_run_status(run_id, RunStatus.AWAITING_INPUT)
             else:
                 await self._send_message(
                     run_id,
@@ -270,7 +264,6 @@ class WebSocketManager:
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
                 )
-                # Update run with cancellation result
                 await self._update_run(run_id, RunStatus.STOPPED, team_result=self._cancel_message)
 
         except Exception as e:

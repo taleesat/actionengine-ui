@@ -25,6 +25,7 @@ interface RunViewProps {
   onDeny?: () => void;
   onAcceptPlan?: (text: string) => void;
   // Add new props needed for ChatInput
+  onExecuteCommand?: (command: string) => void;
   onInputResponse?: (query: string, accepted?: boolean, plan?: IPlan) => void;
   onRunTask?: (
     query: string,
@@ -52,6 +53,7 @@ const RunView: React.FC<RunViewProps> = ({
   onDeny,
   onAcceptPlan,
   // Add new props here
+  onExecuteCommand,
   onInputResponse,
   onRunTask,
   onCancel,
@@ -658,11 +660,14 @@ const RunView: React.FC<RunViewProps> = ({
               accepted = false,
               plan?: IPlan
             ) => {
+              /*
               if (run.status === "awaiting_input" || run.status === "paused") {
                 onInputResponse?.(query, accepted, plan);
               } else {
                 onRunTask?.(query, files, plan, true);
               }
+              */
+              onExecuteCommand?.(query);
             }}
             error={error ?? null}
             onCancel={onCancel}
