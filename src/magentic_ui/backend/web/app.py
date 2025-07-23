@@ -23,6 +23,7 @@ from .routes import (
     validation,
     ws,
 )
+from .managers import playwright_manager
 
 # Initialize application
 app_file_path = os.path.dirname(os.path.abspath(__file__))
@@ -70,6 +71,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         logger.info("Cleaning up application resources...")
         await cleanup_managers()
+        await playwright_manager.cleanup_docker_playwright_servers()
         logger.info("Application shutdown complete")
     except Exception as e:
         logger.error(f"Error during shutdown: {str(e)}")

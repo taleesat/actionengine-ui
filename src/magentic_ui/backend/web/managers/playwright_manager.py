@@ -44,11 +44,16 @@ class DockerPlaywrightServer:
 
     def stop_container(self) -> None:
         if self.container:
-            self.container.stop()
+            try:
+                self.container.stop()
+            except docker.errors.APIError as e:
+                print(f"Error stopping Docker container, just ignore it: {e}")
             self.container = None
 
 lock = asyncio.Lock()
 used_ports = set()
+
+all_docker_playwright_servers = set()
 
 async def create_docker_playwright_from_env() -> DockerPlaywrightServer:
     global lock
@@ -66,13 +71,14 @@ async def create_docker_playwright_from_env() -> DockerPlaywrightServer:
             i += 1
         novnc_port = i
         used_ports.add(novnc_port)
-    docker_playwright = DockerPlaywrightServer(
-        docker_address,
-        docker_port,
-        bind_workspace=os.getenv("DOCKER_WORKSPACE_DIR", "/workspace"),
-        playwright_port=playwright_port,
-        novnc_port=novnc_port
-    )
+        docker_playwright = DockerPlaywrightServer(
+            docker_address,
+            docker_port,
+            bind_workspace=os.getenv("DOCKER_WORKSPACE_DIR", "/workspace"),
+            playwright_port=playwright_port,
+            novnc_port=novnc_port
+        )
+        all_docker_playwright_servers.add(docker_playwright)
     return docker_playwright
 
 async def return_docker_playwright(docker_playwright: DockerPlaywrightServer) -> None:
@@ -80,3 +86,12 @@ async def return_docker_playwright(docker_playwright: DockerPlaywrightServer) ->
     async with lock:
         used_ports.discard(docker_playwright.playwright_port)
         used_ports.discard(docker_playwright.novnc_port)
+        all_docker_playwright_servers.remove(docker_playwright)
+
+async def cleanup_docker_playwright_servers() -> None:
+    global all_docker_playwright_servers
+    async with lock:
+        for docker_playwright in all_docker_playwright_servers:
+            docker_playwright.stop_container()
+        all_docker_playwright_servers.clear()
+        used_ports.clear()
