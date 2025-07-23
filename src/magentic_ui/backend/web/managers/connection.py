@@ -2,11 +2,12 @@ import asyncio
 import logging
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Sequence, Union
+from typing import Any, Dict, Optional, Sequence, Union, Literal
 import json
 
 from autogen_agentchat.base._task import TaskResult
 from autogen_agentchat.messages import (
+    BaseAgentEvent,
     AgentEvent,
     ChatMessage,
     HandoffMessage,
@@ -41,6 +42,20 @@ from ...teammanager import TeamManager
 from ...utils.utils import compress_state
 
 logger = logging.getLogger(__name__)
+
+class DownloadEvent(BaseAgentEvent):
+    """An event signaling download event."""
+
+    filename: str
+    "Name of the file to download"
+
+    content: str
+    "Content of the file to download"
+
+    type: Literal["DownloadEvent"] = "DownloadEvent"
+
+    def to_text(self) -> str:
+        return f"{self.filename}:\n{self.content}"
 
 class WebSocketManager:
     """
@@ -136,17 +151,25 @@ class WebSocketManager:
             logger.error(f"Connection error for run {run_id}: {e}")
             return False
 
-    async def process_shell_answer(self, shell_output: str, run_id: int) -> None:
+    async def process_shell_answer(self, shell_output: str, execution_result: str, run_id: int) -> None:
         answer_message = TextMessage(
             source="Orchestrator",
             models_usage=None,
             content=shell_output,
             metadata={
                 "internal": "no",
-                "type": "final_anwer",
+                "type": "default",
             }
         )
         final_result = await self.send_format_message(run_id, answer_message)
+        if execution_result:
+            if execution_result["action"] == "save":
+                download_event = DownloadEvent(
+                    source="Orchestrator",
+                    filename=execution_result["filename"],
+                    content=execution_result["content"],
+                )
+                final_result = await self.send_format_message(run_id, download_event)
         return final_result
 
     async def process_answer(self, task: str, websocket_client: ClientConnection, run_id: int) -> None:
@@ -231,14 +254,9 @@ class WebSocketManager:
             assert run is not None, f"Run {run_id} not found in database"
             assert run.user_id is not None, f"Run {run_id} has no user ID"
 
-            # Get user Settings
-            #user_settings = await self._get_settings(run.user_id)
-            #env_vars = (SettingsConfig(**user_settings.config).environment if user_settings else None)
-            #state = None
             if run:
                 run.task = MessageConfig(content=command, source="user").model_dump()
                 run.status = RunStatus.ACTIVE
-                #state = run.state
                 self.db_manager.upsert(run)
                 await self._update_run_status(run_id, RunStatus.ACTIVE)
 
@@ -247,10 +265,10 @@ class WebSocketManager:
 
             mcpstudio_shell.output.truncate(0)
             mcpstudio_shell.output.seek(0)
-            await mcpstudio_shell.execute(command)
+            execution_result = await mcpstudio_shell.execute(command)
             mcpstudio_shell.output.flush()
             shell_output = mcpstudio_shell.output.getvalue()
-            await self.process_shell_answer(shell_output, run_id)
+            await self.process_shell_answer(shell_output, execution_result, run_id)
 
             if (not cancellation_token.is_cancelled() and run_id not in self._closed_connections):
                 await self._update_run_status(run_id, RunStatus.AWAITING_INPUT)
@@ -808,6 +826,7 @@ class WebSocketManager:
         try:
             if run_id in self._connections:
                 websocket = self._connections[run_id]
+                logger.info(f"Sending message to run {run_id}: {message}")
                 await websocket.send_json(message)
         except WebSocketDisconnect:
             logger.warning(
@@ -887,14 +906,16 @@ class WebSocketManager:
                     "data": message.model_dump(),
                     "status": "complete",
                 }
+
             elif isinstance(message, ModelClientStreamingChunkEvent):
                 return {"type": "message_chunk", "data": message.model_dump()}
 
-            elif isinstance(
-                message,
-                (TextMessage,),
-            ):
+            elif isinstance(message, DownloadEvent):
+                return {"type": "download", "data": message.model_dump()}
+
+            elif isinstance(message, (TextMessage,),):
                 return {"type": "message", "data": message.model_dump()}
+
             elif isinstance(message, str):
                 return {
                     "type": "message",

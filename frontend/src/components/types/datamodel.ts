@@ -54,6 +54,11 @@ export interface ToolCallResultMessageConfig extends BaseMessageConfig {
   content: FunctionExecutionResult[];
 }
 
+export interface DownloadMessageConfig extends BaseMessageConfig {
+  content: string; // URL or file path
+  filename?: string; // Optional filename for the download
+}
+
 // Message type unions (matching Python type aliases)
 export type InnerMessageConfig =
   | ToolCallMessageConfig
@@ -71,7 +76,8 @@ export type AgentMessageConfig =
   | StopMessageConfig
   | HandoffMessageConfig
   | ToolCallMessageConfig
-  | ToolCallResultMessageConfig;
+  | ToolCallResultMessageConfig
+  | DownloadMessageConfig;
 
 // Database model
 export interface DBModel {
@@ -110,7 +116,8 @@ export interface WebSocketMessage {
     | "completion"
     | "input_request"
     | "error"
-    | "system";
+    | "system"
+    | "download";
   data?: AgentMessageConfig | TaskResult;
   input_type?: InputType;
   status?: RunStatus;

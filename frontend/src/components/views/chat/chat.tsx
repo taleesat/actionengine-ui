@@ -13,6 +13,7 @@ import {
   TeamResult,
   Session,
   InputRequest,
+  DownloadMessageConfig,
 } from "../../types/datamodel";
 import { appContext } from "../../../hooks/provider";
 import ChatInput from "./chatinput";
@@ -333,6 +334,20 @@ export default function ChatView({
             ...current,
             messages: [...current.messages, newMessage],
           };
+
+        case "download":
+          var agent_message_config = message.data as DownloadMessageConfig;
+          const data = agent_message_config?.content;
+          const blob = new Blob([data as string], { type: "text/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = agent_message_config?.filename || "download.json";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          return current;
 
         case "input_request":
           //console.log("InputRequest: " + JSON.stringify(message))
