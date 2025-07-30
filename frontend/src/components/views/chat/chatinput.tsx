@@ -408,6 +408,12 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       }
     };
 
+    const handleDownload = () => {
+      if (!isInputDisabled) {
+        submitInternal("save workspace.json", [], false);
+      }
+    };
+
     const handlePause = () => {
       if (onPause) {
         onPause();
@@ -753,7 +759,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                 {
                   <button
                     type="button"
-                    onClick={() => {}}
+                    onClick={handleDownload}
                     disabled={false}
                     className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
                   >
