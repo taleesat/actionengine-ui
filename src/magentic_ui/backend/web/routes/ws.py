@@ -11,7 +11,7 @@ from loguru import logger
 from dotenv import load_dotenv
 
 from stagehand import StagehandConfig
-from mcpstudio import MCPStudioShell
+from ai_recorder import AIRecorderShell
 
 from ...datamodel import Run
 from ..deps import get_db, get_websocket_manager
@@ -74,7 +74,7 @@ async def run_websocket(
 
         stagehand_config: StagehandConfig = default_stagehand_config
         shell_output = io.StringIO()
-        mcpstudio_shell = MCPStudioShell(output=shell_output)
+        mcpstudio_shell = AIRecorderShell(output=shell_output)
         await mcpstudio_shell.initialize(
             config=stagehand_config,
             env="REMOTE",

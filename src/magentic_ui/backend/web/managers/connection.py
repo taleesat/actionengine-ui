@@ -19,7 +19,7 @@ from autogen_agentchat.messages import (
     ToolCallRequestEvent,
 )
 
-from mcpstudio import MCPStudioShell
+from ai_recorder import AIRecorderShell
 
 from ....input_func import InputFuncType, InputRequestType
 from autogen_core import CancellationToken
@@ -244,7 +244,7 @@ class WebSocketManager:
         )
         await self.send_format_message(run_id, vnc_message)
 
-    async def execute_mcpstudio_command(self, run_id: int, mcpstudio_shell: MCPStudioShell, command: str) -> None:
+    async def execute_mcpstudio_command(self, run_id: int, mcpstudio_shell: AIRecorderShell, command: str) -> None:
         cancellation_token = CancellationToken()
         self._cancellation_tokens[run_id] = cancellation_token
         try:
@@ -264,7 +264,7 @@ class WebSocketManager:
 
             mcpstudio_shell.output.truncate(0)
             mcpstudio_shell.output.seek(0)
-            execution_result = await mcpstudio_shell.execute(command)
+            execution_result = await mcpstudio_shell.execute_command(command)
             mcpstudio_shell.output.flush()
             shell_output = mcpstudio_shell.output.getvalue()
             await self.process_shell_answer(shell_output, execution_result, run_id)
