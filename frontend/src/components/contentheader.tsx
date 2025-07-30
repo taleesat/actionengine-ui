@@ -3,9 +3,9 @@ import { PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
 import { Tooltip } from "antd";
 import { appContext } from "../hooks/provider";
 import { useConfigStore } from "../hooks/store";
-import { Settings } from "lucide-react";
+import { Info, Settings } from "lucide-react";
 import SignInModal from "./signin";
-import SettingsMenu from "./settings";
+import HelpMenu from "./help";
 import logo from "../assets/logo.svg";
 import { Button } from "./common/Button";
 
@@ -32,23 +32,6 @@ const ContentHeader = ({
       <div className="flex h-16 items-center justify-between">
         {/* Left side: Text and Sidebar Controls */}
         <div className="flex items-center">
-          {/* Sidebar Toggle */}
-          <Tooltip title={isSidebarOpen ? "Close Sidebar" : "Open Sidebar"}>
-            <Button
-              variant="tertiary"
-              size="sm"
-              icon={
-                isSidebarOpen ? (
-                  <PanelLeftClose strokeWidth={1.5} className="h-6 w-6" />
-                ) : (
-                  <PanelLeftOpen strokeWidth={1.5} className="h-6 w-6" />
-                )
-              }
-              onClick={onToggleSidebar}
-              className="!px-0 transition-colors hover:text-accent"
-            />
-          </Tooltip>
-
           {/* New Session Button */}
           <div className="w-[40px]">
             {!isSidebarOpen && (
@@ -95,14 +78,14 @@ const ContentHeader = ({
 
           {/* Settings Button */}
           <div className="text-primary">
-            <Tooltip title="Settings">
+            <Tooltip title="Help">
               <Button
                 variant="tertiary"
                 size="sm"
-                icon={<Settings className="h-8 w-8" />}
+                icon={<Info className="h-8 w-8" />}
                 onClick={() => setIsSettingsOpen(true)}
                 className="!px-0 transition-colors hover:text-accent"
-                aria-label="Settings"
+                aria-label="Help"
               />
             </Tooltip>
           </div>
@@ -113,7 +96,7 @@ const ContentHeader = ({
         isVisible={isEmailModalOpen}
         onClose={() => setIsEmailModalOpen(false)}
       />
-      <SettingsMenu
+      <HelpMenu
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />

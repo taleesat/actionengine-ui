@@ -16,7 +16,7 @@ require("dotenv").config({
 const config: GatsbyConfig = {
   pathPrefix: process.env.PREFIX_PATH_VALUE || "",
   siteMetadata: {
-    title: `ActionEngine-UI`,
+    title: `AIRecorder-UI`,
     description: `Human-centered web agent interface`,
     siteUrl: `http://tbd.place`,
   },

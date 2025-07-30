@@ -2,6 +2,7 @@ import {
   PaperAirplaneIcon,
   ExclamationTriangleIcon,
   PauseCircleIcon,
+  ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
 import * as React from "react";
 import { appContext } from "../../../hooks/provider";
@@ -707,12 +708,12 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     }}
                     placeholder={
                       runStatus === "awaiting_input"
-                        ? "Type your response here and let ActionEngine-UI know of any changes in the browser."
+                        ? "Type a command here."
                         : enable_upload
                         ? dragOver
                           ? "Drop files here..."
-                          : "Type your message here..."
-                        : "Type your message here..."
+                          : "Type a command here..."
+                        : "Type a command here..."
                     }
                     disabled={isInputDisabled}
                   />
@@ -726,59 +727,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     : "bg-white text-black"
                 }`}
               >
-                {/* File upload button replaced with Dropdown */}
-                {enable_upload && (
-                  <div
-                    className={`$${
-                      isInputDisabled ? "pointer-events-none opacity-50" : ""
-                    }`}
-                  >
-                    <Dropdown
-                      overlay={
-                        <Menu>
-                          <Menu.Item key="attach-file">
-                            <Upload {...uploadProps} showUploadList={false}>
-                              <span>Attach File</span>
-                            </Upload>
-                          </Menu.Item>
-                          <Menu.SubMenu key="attach-plan" title="Attach Plan">
-                            {allPlans.length === 0 ? (
-                              <Menu.Item disabled key="no-plans">
-                                No plans available
-                              </Menu.Item>
-                            ) : (
-                              allPlans.map((plan: any) => (
-                                <Menu.Item
-                                  key={plan.id || plan.task}
-                                  onClick={() => handleUsePlan(plan)}
-                                >
-                                  {plan.task}
-                                </Menu.Item>
-                              ))
-                            )}
-                          </Menu.SubMenu>
-                        </Menu>
-                      }
-                      trigger={["click"]}
-                    >
-                      <Tooltip
-                        title={
-                          <span className="text-sm">Attach File or Plan</span>
-                        }
-                        placement="top"
-                      >
-                        <button
-                          type="button"
-                          disabled={isInputDisabled}
-                          className="flex justify-center items-center transition duration-300"
-                        >
-                          <UploadIcon className="h-6 -mt-1 w-6 text-accent" />
-                        </button>
-                      </Tooltip>
-                    </Dropdown>
-                  </div>
-                )}
-
                 {runStatus === "active" && (
                   <button
                     type="button"
@@ -800,6 +748,16 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     }`}
                   >
                     <PaperAirplaneIcon className="h-6 w-6 text-white" />
+                  </button>
+                }
+                {
+                  <button
+                    type="button"
+                    onClick={() => {}}
+                    disabled={false}
+                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
+                  >
+                    <ArrowDownTrayIcon className="h-6 w-6 text-white" />
                   </button>
                 }
               </div>

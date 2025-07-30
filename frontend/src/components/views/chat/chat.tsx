@@ -1113,7 +1113,7 @@ export default function ChatView({
               } mx-auto px-4 sm:px-6 md:px-8`}
             >
               <div className="text-secondary text-lg mb-6">
-                Enter a message to get started
+                Enter a command to get started
               </div>
 
               <div className="w-full">

@@ -1,8 +1,8 @@
 {
-  "name": "ActionEngine-UI",
+  "name": "AIRecorder-UI",
   "version": "1.0.0",
   "private": true,
-  "description": "ActionEngine-UI",
+  "description": "AIRecorder-UI",
   "author": "Microsoft",
   "keywords": [
     "gatsby"

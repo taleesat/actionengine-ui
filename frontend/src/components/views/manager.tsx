@@ -465,45 +465,6 @@ export const SessionManager: React.FC = () => {
 
       <div className="flex flex-1 relative">
         <div
-          className={`absolute left-0 top-0 h-full transition-all duration-200 ease-in-out ${
-            isSidebarOpen ? "w-77" : "w-0"
-          }`}
-        >
-          <Sidebar
-            isOpen={isSidebarOpen}
-            sessions={sessions}
-            currentSession={session}
-            onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-            onSelectSession={handleSelectSession}
-            onEditSession={handleEditSession}
-            onDeleteSession={handleDeleteSession}
-            isLoading={isLoading}
-            sessionRunStatuses={sessionRunStatuses}
-            activeSubMenuItem={activeSubMenuItem}
-            onSubMenuChange={setActiveSubMenuItem}
-            onStopSession={(sessionId: number) => {
-              if (sessionId === undefined || sessionId === null) return;
-              const id = Number(sessionId);
-              // Find the session's socket and close it, update status
-              const ws = sessionSockets[id]?.socket;
-              if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(
-                  JSON.stringify({
-                    type: "stop",
-                    reason: "Cancelled by user (sidebar)",
-                  })
-                );
-                ws.close();
-              }
-              setSessionRunStatuses((prev) => ({
-                ...prev,
-                [id]: "stopped",
-              }));
-            }}
-          />
-        </div>
-
-        <div
           className={`flex-1 transition-all -mr-4 duration-200 w-[200px] ${
             isSidebarOpen ? "ml-64" : "ml-0"
           }`}
