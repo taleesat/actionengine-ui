@@ -50,6 +50,24 @@ interface RenderPlanProps {
   forceCollapsed?: boolean;
 }
 
+interface RenderWorkspaceProps {
+  content: {
+    name: string;
+    workflows: {
+      name: string;
+      args: any[];
+      description: string;
+      steps: {
+        description: string;
+        method: string;
+        args: any[];
+        is_optional: boolean;
+        extraction_code_file: string;
+      }[];
+    }[];
+  };
+}
+
 interface RenderStepExecutionProps {
   content: {
     index: number;
@@ -188,6 +206,9 @@ const parseorchestratorContent = (
     if (messageUtils.isStepExecution(metadata)) {
       return { type: "step-execution" as const, content: parsedContent };
     }
+    if (messageUtils.isWorkspaceMessage(metadata)) {
+      return { type: "workspace" as const, content: parsedContent };
+    }
   } catch {}
 
   return { type: "default" as const, content };
@@ -315,6 +336,33 @@ const RenderPlan: React.FC<RenderPlanProps> = memo(
           forceCollapsed={forceCollapsed}
           fromMemory={content.from_memory || false}
         />
+      </div>
+    );
+  }
+);
+
+const RenderWorkspace: React.FC<RenderWorkspaceProps> = memo(
+  ({ content }) => {
+    return (
+      <div className="space-y-2 text-sm">
+        <div className="font-semibold text-primary mb-2">
+          Workspace: {content.name}
+        </div>
+        {content.workflows.map((workflow, index) => (
+          <div key={index} className="border border-secondary rounded p-2">
+            <div className="font-medium">{workflow.name}</div>
+            <div className="text-sm text-gray-500">
+              {workflow.description}
+            </div>
+            <ul className="list-disc pl-4 mt-2">
+              {workflow.steps.map((step, stepIndex) => (
+                <li key={stepIndex}>
+                  {step.description} - Method: {step.method}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
     );
   }
@@ -506,6 +554,11 @@ export const messageUtils = {
 
   isPlanMessage(metadata?: Record<string, any>): boolean {
     return metadata?.type === "plan_message";
+  },
+
+  isWorkspaceMessage(metadata?: Record<string, any>): boolean {
+    console.log("Checking workspace message:", metadata);
+    return metadata?.type === "workspace";
   },
 
   isStepExecution(metadata?: Record<string, any>): boolean {
@@ -726,6 +779,8 @@ export const RenderMessage: React.FC<MessageProps> = memo(
                   runStatus={runStatus || ""}
                   onToggleHide={onToggleHide}
                 />
+              ) : orchestratorContent?.type === "workspace" ? (
+                <RenderWorkspace content={orchestratorContent.content} />
               ) : orchestratorContent?.type === "final-answer" ? (
                 <RenderFinalAnswer
                   content={orchestratorContent.content}

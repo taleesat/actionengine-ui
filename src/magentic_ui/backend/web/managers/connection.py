@@ -151,24 +151,38 @@ class WebSocketManager:
             return False
 
     async def process_shell_answer(self, shell_output: str, execution_result: str, run_id: int) -> None:
-        answer_message = TextMessage(
-            source="Orchestrator",
-            models_usage=None,
-            content=shell_output,
-            metadata={
-                "internal": "no",
-                "type": "default",
-            }
-        )
-        final_result = await self.send_format_message(run_id, answer_message)
         if execution_result:
-            if execution_result["action"] == "save":
+            action = execution_result.get("action", None)
+            if action == "save":
                 download_event = DownloadEvent(
                     source="Orchestrator",
                     filename=execution_result["filename"],
                     content=execution_result["content"],
                 )
                 final_result = await self.send_format_message(run_id, download_event)
+            elif action == "print_workspace":
+                workspace_message = TextMessage(
+                    source="Orchestrator",
+                    models_usage=None,
+                    content=execution_result["workspace"],
+                    metadata={
+                        "internal": "no",
+                        "type": "workspace",
+                        "rendered": "yes",
+                    }
+                )
+                final_result = await self.send_format_message(run_id, workspace_message)
+        else:
+            answer_message = TextMessage(
+                source="Orchestrator",
+                models_usage=None,
+                content=shell_output,
+                metadata={
+                    "internal": "no",
+                    "type": "default",
+                }
+            )
+            final_result = await self.send_format_message(run_id, answer_message)
         return final_result
 
     async def process_answer(self, task: str, websocket_client: ClientConnection, run_id: int) -> None:
