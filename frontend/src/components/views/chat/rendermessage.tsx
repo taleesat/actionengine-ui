@@ -354,13 +354,13 @@ const RenderWorkspace: React.FC<RenderWorkspaceProps> = memo(
             <div className="text-sm text-gray-500">
               {workflow.description}
             </div>
-            <ul className="list-disc pl-4 mt-2">
+            <ol className="list-decimal pl-4 mt-2">
               {workflow.steps.map((step, stepIndex) => (
                 <li key={stepIndex}>
-                  {step.description} - Method: {step.method}
+                  {step.method}: {step.description}
                 </li>
               ))}
-            </ul>
+            </ol>
           </div>
         ))}
       </div>
