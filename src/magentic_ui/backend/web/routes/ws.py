@@ -66,9 +66,8 @@ async def run_websocket(
     try:
         logger.info(f"WebSocket connection established for run {run_id}")
 
-        playwright_server: playwright_manager.DockerPlaywrightServer = await playwright_manager.create_docker_playwright_from_env()
-        await playwright_server.create_container()
-        await playwright_server.start_container()
+        playwright_server: playwright_manager.MultiPlaywrightServer = await playwright_manager.create_multi_playwright_server_from_env()
+        playwright_server.start_server()
         logger.info(f"Playwright server started for run {run_id} on ports {playwright_server.playwright_port} and {playwright_server.novnc_port}")
         await asyncio.sleep(2)  # Allow some time for the container to start
 
@@ -78,12 +77,12 @@ async def run_websocket(
         await mcpstudio_shell.initialize(
             config=stagehand_config,
             env="REMOTE",
-            remote_browser_ws_endpoint=f"ws://{playwright_server.docker_address}:{playwright_server.playwright_port}{playwright_manager.playwright_ws_path}",
+            remote_browser_ws_endpoint=f"ws://{playwright_server.server_address}:{playwright_server.playwright_port}{playwright_manager.playwright_ws_path}",
         )
 
         await ws_manager.send_novnc_endpoint(
             run_id,
-            playwright_server.docker_address,
+            playwright_server.server_address,
             playwright_server.playwright_port,
             playwright_server.novnc_port
         )
@@ -114,5 +113,5 @@ async def run_websocket(
         logger.error(f"WebSocket error: {str(e)}")
     finally:
         await ws_manager.disconnect(run_id)
-        playwright_server.stop_container()
-        await playwright_manager.return_docker_playwright(playwright_server)
+        playwright_server.stop_server()
+        await playwright_manager.return_multi_playwright_server(playwright_server)

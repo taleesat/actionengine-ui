@@ -1,10 +1,68 @@
 import os
 
+import requests
 import docker
 import asyncio
 
 docker_image = "magentic-ui-vnc-browser:latest"
 playwright_ws_path = "/ws"
+
+class MultiPlaywrightServer:
+
+    def __init__(self, server_address: str, server_port: int, sess_id: int):
+        self.server_address = server_address
+        self.server_port = server_port
+        self.sess_id = sess_id
+        self.playwright_port = None
+        self.novnc_port = None
+
+    def start_server(self):
+        url = f"http://{self.server_address}:{self.server_port}/launch/{self.sess_id}"
+        response = requests.post(url, data={})  # empty body
+        if response.status_code != 200:
+            raise RuntimeError(f"Failed to start Playwright server: {response.text}")
+        playwright_server = response.json()
+        self.playwright_port = playwright_server.get("playwright_port")
+        self.novnc_port = playwright_server.get("novnc_port")
+        return {
+            "playwright_server": self.server_address,
+            "playwright_port": self.playwright_port,
+            "novnc_port": self.novnc_port,
+        }
+
+    def stop_server(self):
+        url = f"http://{self.server_address}:{self.server_port}/stop/{self.sess_id}"
+        response = requests.post(url, data={})
+        if response.status_code != 200:
+            raise RuntimeError(f"Failed to stop Playwright server: {response.text}")
+
+all_multi_playwright_servers = set()
+sess_lock = asyncio.Lock()
+ongoing_sess = set()
+
+async def create_multi_playwright_server_from_env() -> MultiPlaywrightServer:
+    multi_playwright_server_address = os.getenv("MULTI_PLAYWRIGHT_SERVER_ADDRESS", "localhost")
+    multi_playwright_server_port = int(os.getenv("MULTI_PLAYWRIGHT_SERVER_PORT", 3000))
+    async with sess_lock:
+        sess_id = 0
+        while sess_id in ongoing_sess:
+            sess_id += 1
+        ongoing_sess.add(sess_id)
+    server = MultiPlaywrightServer(multi_playwright_server_address, multi_playwright_server_port, sess_id)
+    all_multi_playwright_servers.add(server)
+    return server
+
+async def return_multi_playwright_server(server: MultiPlaywrightServer) -> None:
+    async with sess_lock:
+        ongoing_sess.discard(server.sess_id)
+
+async def cleanup_multi_playwright_servers() -> None:
+    global all_multi_playwright_servers
+    async with sess_lock:
+        for server in all_multi_playwright_servers:
+            server.stop_server()
+        all_multi_playwright_servers.clear()
+        ongoing_sess.clear()
 
 class DockerPlaywrightServer:
 
