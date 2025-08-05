@@ -3,6 +3,7 @@ import {
   ExclamationTriangleIcon,
   PauseCircleIcon,
   ArrowDownTrayIcon,
+  ListBulletIcon,
 } from "@heroicons/react/24/outline";
 import * as React from "react";
 import { appContext } from "../../../hooks/provider";
@@ -414,6 +415,12 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       }
     };
 
+    const handlePrint = () => {
+      if (!isInputDisabled) {
+        submitInternal("print", [], false);
+      }
+    };
+
     const handlePause = () => {
       if (onPause) {
         onPause();
@@ -754,6 +761,16 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     }`}
                   >
                     <PaperAirplaneIcon className="h-6 w-6 text-white" />
+                  </button>
+                }
+                {
+                  <button
+                    type="button"
+                    onClick={handlePrint}
+                    disabled={false}
+                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
+                  >
+                    <ListBulletIcon className="h-6 w-6 text-white" />
                   </button>
                 }
                 {
