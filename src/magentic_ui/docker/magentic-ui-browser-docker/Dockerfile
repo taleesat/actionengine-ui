@@ -35,28 +35,26 @@ RUN npm install .
 # Install browsers with dependencies
 RUN npx playwright@1.51 install --with-deps chromium
 
-# Set up supervisord configuration
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
 # Copy scripts
-COPY start.sh /app/start.sh
 COPY playwright-server.js /app/playwright-server.js
 COPY x11-setup.sh /app/x11-setup.sh
+COPY launch-session.sh /app/launch-session.sh
+COPY app.js /app/app.js
 
 # Make scripts executable
-RUN chmod +x /app/start.sh /app/x11-setup.sh
+RUN chmod +x /app/x11-setup.sh /app/launch-session.sh
 
 # Create a simple openbox configuration to only show the browser window
 RUN mkdir -p /root/.config/openbox
 COPY openbox-rc.xml /root/.config/openbox/rc.xml
 
 # Expose ports: noVNC web interface, and Playwright server
-EXPOSE 6080 37367
+#EXPOSE 6080 37367
 
 ENV PLAYWRIGHT_WS_PATH="default"
 
 # Set the display environment variable
-ENV DISPLAY=:99
+#ENV DISPLAY=:99
 
 RUN mkdir -p /workspace
 WORKDIR /workspace
@@ -67,4 +65,4 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # Start services
-CMD ["/app/start.sh"]
+CMD ["node", "/app/app.js", "--script", "/app/launch-session.sh"]

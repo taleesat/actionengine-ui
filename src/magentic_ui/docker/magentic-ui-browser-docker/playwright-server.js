@@ -1,7 +1,16 @@
 const { chromium } = require("playwright");
-// Read ws path from environment variable
-const wsPath = process.env.WS_PATH || "default";
-const port = process.env.PLAYWRIGHT_PORT || 37367;
+const { Command } = require("commander");
+
+const program = new Command();
+program
+  .option("--port <number>", "Playwright port number", "37367")
+  .option("--ws-path <path>", "WebSocket path", "ws");
+
+program.parse(process.argv);
+const options = program.opts();
+
+const port = parseInt(options.port);
+const wsPath = options.wsPath;
 
 (async () => {
   console.log("Starting Playwright server...");
@@ -32,7 +41,6 @@ const port = process.env.PLAYWRIGHT_PORT || 37367;
   // Keep the process running
   process.on("SIGINT", async () => {
     console.log("Shutting down Playwright server...");
-    // await browser.close();
     await browserServer.close();
     process.exit(0);
   });

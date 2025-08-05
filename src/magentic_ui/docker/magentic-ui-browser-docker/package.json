@@ -1,7 +1,9 @@
 {
-    "name": "playwright-remote",
-    "version": "1.0.0",
-    "dependencies": {
-      "playwright": "1.51.1"
-    }
+  "name": "playwright-remote",
+  "version": "1.0.0",
+  "dependencies": {
+    "playwright": "1.51.1",
+    "express": "^5.1.0",
+    "commander": "14.0.0"
   }
+}
