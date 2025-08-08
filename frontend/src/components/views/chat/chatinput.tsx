@@ -1,4 +1,8 @@
 import {
+  FolderPlusIcon,
+  DocumentPlusIcon,
+  ArrowUpTrayIcon,
+  PlayIcon,
   PaperAirplaneIcon,
   ExclamationTriangleIcon,
   PauseCircleIcon,
@@ -21,11 +25,12 @@ import {
 import type { UploadFile, UploadProps, RcFile } from "antd/es/upload/interface";
 import { FileTextIcon, ImageIcon, XIcon, UploadIcon } from "lucide-react";
 import { InputRequest } from "../../types/datamodel";
-import { debounce } from "lodash";
+import { debounce, set } from "lodash";
 import { planAPI } from "../api";
 import RelevantPlans from "./relevant_plans";
 import { IPlan } from "../../types/plan";
 import PlanView from "./plan";
+import WorkspaceMenu from "../../workspace";
 
 // Maximum file size in bytes (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -75,6 +80,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
     },
     ref
   ) => {
+    const [isWorkspaceMenuVisible, setWorkspaceMenuVisible] = React.useState(false);
     const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
     const textAreaDivRef = React.useRef<HTMLDivElement>(null);
     const [text, setText] = React.useState("");
@@ -419,6 +425,17 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       if (!isInputDisabled) {
         submitInternal("print", [], false);
       }
+    };
+
+    const handleWorkspace = () => {
+      if (!isInputDisabled) {
+        // submitInternal("open workspace.json", [], false);
+        setWorkspaceMenuVisible(true);
+      }
+    };
+
+    const handleCreateWorkspace = (workspaceName: string) => {
+      submitInternal("workspace " + workspaceName, [], false);
     };
 
     const handlePause = () => {
@@ -776,11 +793,51 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                 {
                   <button
                     type="button"
+                    onClick={handleWorkspace}
+                    disabled={false}
+                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
+                  >
+                    <FolderPlusIcon className="h-6 w-6 text-white" />
+                  </button>
+                }
+                {
+                  <button
+                    type="button"
+                    onClick={handlePrint}
+                    disabled={false}
+                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
+                  >
+                    <DocumentPlusIcon className="h-6 w-6 text-white" />
+                  </button>
+                }
+                {
+                  <button
+                    type="button"
+                    onClick={handlePrint}
+                    disabled={false}
+                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
+                  >
+                    <ArrowUpTrayIcon className="h-6 w-6 text-white" />
+                  </button>
+                }
+                {
+                  <button
+                    type="button"
                     onClick={handleDownload}
                     disabled={false}
                     className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
                   >
                     <ArrowDownTrayIcon className="h-6 w-6 text-white" />
+                  </button>
+                }
+                {
+                  <button
+                    type="button"
+                    onClick={handlePrint}
+                    disabled={false}
+                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
+                  >
+                    <PlayIcon className="h-6 w-6 text-white" />
                   </button>
                 }
               </div>
@@ -794,6 +851,13 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
             {error.message}
           </div>
         )}
+
+        <WorkspaceMenu
+          isVisible={isWorkspaceMenuVisible}
+          onOk={handleCreateWorkspace}
+          onClose={() => setWorkspaceMenuVisible(false)}
+        />
+
       </div>
     );
   }
