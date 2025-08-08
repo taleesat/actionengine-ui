@@ -52,19 +52,22 @@ interface RenderPlanProps {
 
 interface RenderWorkspaceProps {
   content: {
-    name: string;
-    workflows: {
+    workspace: {
       name: string;
-      args: any[];
-      description: string;
-      steps: {
-        description: string;
-        method: string;
+      workflows: {
+        name: string;
         args: any[];
-        is_optional: boolean;
-        extraction_code_file: string;
+        description: string;
+        steps: {
+          description: string;
+          method: string;
+          args: any[];
+          is_optional: boolean;
+          extraction_code_file: string;
+        }[];
       }[];
-    }[];
+    },
+    current_workflow: string;
   };
 }
 
@@ -346,9 +349,9 @@ const RenderWorkspace: React.FC<RenderWorkspaceProps> = memo(
     return (
       <div className="space-y-2 text-sm">
         <div className="font-semibold text-primary mb-2">
-          Workspace: {content.name}
+          Workspace: {content.workspace.name}
         </div>
-        {content.workflows.map((workflow, index) => (
+        {content.workspace.workflows.map((workflow, index) => (
           <div key={index} className="border border-secondary rounded p-2">
             <div className="font-medium">{workflow.name}</div>
             <div className="text-sm text-gray-500">

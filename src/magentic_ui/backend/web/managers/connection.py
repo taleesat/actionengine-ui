@@ -156,15 +156,15 @@ class WebSocketManager:
             if action == "save":
                 download_event = DownloadEvent(
                     source="Orchestrator",
-                    filename=execution_result["filename"],
-                    content=execution_result["content"],
+                    filename=execution_result["result"]["filename"],
+                    content=execution_result["result"]["content"],
                 )
                 final_result = await self.send_format_message(run_id, download_event)
             elif action == "print_workspace":
                 workspace_message = TextMessage(
                     source="Orchestrator",
                     models_usage=None,
-                    content=execution_result["workspace"],
+                    content=json.dumps(execution_result["result"]),
                     metadata={
                         "internal": "no",
                         "type": "workspace",
