@@ -1,8 +1,8 @@
 import { Modal, Input } from "antd";
-import { setLocalStorage } from "./utils";
-import { appContext } from "../hooks/provider";
+import { setLocalStorage } from "../../utils";
+import { appContext } from "../../../hooks/provider";
 import * as React from "react";
-import { Button } from "./common/Button";
+import { Button } from "../../common/Button";
 
 type WorkspaceMenuProps = {
   isVisible: boolean;

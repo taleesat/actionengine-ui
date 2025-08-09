@@ -660,13 +660,6 @@ const RunView: React.FC<RunViewProps> = ({
               accepted = false,
               plan?: IPlan
             ) => {
-              /*
-              if (run.status === "awaiting_input" || run.status === "paused") {
-                onInputResponse?.(query, accepted, plan);
-              } else {
-                onRunTask?.(query, files, plan, true);
-              }
-              */
               onExecuteCommand?.(query);
             }}
             error={error ?? null}

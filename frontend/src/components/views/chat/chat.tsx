@@ -1125,16 +1125,6 @@ export default function ChatView({
                     accepted = false,
                     plan?: IPlan
                   ) => {
-                    /*
-                    if (
-                      currentRun?.status === "awaiting_input" ||
-                      currentRun?.status === "paused"
-                    ) {
-                      handleInputResponse(query, accepted, plan);
-                    } else {
-                      runTask(query, files, plan, true);
-                    }
-                      */
                     executeCommand(query)
                   }}
                   error={error}

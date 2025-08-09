@@ -30,7 +30,7 @@ import { planAPI } from "../api";
 import RelevantPlans from "./relevant_plans";
 import { IPlan } from "../../types/plan";
 import PlanView from "./plan";
-import WorkspaceMenu from "../../workspace";
+import WorkspaceMenu from "./workspace";
 
 // Maximum file size in bytes (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
