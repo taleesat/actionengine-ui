@@ -1,10 +1,9 @@
 import {
-  FolderIcon,
-  FolderPlusIcon,
   PaperAirplaneIcon,
   ExclamationTriangleIcon,
   PauseCircleIcon,
-  ListBulletIcon,
+  Squares2X2Icon,
+  SquaresPlusIcon
 } from "@heroicons/react/24/outline";
 import * as React from "react";
 import { appContext } from "../../../hooks/provider";
@@ -826,7 +825,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     disabled={false}
                     className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
                   >
-                    <FolderIcon className="h-6 w-6 text-white" />
+                    <Squares2X2Icon className="h-6 w-6 text-white" />
                   </button>
                 }
                 {
@@ -836,7 +835,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     disabled={false}
                     className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
                   >
-                    <FolderPlusIcon className="h-6 w-6 text-white" />
+                    <SquaresPlusIcon className="h-6 w-6 text-white" />
                   </button>
                 }
               </div>
