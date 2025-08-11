@@ -4,14 +4,14 @@ import { appContext } from "../../../hooks/provider";
 import * as React from "react";
 import { Button } from "../../common/Button";
 
-type WorkspaceMenuProps = {
+type CreateWorkspaceMenuProps = {
   isVisible: boolean;
   onOk: (workspaceName: string) => void;
   onClose: () => void;
 };
 
 // This component receives the name of the workspace as a prop
-const WorkspaceMenu = ({ isVisible, onOk, onClose }: WorkspaceMenuProps) => {
+const CreateWorkspaceMenu = ({ isVisible, onOk, onClose }: CreateWorkspaceMenuProps) => {
   const [workspaceName, setWorkspaceName] = React.useState("workspace1");
   const handleWorkspaceNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setWorkspaceName(e.target.value);
@@ -44,4 +44,4 @@ const WorkspaceMenu = ({ isVisible, onOk, onClose }: WorkspaceMenuProps) => {
   );
 };
 
-export default WorkspaceMenu;
+export default CreateWorkspaceMenu;

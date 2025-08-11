@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Globe2 } from "lucide-react";
-import { Run, Message } from "../../types/datamodel";
+import { Run, Message, Workspace } from "../../types/datamodel";
 import { RenderMessage, messageUtils } from "./rendermessage";
 import { getStatusIcon } from "../statusicon";
 import DetailViewer from "./detail_viewer";
@@ -9,6 +9,7 @@ import ApprovalButtons from "./approval_buttons";
 import ChatInput from "./chatinput";
 import { IStatus } from "../../types/app";
 import { RcFile } from "antd/es/upload";
+import ShowWorkspaceMenu from "./showworkspace";
 
 const DETAIL_VIEWER_CONTAINER_ID = "detail-viewer-container";
 
@@ -37,6 +38,8 @@ interface RunViewProps {
   error?: IStatus | null;
   chatInputRef?: React.RefObject<any>;
   onExecutePlan?: (plan: IPlan) => void;
+  workspace: Workspace | null;
+  currentWorkflow: string | null;
   enable_upload?: boolean;
 }
 
@@ -60,14 +63,15 @@ const RunView: React.FC<RunViewProps> = ({
   error,
   chatInputRef,
   onExecutePlan,
+  workspace,
+  currentWorkflow,
   enable_upload = false,
 }) => {
+  const [isShowWorkspaceMenuVisible, setIsShowWorkspaceMenuVisible] = useState(false);
   const threadContainerRef = useRef<HTMLDivElement | null>(null);
   const [novncEndpoint, setNovncEndpoint] = useState<string | undefined>();
   const [detailViewerExpanded, setDetailViewerExpanded] = useState(false);
-  const [detailViewerTab, setDetailViewerTab] = useState<
-    "live"
-  >("live");
+  const [detailViewerTab, setDetailViewerTab] = useState<"live">("live");
   const [hiddenMessageIndices, setHiddenMessageIndices] = useState<Set<number>>(
     new Set()
   );
@@ -549,6 +553,10 @@ const RunView: React.FC<RunViewProps> = ({
     }
   }, [run.status]);
 
+  const onShowWorkspace = (workspace: Workspace | null) => {
+    setIsShowWorkspaceMenuVisible(true);
+  }
+
   return (
     <div
       className="flex w-full gap-4 h-full overflow-y-auto scroll"
@@ -670,6 +678,8 @@ const RunView: React.FC<RunViewProps> = ({
             enable_upload={enable_upload}
             inputRequest={run.input_request}
             onExecutePlan={onExecutePlan}
+            workspace={workspace}
+            currentWorkflow={currentWorkflow}
           />
         </div>
       </div>
@@ -720,6 +730,12 @@ const RunView: React.FC<RunViewProps> = ({
             </div>
           </div>
         )}
+        <ShowWorkspaceMenu
+          isVisible={isShowWorkspaceMenuVisible}
+          workspace={workspace}
+          currentWorkflow={currentWorkflow}
+          onClose={() => setIsShowWorkspaceMenuVisible(false)}
+        />
     </div>
   );
 };

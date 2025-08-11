@@ -14,6 +14,8 @@ import {
   Session,
   InputRequest,
   DownloadMessageConfig,
+  Workspace,
+  WorkspaceMessageConfig,
 } from "../../types/datamodel";
 import { appContext } from "../../../hooks/provider";
 import ChatInput from "./chatinput";
@@ -123,6 +125,10 @@ export default function ChatView({
 
   // Replace stepTitles state with currentPlan state
   const [currentPlan, setCurrentPlan] = React.useState<StepProgress["plan"]>();
+
+  // Add state for workspace and workflow
+  const [workspace, setWorkspace] = React.useState<Workspace | null>(null);
+  const [currentWorkflow, setCurrentWorkflow] = React.useState<string | null>(null);
 
   // Create a Message object from AgentMessageConfig
   const createMessage = (
@@ -347,6 +353,13 @@ export default function ChatView({
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
+          return current;
+
+        case "workspace":
+          const workspaceMessage = message.data as WorkspaceMessageConfig;
+          console.log("Workspace message received:", workspaceMessage);
+          setWorkspace(workspaceMessage.workspace);
+          setCurrentWorkflow(workspaceMessage.current_workflow);
           return current;
 
         case "input_request":
@@ -1096,6 +1109,8 @@ export default function ChatView({
                     error={error}
                     chatInputRef={chatInputRef}
                     onExecutePlan={handleExecutePlan}
+                    workspace={workspace}
+                    currentWorkflow={currentWorkflow}
                     enable_upload={false} // Or true if needed
                   />
                 )}
@@ -1135,6 +1150,8 @@ export default function ChatView({
                   onPause={handlePause}
                   enable_upload={true}
                   onExecutePlan={handleExecutePlan}
+                  workspace={workspace}
+                  currentWorkflow={currentWorkflow}
                 />
               </div>
               <SampleTasks

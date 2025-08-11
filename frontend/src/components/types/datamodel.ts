@@ -59,6 +59,11 @@ export interface DownloadMessageConfig extends BaseMessageConfig {
   filename?: string; // Optional filename for the download
 }
 
+export interface WorkspaceMessageConfig extends BaseMessageConfig {
+  workspace: Workspace;
+  current_workflow: string;
+}
+
 // Message type unions (matching Python type aliases)
 export type InnerMessageConfig =
   | ToolCallMessageConfig
@@ -77,7 +82,8 @@ export type AgentMessageConfig =
   | HandoffMessageConfig
   | ToolCallMessageConfig
   | ToolCallResultMessageConfig
-  | DownloadMessageConfig;
+  | DownloadMessageConfig
+  | WorkspaceMessageConfig;
 
 // Database model
 export interface DBModel {
@@ -117,7 +123,8 @@ export interface WebSocketMessage {
     | "input_request"
     | "error"
     | "system"
-    | "download";
+    | "download"
+    | "workspace";
   data?: AgentMessageConfig | TaskResult;
   input_type?: InputType;
   status?: RunStatus;
@@ -339,3 +346,19 @@ export type RunStatus =
   | "connected";
 
 export type InputType = "text_input" | "approval";
+
+export interface Workspace {
+  name: string;
+  workflows: {
+    name: string;
+    args: any[];
+    description: string;
+    steps: {
+      description: string;
+      method: string;
+      args: any[];
+      is_optional: boolean;
+      extraction_code_file: string;
+    }[];
+  }[];
+}

@@ -24,13 +24,14 @@ import {
 } from "antd";
 import type { UploadFile, UploadProps, RcFile } from "antd/es/upload/interface";
 import { FileTextIcon, ImageIcon, XIcon, UploadIcon } from "lucide-react";
-import { InputRequest } from "../../types/datamodel";
+import { InputRequest, Workspace } from "../../types/datamodel";
 import { debounce, set } from "lodash";
 import { planAPI } from "../api";
 import RelevantPlans from "./relevant_plans";
 import { IPlan } from "../../types/plan";
 import PlanView from "./plan";
-import WorkspaceMenu from "./workspace";
+import CreateWorkspaceMenu from "./createworkspace";
+import ShowWorkspaceMenu from "./showworkspace";
 
 // Maximum file size in bytes (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -62,6 +63,8 @@ interface ChatInputProps {
   onPause?: () => void;
   enable_upload?: boolean;
   onExecutePlan?: (plan: IPlan) => void;
+  workspace?: Workspace | null;
+  currentWorkflow?: string | null;
 }
 
 const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
@@ -77,10 +80,13 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       onPause,
       enable_upload = false,
       onExecutePlan,
+      workspace = null,
+      currentWorkflow = null,
     },
     ref
   ) => {
-    const [isWorkspaceMenuVisible, setWorkspaceMenuVisible] = React.useState(false);
+    const [isCreateWorkspaceMenuVisible, setCreateWorkspaceMenuVisible] = React.useState(false);
+    const [isShowWorkspaceMenuVisible, setShowWorkspaceMenuVisible] = React.useState(false);
     const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
     const textAreaDivRef = React.useRef<HTMLDivElement>(null);
     const [text, setText] = React.useState("");
@@ -427,14 +433,20 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       }
     };
 
-    const handleWorkspace = () => {
+    const handleShowWorkspace = () => {
       if (!isInputDisabled) {
-        // submitInternal("open workspace.json", [], false);
-        setWorkspaceMenuVisible(true);
+        submitInternal("print", [], false);
+      }
+      setShowWorkspaceMenuVisible(true);
+    };
+
+    const handleCreateWorkspace = () => {
+      if (!isInputDisabled) {
+        setCreateWorkspaceMenuVisible(true);
       }
     };
 
-    const handleCreateWorkspace = (workspaceName: string) => {
+    const createWorkspace = (workspaceName: string) => {
       submitInternal("workspace " + workspaceName, [], false);
     };
 
@@ -783,7 +795,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                 {
                   <button
                     type="button"
-                    onClick={handlePrint}
+                    onClick={handleShowWorkspace}
                     disabled={false}
                     className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
                   >
@@ -793,7 +805,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                 {
                   <button
                     type="button"
-                    onClick={handleWorkspace}
+                    onClick={handleCreateWorkspace}
                     disabled={false}
                     className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
                   >
@@ -852,10 +864,17 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
           </div>
         )}
 
-        <WorkspaceMenu
-          isVisible={isWorkspaceMenuVisible}
-          onOk={handleCreateWorkspace}
-          onClose={() => setWorkspaceMenuVisible(false)}
+        <CreateWorkspaceMenu
+          isVisible={isCreateWorkspaceMenuVisible}
+          onOk={createWorkspace}
+          onClose={() => setCreateWorkspaceMenuVisible(false)}
+        />
+
+        <ShowWorkspaceMenu
+          isVisible={isShowWorkspaceMenuVisible}
+          workspace={workspace}
+          currentWorkflow={currentWorkflow}
+          onClose={() => setShowWorkspaceMenuVisible(false)}
         />
 
       </div>

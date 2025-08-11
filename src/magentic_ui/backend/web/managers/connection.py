@@ -7,6 +7,7 @@ import json
 
 from autogen_agentchat.base._task import TaskResult
 from autogen_agentchat.messages import (
+    BaseMessage,
     BaseAgentEvent,
     AgentEvent,
     ChatMessage,
@@ -20,6 +21,7 @@ from autogen_agentchat.messages import (
 )
 
 from ai_recorder import AIRecorderShell
+from ai_recorder.workspace import Workflow, WorkflowStep, Workspace
 
 from ....input_func import InputFuncType, InputRequestType
 from autogen_core import CancellationToken
@@ -42,6 +44,19 @@ from ...teammanager import TeamManager
 from ...utils.utils import compress_state
 
 logger = logging.getLogger(__name__)
+
+class WorkspaceMessage(BaseMessage):
+    """A message containing workspace information."""
+
+    workspace: Any
+    "The workspace object containing details about the workspace"
+
+    current_workflow: str = "default"
+
+    type: Literal["WorkspaceMessage"] = "WorkspaceMessage"
+
+    def to_text(self) -> str:
+        return f"Workspace: {self.workspace.name}\nDescription: {self.workspace.description}"
 
 class DownloadEvent(BaseAgentEvent):
     """An event signaling download event."""
@@ -170,6 +185,11 @@ class WebSocketManager:
                         "type": "workspace",
                         "rendered": "yes",
                     }
+                )
+                #final_result = await self.send_format_message(run_id, workspace_message)
+                workspace_message = WorkspaceMessage(
+                    workspace=execution_result["result"]["workspace"],
+                    current_workflow= execution_result["result"]["current_workflow"],
                 )
                 final_result = await self.send_format_message(run_id, workspace_message)
         else:
@@ -788,6 +808,9 @@ class WebSocketManager:
 
             elif isinstance(message, ModelClientStreamingChunkEvent):
                 return {"type": "message_chunk", "data": message.model_dump()}
+
+            elif isinstance(message, WorkspaceMessage):
+                return {"type": "workspace", "data": message.model_dump()}
 
             elif isinstance(message, DownloadEvent):
                 return {"type": "download", "data": message.model_dump()}
