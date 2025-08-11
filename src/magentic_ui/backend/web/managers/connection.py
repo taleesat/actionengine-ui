@@ -166,6 +166,7 @@ class WebSocketManager:
             return False
 
     async def process_shell_answer(self, shell_output: str, execution_result: str, run_id: int) -> None:
+        final_result = None
         if execution_result:
             action = execution_result.get("action", None)
             if action == "save":

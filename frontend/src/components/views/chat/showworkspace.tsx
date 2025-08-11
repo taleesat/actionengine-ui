@@ -74,7 +74,7 @@ const ShowWorkspaceMenu = ({
               <div className="text-gray-600 mb-2">{current.description}</div>
               <ul className="list-disc pl-4 space-y-2">
                 {current.steps.map((step, index) => {
-                  const stepId = `${step.method}-${index}`;
+                  const stepId = `${index}`;
                   return (
                     <li key={stepId}>
                       <Checkbox

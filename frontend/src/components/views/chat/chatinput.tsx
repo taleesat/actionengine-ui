@@ -1,12 +1,9 @@
 import {
+  FolderIcon,
   FolderPlusIcon,
-  DocumentPlusIcon,
-  ArrowUpTrayIcon,
-  PlayIcon,
   PaperAirplaneIcon,
   ExclamationTriangleIcon,
   PauseCircleIcon,
-  ArrowDownTrayIcon,
   ListBulletIcon,
 } from "@heroicons/react/24/outline";
 import * as React from "react";
@@ -829,7 +826,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     disabled={false}
                     className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
                   >
-                    <ListBulletIcon className="h-6 w-6 text-white" />
+                    <FolderIcon className="h-6 w-6 text-white" />
                   </button>
                 }
                 {
