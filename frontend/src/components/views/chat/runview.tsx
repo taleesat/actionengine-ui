@@ -553,9 +553,37 @@ const RunView: React.FC<RunViewProps> = ({
     }
   }, [run.status]);
 
+  /*
   const onShowWorkspace = (workspace: Workspace | null) => {
     setIsShowWorkspaceMenuVisible(true);
   }
+    */
+
+  const onDeleteSteps = (steps: string[]) => {
+    onExecuteCommand?.("delete " + steps.join(","));
+    onExecuteCommand?.("print");
+    //setIsShowWorkspaceMenuVisible(false);
+  }
+
+  const onSwitchWorkflow = (workflow: string) => {
+    onExecuteCommand?.("workflow " + workflow);
+    onExecuteCommand?.("print");
+  }
+
+  const onCreateWorkflow = (workflow: string) => {
+    console.log("Creating workflow:", workflow);
+    onExecuteCommand?.("workflow " + workflow);
+    onExecuteCommand?.("print");
+  }
+
+  const onRunWorkflow = (workflow: string) => {
+    onExecuteCommand?.("run " + workflow);
+    setIsShowWorkspaceMenuVisible(false);
+  }
+
+  const onDownloadWorkspace = () => {
+    onExecuteCommand?.("save workspace.json");
+  };
 
   return (
     <div
@@ -735,6 +763,11 @@ const RunView: React.FC<RunViewProps> = ({
           workspace={workspace}
           currentWorkflow={currentWorkflow}
           onClose={() => setIsShowWorkspaceMenuVisible(false)}
+          onDeleteSteps={onDeleteSteps}
+          onSwitchWorkflow={onSwitchWorkflow}
+          onCreateWorkflow={onCreateWorkflow}
+          onRunWorkflow={onRunWorkflow}
+          onDownloadWorkspace={onDownloadWorkspace}
         />
     </div>
   );

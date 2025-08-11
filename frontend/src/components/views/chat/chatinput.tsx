@@ -421,15 +421,45 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       }
     };
 
-    const handleDownload = () => {
+    const onDeleteSteps = (steps: string[]) => {
+      if (!isInputDisabled) {
+        submitInternal("delete " + steps.join(","), [], false);
+        submitInternal("print", [], false);
+      }
+    }
+
+    const onSwitchWorkflow = (workflow: string) => {
+      if (!isInputDisabled) {
+        submitInternal("workflow " + workflow, [], false);
+        submitInternal("print", [], false);
+      }
+    }
+
+    const onCreateWorkflow = (workflow: string) => {
+      console.log("Creating workflow:", workflow);
+      if (!isInputDisabled) {
+        submitInternal("workflow " + workflow, [], false);
+        submitInternal("print", [], false);
+      }
+    }
+
+    const onRunWorkflow = (workflow: string) => {
+      if (!isInputDisabled) {
+        submitInternal("run " + workflow, [], false);
+        submitInternal("print", [], false);
+      }
+      setShowWorkspaceMenuVisible(false);
+    }
+
+    const onDownloadWorkspace = () => {
       if (!isInputDisabled) {
         submitInternal("save workspace.json", [], false);
       }
     };
 
-    const handlePrint = () => {
+    const handleDownload = () => {
       if (!isInputDisabled) {
-        submitInternal("print", [], false);
+        submitInternal("save workspace.json", [], false);
       }
     };
 
@@ -812,46 +842,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     <FolderPlusIcon className="h-6 w-6 text-white" />
                   </button>
                 }
-                {
-                  <button
-                    type="button"
-                    onClick={handlePrint}
-                    disabled={false}
-                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
-                  >
-                    <DocumentPlusIcon className="h-6 w-6 text-white" />
-                  </button>
-                }
-                {
-                  <button
-                    type="button"
-                    onClick={handlePrint}
-                    disabled={false}
-                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
-                  >
-                    <ArrowUpTrayIcon className="h-6 w-6 text-white" />
-                  </button>
-                }
-                {
-                  <button
-                    type="button"
-                    onClick={handleDownload}
-                    disabled={false}
-                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
-                  >
-                    <ArrowDownTrayIcon className="h-6 w-6 text-white" />
-                  </button>
-                }
-                {
-                  <button
-                    type="button"
-                    onClick={handlePrint}
-                    disabled={false}
-                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
-                  >
-                    <PlayIcon className="h-6 w-6 text-white" />
-                  </button>
-                }
               </div>
             </div>
           </div>
@@ -875,6 +865,11 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
           workspace={workspace}
           currentWorkflow={currentWorkflow}
           onClose={() => setShowWorkspaceMenuVisible(false)}
+          onDeleteSteps={onDeleteSteps}
+          onSwitchWorkflow={onSwitchWorkflow}
+          onCreateWorkflow={onCreateWorkflow}
+          onRunWorkflow={onRunWorkflow}
+          onDownloadWorkspace={onDownloadWorkspace}
         />
 
       </div>
