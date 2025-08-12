@@ -4,12 +4,12 @@ import { Button } from "../../common/Button";
 
 type CreateWorkspaceMenuProps = {
   isVisible: boolean;
-  onOk: (workspaceName: string) => void;
+  onCreateWorkspace: (workspaceName: string) => void;
   onClose: () => void;
-  onLoad: (file: File) => void; // New prop for loading workspace
+  onLoadWorkspace: (file: File) => void;
 };
 
-const CreateWorkspaceMenu = ({ isVisible, onOk, onClose, onLoad }: CreateWorkspaceMenuProps) => {
+const CreateWorkspaceMenu = ({ isVisible, onCreateWorkspace, onClose, onLoadWorkspace }: CreateWorkspaceMenuProps) => {
   const [workspaceName, setWorkspaceName] = React.useState("workspace1");
 
   const handleWorkspaceNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -17,7 +17,7 @@ const CreateWorkspaceMenu = ({ isVisible, onOk, onClose, onLoad }: CreateWorkspa
   };
 
   const handleWorkspaceCreate = () => {
-    onOk(workspaceName);
+    onCreateWorkspace(workspaceName);
   };
 
   const handleLoadFromFile = () => {
@@ -28,7 +28,7 @@ const CreateWorkspaceMenu = ({ isVisible, onOk, onClose, onLoad }: CreateWorkspa
       const target = event.target as HTMLInputElement;
       if (target.files && target.files.length > 0) {
         const file = target.files[0];
-        onLoad(file);
+        onLoadWorkspace(file);
       }
     };
     input.click();

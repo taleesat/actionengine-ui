@@ -474,6 +474,27 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
 
     const createWorkspace = (workspaceName: string) => {
       submitInternal("workspace " + workspaceName, [], false);
+      setCreateWorkspaceMenuVisible(false)
+    };
+
+    const onLoadWorkspace = (file: File) => {
+      //submitInternal("load workspace", [], false);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        if (content) {
+          submitInternal("loadj " + JSON.stringify(content), [], false);
+        } else {
+          console.error("Failed to read file content.");
+        }
+      };
+
+      reader.onerror = () => {
+        console.error("Error reading file:", reader.error);
+      };
+
+      reader.readAsText(file);
+      setCreateWorkspaceMenuVisible(false)
     };
 
     const handlePause = () => {
@@ -850,12 +871,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
           </div>
         )}
 
-        <CreateWorkspaceMenu
-          isVisible={isCreateWorkspaceMenuVisible}
-          onOk={createWorkspace}
-          onClose={() => setCreateWorkspaceMenuVisible(false)}
-        />
-
         <ShowWorkspaceMenu
           isVisible={isShowWorkspaceMenuVisible}
           workspace={workspace}
@@ -866,6 +881,13 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
           onCreateWorkflow={onCreateWorkflow}
           onRunWorkflow={onRunWorkflow}
           onDownloadWorkspace={onDownloadWorkspace}
+        />
+
+        <CreateWorkspaceMenu
+          isVisible={isCreateWorkspaceMenuVisible}
+          onCreateWorkspace={createWorkspace}
+          onClose={() => setCreateWorkspaceMenuVisible(false)}
+          onLoadWorkspace={onLoadWorkspace}
         />
 
       </div>
