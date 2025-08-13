@@ -55,6 +55,7 @@ export const SessionManager: React.FC = () => {
     }
   }, [isSidebarOpen]);
 
+  /*
   const fetchSessions = useCallback(async () => {
     if (!user?.email) return;
 
@@ -81,6 +82,14 @@ export const SessionManager: React.FC = () => {
       setIsLoading(false);
     }
   }, [user?.email, setSessions, session, setSession]);
+  */
+
+  const fetchSessions = useCallback(async () => {
+    setIsLoading(true);
+    setSessions([]);
+    createDefaultSession();
+    setIsLoading(false);
+  }, [user?.email, setSessions, setSession]);
 
   // Handle initial URL params
   useEffect(() => {
