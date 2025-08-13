@@ -348,7 +348,7 @@ export default function ChatView({
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
-          a.download = agent_message_config?.filename || "download.json";
+          a.download = "workspace.json";
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);

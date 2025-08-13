@@ -449,13 +449,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
 
     const onDownloadWorkspace = () => {
       if (!isInputDisabled) {
-        submitInternal("save workspace.json", [], false);
-      }
-    };
-
-    const handleDownload = () => {
-      if (!isInputDisabled) {
-        submitInternal("save workspace.json", [], false);
+        submitInternal("save_as workspace.json", [], false);
       }
     };
 

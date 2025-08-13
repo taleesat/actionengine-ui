@@ -61,16 +61,13 @@ class WorkspaceMessage(BaseMessage):
 class DownloadEvent(BaseAgentEvent):
     """An event signaling download event."""
 
-    filename: str
-    "Name of the file to download"
-
     content: str
     "Content of the file to download"
 
     type: Literal["DownloadEvent"] = "DownloadEvent"
 
     def to_text(self) -> str:
-        return f"{self.filename}:\n{self.content}"
+        return self.content
 
 class WebSocketManager:
     """
@@ -172,7 +169,6 @@ class WebSocketManager:
             if action == "save":
                 download_event = DownloadEvent(
                     source="Orchestrator",
-                    filename=execution_result["result"]["filename"],
                     content=execution_result["result"]["content"],
                 )
                 final_result = await self.send_format_message(run_id, download_event)
