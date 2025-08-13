@@ -34,17 +34,15 @@ const ContentHeader = ({
         <div className="flex items-center">
           {/* New Session Button */}
           <div className="w-[40px]">
-            {!isSidebarOpen && (
-              <Tooltip title="Create new session">
-                <Button
-                  variant="tertiary"
-                  size="sm"
-                  icon={<Plus className="w-6 h-6" />}
-                  onClick={onNewSession}
-                  className="transition-colors hover:text-accent"
-                />
-              </Tooltip>
-            )}
+            <Tooltip title="Create new session">
+              <Button
+                variant="tertiary"
+                size="sm"
+                icon={<Plus className="w-6 h-6" />}
+                onClick={onNewSession}
+                className="transition-colors hover:text-accent"
+              />
+            </Tooltip>
           </div>
           <div className="flex items-center space-x-2">
             <img src={logo} alt="ActionEngine-UI Logo" className="h-10 w-10" />
