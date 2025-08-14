@@ -40,6 +40,7 @@ interface RunViewProps {
   onExecutePlan?: (plan: IPlan) => void;
   workspace: Workspace | null;
   currentWorkflow: string | null;
+  recordStatus: string | null; // "off" | "on"
   enable_upload?: boolean;
 }
 
@@ -65,6 +66,7 @@ const RunView: React.FC<RunViewProps> = ({
   onExecutePlan,
   workspace,
   currentWorkflow,
+  recordStatus,
   enable_upload = false,
 }) => {
   const [isShowWorkspaceMenuVisible, setIsShowWorkspaceMenuVisible] = useState(false);
@@ -708,6 +710,7 @@ const RunView: React.FC<RunViewProps> = ({
             onExecutePlan={onExecutePlan}
             workspace={workspace}
             currentWorkflow={currentWorkflow}
+            recordStatus={recordStatus}
           />
         </div>
       </div>

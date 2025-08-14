@@ -3,7 +3,9 @@ import {
   ExclamationTriangleIcon,
   PauseCircleIcon,
   Squares2X2Icon,
-  SquaresPlusIcon
+  SquaresPlusIcon,
+  VideoCameraIcon,
+  VideoCameraSlashIcon
 } from "@heroicons/react/24/outline";
 import * as React from "react";
 import { appContext } from "../../../hooks/provider";
@@ -59,6 +61,7 @@ interface ChatInputProps {
   onPause?: () => void;
   enable_upload?: boolean;
   onExecutePlan?: (plan: IPlan) => void;
+  recordStatus?: string | null;
   workspace?: Workspace | null;
   currentWorkflow?: string | null;
 }
@@ -76,6 +79,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       onPause,
       enable_upload = false,
       onExecutePlan,
+      recordStatus,
       workspace = null,
       currentWorkflow = null,
     },
@@ -466,6 +470,12 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       }
     };
 
+    const handleRecord = () => {
+      if (!isInputDisabled) {
+        submitInternal("browser", [], false);
+      }
+    };
+
     const createWorkspace = (workspaceName: string) => {
       submitInternal("workspace " + workspaceName, [], false);
       setCreateWorkspaceMenuVisible(false)
@@ -851,6 +861,17 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
                   >
                     <SquaresPlusIcon className="h-6 w-6 text-white" />
+                  </button>
+                }
+                {
+                  <button
+                    type="button"
+                    onClick={handleRecord}
+                    disabled={false}
+                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
+                  >
+                    {(recordStatus === "off" && <VideoCameraIcon className="h-6 w-6 text-white" />)}
+                    {(recordStatus === "on" && <VideoCameraSlashIcon className="h-6 w-6 text-white" />)}
                   </button>
                 }
               </div>

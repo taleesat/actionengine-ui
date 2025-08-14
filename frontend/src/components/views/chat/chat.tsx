@@ -14,6 +14,7 @@ import {
   Session,
   InputRequest,
   DownloadMessageConfig,
+  RecordMessageConfig,
   Workspace,
   WorkspaceMessageConfig,
 } from "../../types/datamodel";
@@ -129,6 +130,8 @@ export default function ChatView({
   // Add state for workspace and workflow
   const [workspace, setWorkspace] = React.useState<Workspace | null>(null);
   const [currentWorkflow, setCurrentWorkflow] = React.useState<string | null>(null);
+
+  const [recordStatus, setRecordStatus] = React.useState<string | null>("off");
 
   // Create a Message object from AgentMessageConfig
   const createMessage = (
@@ -353,6 +356,12 @@ export default function ChatView({
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
+          return current;
+
+        case "record":
+          const recordMessage = message.data as RecordMessageConfig;
+          console.log("Record message received:", recordMessage);
+          setRecordStatus(recordMessage.record_status);
           return current;
 
         case "workspace":
@@ -1111,6 +1120,7 @@ export default function ChatView({
                     onExecutePlan={handleExecutePlan}
                     workspace={workspace}
                     currentWorkflow={currentWorkflow}
+                    recordStatus={recordStatus}
                     enable_upload={false} // Or true if needed
                   />
                 )}
@@ -1152,6 +1162,7 @@ export default function ChatView({
                   onExecutePlan={handleExecutePlan}
                   workspace={workspace}
                   currentWorkflow={currentWorkflow}
+                  recordStatus={recordStatus}
                 />
               </div>
               <SampleTasks

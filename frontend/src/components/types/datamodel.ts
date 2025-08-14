@@ -59,6 +59,10 @@ export interface DownloadMessageConfig extends BaseMessageConfig {
   filename?: string; // Optional filename for the download
 }
 
+export interface RecordMessageConfig extends BaseMessageConfig {
+  record_status: string;
+}
+
 export interface WorkspaceMessageConfig extends BaseMessageConfig {
   workspace: Workspace;
   current_workflow: string;
@@ -83,6 +87,7 @@ export type AgentMessageConfig =
   | ToolCallMessageConfig
   | ToolCallResultMessageConfig
   | DownloadMessageConfig
+  | RecordMessageConfig
   | WorkspaceMessageConfig;
 
 // Database model
@@ -124,6 +129,7 @@ export interface WebSocketMessage {
     | "error"
     | "system"
     | "download"
+    | "record"
     | "workspace";
   data?: AgentMessageConfig | TaskResult;
   input_type?: InputType;

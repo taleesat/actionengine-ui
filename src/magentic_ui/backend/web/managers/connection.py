@@ -69,6 +69,17 @@ class DownloadEvent(BaseAgentEvent):
     def to_text(self) -> str:
         return self.content
 
+class RecordEvent(BaseAgentEvent):
+    """An event signaling a recording action."""
+
+    record_status: str
+    "Status of the recording action, i.e., 'on' or 'off'"
+
+    type: Literal["RecordEvent"] = "RecordEvent"
+
+    def to_text(self) -> str:
+        return f"Recording: {self.record_status}"
+
 class WebSocketManager:
     """
     Manages WebSocket connections and message streaming for team task execution
@@ -189,6 +200,12 @@ class WebSocketManager:
                     current_workflow= execution_result["result"]["current_workflow"],
                 )
                 final_result = await self.send_format_message(run_id, workspace_message)
+            elif action == "record":
+                record_event = RecordEvent(
+                    source="Orchestrator",
+                    record_status=execution_result["result"],
+                )
+                final_result = await self.send_format_message(run_id, record_event)
         else:
             answer_message = TextMessage(
                 source="Orchestrator",
@@ -811,6 +828,9 @@ class WebSocketManager:
 
             elif isinstance(message, DownloadEvent):
                 return {"type": "download", "data": message.model_dump()}
+
+            elif isinstance(message, RecordEvent):
+                return {"type": "record", "data": message.model_dump()}
 
             elif isinstance(message, (TextMessage,),):
                 return {"type": "message", "data": message.model_dump()}
