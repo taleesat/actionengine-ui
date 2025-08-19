@@ -20,7 +20,7 @@ from autogen_agentchat.messages import (
     ToolCallRequestEvent,
 )
 
-from ai_recorder import AIRecorderShell
+from ai_recorder.shell import AIRecorderShell
 from ai_recorder.workspace import Workflow, WorkflowStep, Workspace
 
 from ....input_func import InputFuncType, InputRequestType

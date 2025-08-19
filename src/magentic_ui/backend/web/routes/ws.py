@@ -11,7 +11,7 @@ from loguru import logger
 from dotenv import load_dotenv
 
 from stagehand import StagehandConfig
-from ai_recorder import AIRecorderShell
+from ai_recorder.shell import AIRecorderShell
 
 from ...datamodel import Run
 from ..deps import get_db, get_websocket_manager
