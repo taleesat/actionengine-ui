@@ -830,6 +830,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                   </button>
                 )}
                 {
+                  <Tooltip title="Submit the command">
                   <button
                     type="button"
                     onClick={handleSubmit}
@@ -842,8 +843,10 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                   >
                     <PaperAirplaneIcon className="h-6 w-6 text-white" />
                   </button>
+                  </Tooltip>
                 }
                 {
+                  <Tooltip title="Manage workspace">
                   <button
                     type="button"
                     onClick={handleShowWorkspace}
@@ -852,8 +855,10 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                   >
                     <Squares2X2Icon className="h-6 w-6 text-white" />
                   </button>
+                  </Tooltip>
                 }
                 {
+                  <Tooltip title="Create/load workspace">
                   <button
                     type="button"
                     onClick={handleCreateWorkspace}
@@ -862,8 +867,10 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                   >
                     <SquaresPlusIcon className="h-6 w-6 text-white" />
                   </button>
+                  </Tooltip>
                 }
                 {
+                  <Tooltip title={(recordStatus === "off" && "Start browser recording") || (recordStatus === "on" && "Stop browser recording")}>
                   <button
                     type="button"
                     onClick={handleRecord}
@@ -873,6 +880,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     {(recordStatus === "off" && <VideoCameraIcon className="h-6 w-6 text-white" />)}
                     {(recordStatus === "on" && <VideoCameraSlashIcon className="h-6 w-6 text-white" />)}
                   </button>
+                  </Tooltip>
                 }
               </div>
             </div>
