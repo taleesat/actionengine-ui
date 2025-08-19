@@ -71,15 +71,15 @@ async def run_websocket(
         logger.info(f"Playwright server started for run {run_id} on ports {playwright_server.playwright_port} and {playwright_server.novnc_port}")
         await asyncio.sleep(2)  # Allow some time for the container to start
 
-        stagehand_config: StagehandConfig = default_stagehand_config
         shell_output = io.StringIO()
-        mcpstudio_shell = AIRecorderShell(output=shell_output)
-        await mcpstudio_shell.initialize(
-            config=stagehand_config,
-            env="REMOTE",
-            remote_browser_ws_endpoint=f"ws://{playwright_server.server_address}:{playwright_server.playwright_port}{playwright_manager.playwright_ws_path}",
-        )
 
+        def get_custom_stagehand_config():
+            stagehand_config: StagehandConfig = get_stagehand_config()
+            stagehand_config.env = "REMOTE"
+            stagehand_config.remote_browser_ws_endpoint = f"ws://{playwright_server.server_address}:{playwright_server.playwright_port}{playwright_manager.playwright_ws_path}"
+            return stagehand_config
+
+        mcpstudio_shell = AIRecorderShell(get_stagehand_config=get_custom_stagehand_config, output=shell_output)
         await ws_manager.send_novnc_endpoint(
             run_id,
             playwright_server.server_address,
