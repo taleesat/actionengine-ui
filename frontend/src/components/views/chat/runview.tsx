@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Globe2 } from "lucide-react";
-import { Run, Message, Workspace } from "../../types/datamodel";
+import { Run, Message, Workspace, Workflow, WorkflowStep } from "../../types/datamodel";
 import { RenderMessage, messageUtils } from "./rendermessage";
 import { getStatusIcon } from "../statusicon";
 import DetailViewer from "./detail_viewer";
@@ -9,9 +9,13 @@ import ApprovalButtons from "./approval_buttons";
 import ChatInput from "./chatinput";
 import { IStatus } from "../../types/app";
 import { RcFile } from "antd/es/upload";
+import { Modal, Button, Collapse, Checkbox, Input, message } from "antd";
+
 import ShowWorkspaceMenu from "./showworkspace";
+import WorkspaceDisplay from "./workspacedisplay";
 
 const DETAIL_VIEWER_CONTAINER_ID = "detail-viewer-container";
+const { Panel } = Collapse;
 
 interface RunViewProps {
   run: Run;
@@ -601,79 +605,8 @@ const RunView: React.FC<RunViewProps> = ({
       >
         {/* Thread Section - use flex-1 for height, but remove overflow-y-auto */}
         <div className="w-full flex-1">
-          {localMessages.length > 0 &&
-            localMessages.map((msg: Message, idx: number) => {
-              const isCurrentMessagePlan =
-                typeof msg.config.content === "string" &&
-                messageUtils.isPlanMessage(msg.config.metadata);
-
-              const isLatestPlan =
-                isCurrentMessagePlan && idx === localMessages.length - 1;
-
-              const shouldForceCollapse =
-                isCurrentMessagePlan && idx !== lastPlanIndex;
-
-              return (
-                <div
-                  key={`message-${idx}-${run.id}`}
-                  className="w-full"
-                  ref={
-                    messageUtils.isUser(msg.config.source)
-                      ? latestUserMessageRef
-                      : null
-                  }
-                >
-                  <RenderMessage
-                    key={`render-${idx}-${msg.config.version || 0}`}
-                    message={msg.config}
-                    sessionId={msg.session_id}
-                    messageIdx={idx}
-                    isLast={idx === localMessages.length - 1}
-                    isEditable={isEditable && idx === localMessages.length - 1}
-                    hidden={
-                      hiddenMessageIndices.has(idx) ||
-                      hiddenStepExecutionIndices.has(idx)
-                    }
-                    is_step_repeated={repeatedStepIndices.has(idx)}
-                    is_step_failed={failedStepIndices.has(idx)}
-                    onSavePlan={onSavePlan}
-                    onImageClick={() => handleImageClick(idx)}
-                    onToggleHide={(expanded: boolean) =>
-                      handleToggleHide(idx, expanded)
-                    }
-                    runStatus={run.status}
-                    onRegeneratePlan={
-                      isLatestPlan ? handleRegeneratePlan : undefined
-                    }
-                    forceCollapsed={shouldForceCollapse}
-                  />
-                </div>
-              );
-            })}
-
-          {/* Status Icon at top */}
-          <div className="pt-2 pb-2 flex-shrink-0">
-            <div className="inline-block">
-              {getStatusIcon(
-                run.status,
-                run.error_message,
-                run.team_result?.task_result?.stop_reason,
-                run.input_request
-              )}
-            </div>
-          </div>
-
-          {/* Approval Buttons after status */}
-          <div className="flex-shrink-0">
-            <ApprovalButtons
-              status={run.status}
-              inputRequest={run.input_request}
-              isPlanMessage={isPlanMsg}
-              onApprove={onApprove}
-              onDeny={onDeny}
-              onAcceptPlan={onAcceptPlan}
-              onRegeneratePlan={onRegeneratePlan}
-            />
+          <div className="w-full flex-1">
+            <WorkspaceDisplay workspace={workspace} currentWorkflow={currentWorkflow} />
           </div>
         </div>
 
@@ -705,7 +638,6 @@ const RunView: React.FC<RunViewProps> = ({
             onExecutePlan={onExecutePlan}
             workspace={workspace}
             currentWorkflow={currentWorkflow}
-            recordStatus={recordStatus}
           />
         </div>
       </div>

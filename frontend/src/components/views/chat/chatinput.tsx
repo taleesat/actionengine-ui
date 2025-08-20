@@ -61,7 +61,6 @@ interface ChatInputProps {
   onPause?: () => void;
   enable_upload?: boolean;
   onExecutePlan?: (plan: IPlan) => void;
-  recordStatus?: string | null;
   workspace?: Workspace | null;
   currentWorkflow?: string | null;
 }
@@ -79,7 +78,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       onPause,
       enable_upload = false,
       onExecutePlan,
-      recordStatus,
       workspace = null,
       currentWorkflow = null,
     },
@@ -866,19 +864,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
                   >
                     <SquaresPlusIcon className="h-6 w-6 text-white" />
-                  </button>
-                  </Tooltip>
-                }
-                {
-                  <Tooltip title={(recordStatus === "off" && "Start browser recording") || (recordStatus === "on" && "Stop browser recording")}>
-                  <button
-                    type="button"
-                    onClick={handleRecord}
-                    disabled={false}
-                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
-                  >
-                    {(recordStatus === "off" && <VideoCameraIcon className="h-6 w-6 text-white" />)}
-                    {(recordStatus === "on" && <VideoCameraSlashIcon className="h-6 w-6 text-white" />)}
                   </button>
                   </Tooltip>
                 }

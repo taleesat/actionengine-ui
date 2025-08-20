@@ -353,18 +353,22 @@ export type RunStatus =
 
 export type InputType = "text_input" | "approval";
 
+export interface WorkflowStep {
+  description: string;
+  method: string;
+  args: any[];
+  is_optional: boolean;
+  extraction_code_file: string;
+}
+
+export interface Workflow {
+  name: string;
+  args: any[];
+  description: string;
+  steps: WorkflowStep[];
+}
+
 export interface Workspace {
   name: string;
-  workflows: {
-    name: string;
-    args: any[];
-    description: string;
-    steps: {
-      description: string;
-      method: string;
-      args: any[];
-      is_optional: boolean;
-      extraction_code_file: string;
-    }[];
-  }[];
+  workflows: Workflow[];
 }

@@ -78,10 +78,6 @@ const BrowserIframe: React.FC<BrowserIframeProps> = ({
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      {isControlMode && (
-        <SecurityBanner className="sticky top-0 left-0 right-0" />
-      )}
-
       {showDimensions && (
         <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm z-10">
           {iframeDimensions.width} × {iframeDimensions.height}
@@ -107,18 +103,6 @@ const BrowserIframe: React.FC<BrowserIframeProps> = ({
         }}
       />
 
-      {/* Take Control overlay - only show when not in control mode */}
-      {showTakeControlOverlay &&
-        isHovering &&
-        runStatus === "active" &&
-        !isControlMode && (
-          <div
-            className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center cursor-pointer transition-opacity duration-300 ease-in-out"
-            onClick={handleOverlayClick}
-          >
-            <div className="text-white text-xl font-semibold">Take Control</div>
-          </div>
-        )}
     </div>
   );
 };

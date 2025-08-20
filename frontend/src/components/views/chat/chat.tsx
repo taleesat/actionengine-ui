@@ -1162,7 +1162,6 @@ export default function ChatView({
                   onExecutePlan={handleExecutePlan}
                   workspace={workspace}
                   currentWorkflow={currentWorkflow}
-                  recordStatus={recordStatus}
                 />
               </div>
               <SampleTasks
