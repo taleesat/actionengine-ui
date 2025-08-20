@@ -1,5 +1,7 @@
 import React, { useState, useRef, lazy, Suspense } from "react";
 import {
+  VideoIcon,
+  VideoOffIcon,
   ChevronLeft,
   ChevronRight,
   Maximize2,
@@ -39,11 +41,7 @@ interface DetailViewerProps {
   activeTab?: TabType;
   onTabChange?: (tab: TabType) => void;
   detailViewerContainerId?: string;
-  onInputResponse?: (
-    response: string,
-    accepted?: boolean,
-    plan?: IPlan
-  ) => void;
+  recordingStatus: boolean;
 }
 
 type TabType = "live";
@@ -60,7 +58,7 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
   activeTab: controlledActiveTab,
   onTabChange,
   detailViewerContainerId,
-  onInputResponse,
+  recordingStatus,
 }) => {
   const [internalActiveTab, setInternalActiveTab] = useState<TabType>("live");
   const activeTab = controlledActiveTab ?? internalActiveTab;
@@ -241,45 +239,31 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
         {/* Tabs and Controls */}
         <div className="flex justify-between items-center mb-4 border-b flex-shrink-0">
           <div className="flex">
-            <button
-              className={`px-6 py-2 font-medium rounded-t-lg transition-colors ${
-                activeTab === "live"
-                  ? "bg-secondary text-primary border-2 border-b-0 border-primary"
-                  : "text-secondary hover:text-primary hover:bg-secondary/10"
-              }`}
-              onClick={() => handleTabChange("live")}
-            >
-              Live View
-            </button>
+              Recording Browser Actions: {recordingStatus ? "🟢" : "🔴"}
           </div>
 
-          <div className="flex gap-2">
-            {isControlMode && (
-              <div className="flex items-center gap-2 px-2 rounded-2xl bg-magenta-800 text-white">
-                <MousePointerClick size={16} />
-                <span>You have control</span>
-              </div>
-            )}
-            <button
-              onClick={handleMaximizeClick}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-              title="Open in full screen"
-            >
-              <Maximize2 size={20} />
-            </button>
-            {!isControlMode && (
+          <div className="flex gap-5">
+            <div className="flex">
               <button
-                onClick={onMinimize}
                 className="p-1 hover:bg-gray-100 rounded-full transition-colors"
               >
-                <X size={20} />
+                {(recordingStatus ? <VideoOffIcon /> : <VideoIcon />)}
               </button>
-            )}
+            </div>
+            <div className="flex">
+              <button
+                onClick={handleMaximizeClick}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                title="Open in full screen"
+              >
+                <Maximize2 size={20} />
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="flex-1 flex flex-col min-h-0">
-          {activeTab === "screenshots" ? renderScreenshotsTab() : renderLiveTab}
+          {renderLiveTab}
         </div>
       </div>
 
@@ -295,19 +279,6 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
         onControlHandover={handleModalControlHandover}
         isControlMode={isControlMode}
         onTakeControl={handleTakeControl}
-      />
-
-      {/* Fullscreen Control Mode Overlay */}
-      <FullscreenOverlay
-        isVisible={isControlMode}
-        onClose={() => {
-          exitControlMode();
-          setShowControlHandoverForm(false);
-        }}
-        targetElementId={detailViewerContainerId}
-        zIndex={50}
-        onInputResponse={onInputResponse}
-        runStatus={runStatus}
       />
     </>
   );

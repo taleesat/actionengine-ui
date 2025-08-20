@@ -756,7 +756,7 @@ const RunView: React.FC<RunViewProps> = ({
                 activeTab={detailViewerTab}
                 onTabChange={setDetailViewerTab}
                 detailViewerContainerId={DETAIL_VIEWER_CONTAINER_ID}
-                onInputResponse={onInputResponse}
+                recordingStatus={false}
               />
             </div>
           </div>
