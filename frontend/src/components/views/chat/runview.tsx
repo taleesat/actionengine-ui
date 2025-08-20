@@ -73,7 +73,6 @@ const RunView: React.FC<RunViewProps> = ({
   const threadContainerRef = useRef<HTMLDivElement | null>(null);
   const [novncEndpoint, setNovncEndpoint] = useState<string | undefined>();
   const [detailViewerExpanded, setDetailViewerExpanded] = useState(false);
-  const [detailViewerTab, setDetailViewerTab] = useState<"live">("live");
   const [hiddenMessageIndices, setHiddenMessageIndices] = useState<Set<number>>(
     new Set()
   );
@@ -219,7 +218,6 @@ const RunView: React.FC<RunViewProps> = ({
         ...prev,
         currentIndex: lastImageIndex,
       }));
-      setDetailViewerTab("screenshots");
       handleMaximize();
     }
   };
@@ -753,8 +751,6 @@ const RunView: React.FC<RunViewProps> = ({
                 novncEndpoint={novncEndpoint}
                 onPause={onPause}
                 runStatus={run.status}
-                activeTab={detailViewerTab}
-                onTabChange={setDetailViewerTab}
                 detailViewerContainerId={DETAIL_VIEWER_CONTAINER_ID}
                 recordingStatus={false}
               />

@@ -38,8 +38,6 @@ interface DetailViewerProps {
   novncEndpoint?: string;
   onPause?: () => void;
   runStatus?: string;
-  activeTab?: TabType;
-  onTabChange?: (tab: TabType) => void;
   detailViewerContainerId?: string;
   recordingStatus: boolean;
 }
@@ -55,13 +53,10 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
   novncEndpoint,
   onPause,
   runStatus,
-  activeTab: controlledActiveTab,
-  onTabChange,
   detailViewerContainerId,
   recordingStatus,
 }) => {
   const [internalActiveTab, setInternalActiveTab] = useState<TabType>("live");
-  const activeTab = controlledActiveTab ?? internalActiveTab;
   const [viewMode, setViewMode] = useState<"iframe" | "novnc">("iframe");
   const vncRef = useRef();
 
@@ -113,14 +108,6 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
   const handleNext = () => {
     const newIndex = currentIndex < images.length - 1 ? currentIndex + 1 : 0;
     onIndexChange(newIndex);
-  };
-
-  const handleTabChange = (tab: TabType) => {
-    if (onTabChange) {
-      onTabChange(tab);
-    } else {
-      setInternalActiveTab(tab);
-    }
   };
 
   const handleMaximizeClick = () => {
