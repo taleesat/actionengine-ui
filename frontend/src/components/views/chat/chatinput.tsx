@@ -843,30 +843,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                   </button>
                   </Tooltip>
                 }
-                {
-                  <Tooltip title="Manage workspace">
-                  <button
-                    type="button"
-                    onClick={handleShowWorkspace}
-                    disabled={false}
-                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
-                  >
-                    <Squares2X2Icon className="h-6 w-6 text-white" />
-                  </button>
-                  </Tooltip>
-                }
-                {
-                  <Tooltip title="Create/load workspace">
-                  <button
-                    type="button"
-                    onClick={handleCreateWorkspace}
-                    disabled={false}
-                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9`}
-                  >
-                    <SquaresPlusIcon className="h-6 w-6 text-white" />
-                  </button>
-                  </Tooltip>
-                }
               </div>
             </div>
           </div>

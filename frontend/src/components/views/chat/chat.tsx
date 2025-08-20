@@ -32,6 +32,7 @@ import {
 } from "../../types/plan";
 import SampleTasks from "./sampletasks";
 import ProgressBar from "./progressbar";
+import NewWorkspaceForm from "./newworkspace";
 
 // Extend RunStatus for sidebar status reporting
 type SidebarRunStatus = BaseRunStatus | "final_answer_awaiting_input";
@@ -1137,34 +1138,11 @@ export default function ChatView({
                   : "w-full max-w-full md:max-w-4xl lg:max-w-5xl xl:max-w-6xl"
               } mx-auto px-4 sm:px-6 md:px-8`}
             >
-              <div className="text-secondary text-lg mb-6">
-                Enter a command to get started
+              <div className="mt-4">
+                <NewWorkspaceForm />
               </div>
 
-              <div className="w-full">
-                <ChatInput
-                  ref={chatInputRef}
-                  onSubmit={(
-                    query: string,
-                    files: RcFile[],
-                    accepted = false,
-                    plan?: IPlan
-                  ) => {
-                    executeCommand(query)
-                  }}
-                  error={error}
-                  onCancel={handleCancel}
-                  runStatus={currentRun?.status}
-                  inputRequest={currentRun?.input_request}
-                  isPlanMessage={isPlanMessage}
-                  onPause={handlePause}
-                  enable_upload={true}
-                  onExecutePlan={handleExecutePlan}
-                  workspace={workspace}
-                  currentWorkflow={currentWorkflow}
-                />
-              </div>
-              <SampleTasks
+              {false && <SampleTasks
                 onSelect={(task: string) => {
                   if (chatInputRef.current) {
                     // Set the input value and trigger submit
@@ -1194,6 +1172,7 @@ export default function ChatView({
                   }
                 }}
               />
+              }
             </div>
           )}
         </div>
