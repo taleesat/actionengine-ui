@@ -34,6 +34,13 @@ import SampleTasks from "./sampletasks";
 import ProgressBar from "./progressbar";
 import NewWorkspaceForm from "./newworkspace";
 
+
+
+import { Layout, Typography } from "antd";
+const { Content } = Layout;
+const { Title } = Typography;
+
+
 // Extend RunStatus for sidebar status reporting
 type SidebarRunStatus = BaseRunStatus | "final_answer_awaiting_input";
 
@@ -473,6 +480,7 @@ export default function ChatView({
       }
     }
 
+    console.log("run:", run);
     if (run.status === "created") {
       setError(null);
       setNoMessagesYet(false);
@@ -516,14 +524,22 @@ export default function ChatView({
         id: session?.id,
         name: command.slice(0, 50),
       };
+      run.status = "awaiting_input";
       onSessionNameChange(sessionData);
     }
+    console.log("after run:", run);
     activeSocketRef.current?.send(
       JSON.stringify({
         type: "command",
         command: command,
       })
     );
+  };
+
+  const onNewWorkspace = async (workspaceName: string, websiteUrl: string) => {
+    await executeCommand("workspace \"" + workspaceName + "\"");
+    await executeCommand("goto \"" + websiteUrl + "\"");
+    await executeCommand("print");
   };
 
   const handleInputResponse = async (
@@ -1139,7 +1155,14 @@ export default function ChatView({
               } mx-auto px-4 sm:px-6 md:px-8`}
             >
               <div className="mt-4">
-                <NewWorkspaceForm />
+
+                <Title level={3} style={{ color: "#cbd5e1", marginBottom: 24 }}>
+                  Please provide your workspace name and the website URL to get started.
+                </Title>
+              </div>
+
+              <div className="mt-4">
+                <NewWorkspaceForm onSubmit={onNewWorkspace} />
               </div>
 
               {false && <SampleTasks
