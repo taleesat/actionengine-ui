@@ -37,9 +37,10 @@ interface DetailViewerProps {
   onIndexChange: (index: number) => void;
   novncEndpoint?: string;
   onPause?: () => void;
-  runStatus?: string;
+  runStatus: string;
   detailViewerContainerId?: string;
-  recordingStatus: boolean;
+  onToggleRecording?: () => void;
+  recordingStatus?: string | null;
 }
 
 type TabType = "live";
@@ -54,6 +55,7 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
   onPause,
   runStatus,
   detailViewerContainerId,
+  onToggleRecording,
   recordingStatus,
 }) => {
   const [internalActiveTab, setInternalActiveTab] = useState<TabType>("live");
@@ -226,15 +228,17 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
         {/* Tabs and Controls */}
         <div className="flex justify-between items-center mb-4 border-b flex-shrink-0">
           <div className="flex">
-              Recording Browser Actions: {recordingStatus ? "🟢" : "🔴"}
+              Recording Browser Actions: {recordingStatus === "on" ? "🟢" : "🔴"}
           </div>
 
           <div className="flex gap-5">
             <div className="flex">
               <button
+                onClick={onToggleRecording}
                 className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                title="Toggle recording"
               >
-                {(recordingStatus ? <VideoOffIcon /> : <VideoIcon />)}
+                {(recordingStatus === "on" ? <VideoOffIcon /> : <VideoIcon />)}
               </button>
             </div>
             <div className="flex">

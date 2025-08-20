@@ -553,16 +553,9 @@ const RunView: React.FC<RunViewProps> = ({
     }
   }, [run.status]);
 
-  /*
-  const onShowWorkspace = (workspace: Workspace | null) => {
-    setIsShowWorkspaceMenuVisible(true);
-  }
-    */
-
   const onDeleteSteps = (steps: string[]) => {
     onExecuteCommand?.("delete " + steps.join(","));
     onExecuteCommand?.("print");
-    //setIsShowWorkspaceMenuVisible(false);
   }
 
   const onSwitchWorkflow = (workflow: string) => {
@@ -584,6 +577,10 @@ const RunView: React.FC<RunViewProps> = ({
   const onDownloadWorkspace = () => {
     onExecuteCommand?.("save workspace.json");
   };
+
+  const onToggleRecording = () => {
+    onExecuteCommand?.("browser");
+  }
 
   return (
     <div
@@ -752,7 +749,8 @@ const RunView: React.FC<RunViewProps> = ({
                 onPause={onPause}
                 runStatus={run.status}
                 detailViewerContainerId={DETAIL_VIEWER_CONTAINER_ID}
-                recordingStatus={false}
+                recordingStatus={recordStatus}
+                onToggleRecording={onToggleRecording}
               />
             </div>
           </div>
