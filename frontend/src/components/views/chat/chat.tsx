@@ -536,9 +536,14 @@ export default function ChatView({
     );
   };
 
-  const onNewWorkspace = async (workspaceName: string, websiteUrl: string) => {
+  const createWorkspace = async (workspaceName: string, websiteUrl: string) => {
     await executeCommand("workspace \"" + workspaceName + "\"");
     await executeCommand("goto \"" + websiteUrl + "\"");
+    await executeCommand("print");
+  };
+
+  const executeCommandAndUpdate = async (command: string) => {
+    await executeCommand(command);
     await executeCommand("print");
   };
 
@@ -1128,7 +1133,7 @@ export default function ChatView({
                     onDeny={handleDeny}
                     onAcceptPlan={handleAcceptPlan}
                     // Add these to connect the functions from chat.tsx to RunView
-                    onExecuteCommand={executeCommand}
+                    onExecuteCommand={executeCommandAndUpdate}
                     onInputResponse={handleInputResponse}
                     onRunTask={runTask}
                     onCancel={handleCancel}
@@ -1162,40 +1167,8 @@ export default function ChatView({
               </div>
 
               <div className="mt-4">
-                <NewWorkspaceForm onSubmit={onNewWorkspace} />
+                <NewWorkspaceForm onSubmit={createWorkspace} />
               </div>
-
-              {false && <SampleTasks
-                onSelect={(task: string) => {
-                  if (chatInputRef.current) {
-                    // Set the input value and trigger submit
-                    chatInputRef.current.focus();
-                    // Set value in textarea
-                    const textarea = document.getElementById(
-                      "queryInput"
-                    ) as HTMLTextAreaElement;
-                    if (textarea) {
-                      textarea.value = task;
-                      // Trigger input event for React state
-                      const event = new Event("input", { bubbles: true });
-                      textarea.dispatchEvent(event);
-                    }
-                    // Submit the task
-                    setTimeout(() => {
-                      if (chatInputRef.current) {
-                        chatInputRef.current.focus();
-                        // Simulate pressing Enter
-                        const enterEvent = new KeyboardEvent("keydown", {
-                          key: "Enter",
-                          bubbles: true,
-                        });
-                        textarea?.dispatchEvent(enterEvent);
-                      }
-                    }, 100);
-                  }
-                }}
-              />
-              }
             </div>
           )}
         </div>
