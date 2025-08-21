@@ -502,6 +502,22 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       }
     };
 
+    const handleAct = () => {
+      if (
+        (textAreaRef.current?.value || fileList.length > 0) &&
+        !isInputDisabled
+      ) {
+        const query = textAreaRef.current?.value || "";
+
+        // Get all valid RcFile objects
+        const files = fileList
+          .filter((file) => file.originFileObj)
+          .map((file) => file.originFileObj as RcFile);
+
+        submitInternal("act \"" + query + "\"", files, false);
+      }
+    };
+
     const handleExtract = (term: string) => {
       if (!isInputDisabled) {
         submitInternal("extract \"" + term + "\"", [], false);
@@ -511,7 +527,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
     const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
-        handleSubmit();
+        handleAct();
       }
     };
 
@@ -828,7 +844,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                   <Tooltip title="Perform Action">
                     <button
                       type="button"
-                      onClick={handleSubmit}
+                      onClick={handleAct}
                       disabled={isInputDisabled}
                       className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9 ${isInputDisabled
                           ? "cursor-not-allowed"
