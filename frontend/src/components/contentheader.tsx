@@ -1,6 +1,6 @@
 import React from "react";
 import { PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
-import { Tooltip } from "antd";
+import { Tooltip, Modal } from "antd";
 import { appContext } from "../hooks/provider";
 import { useConfigStore } from "../hooks/store";
 import { Info, Settings } from "lucide-react";
@@ -8,6 +8,9 @@ import SignInModal from "./signin";
 import HelpMenu from "./help";
 import logo from "../assets/logo.svg";
 import { Button } from "./common/Button";
+import { on } from "events";
+
+const { confirm } = Modal;
 
 type ContentHeaderProps = {
   onMobileMenuToggle: () => void;
@@ -27,6 +30,25 @@ const ContentHeader = ({
   const [isEmailModalOpen, setIsEmailModalOpen] = React.useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
 
+  const handleNewSession = () => {
+    confirm({
+      title: 'Replace current workspace?',
+      content: 'Creating a new workspace will remove the current one and this action cannot be undone.',
+      okText: 'Yes, create new',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk() {
+        console.log('Confirmed: create new workspace');
+        onNewSession();
+      },
+      onCancel() {
+        console.log('Action canceled');
+      },
+      maskClosable: false,
+      centered: true
+    });
+  };
+
   return (
     <div className="sticky top-0 bg-primary">
       <div className="flex h-16 items-center justify-between">
@@ -39,7 +61,7 @@ const ContentHeader = ({
                 variant="tertiary"
                 size="sm"
                 icon={<Plus className="w-6 h-6" />}
-                onClick={onNewSession}
+                onClick={handleNewSession}
                 className="transition-colors hover:text-accent"
               />
             </Tooltip>
