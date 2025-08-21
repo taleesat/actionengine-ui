@@ -2,10 +2,6 @@ import {
   PaperAirplaneIcon,
   ExclamationTriangleIcon,
   PauseCircleIcon,
-  Squares2X2Icon,
-  SquaresPlusIcon,
-  VideoCameraIcon,
-  VideoCameraSlashIcon
 } from "@heroicons/react/24/outline";
 import * as React from "react";
 import { appContext } from "../../../hooks/provider";
@@ -17,19 +13,18 @@ import {
   Tooltip,
   notification,
   Modal,
+  Input,
   Dropdown,
   Menu,
 } from "antd";
 import type { UploadFile, UploadProps, RcFile } from "antd/es/upload/interface";
-import { FileTextIcon, ImageIcon, XIcon, UploadIcon } from "lucide-react";
+import { FileTextIcon, ImageIcon, XIcon, CornerDownLeftIcon, ScanSearchIcon } from "lucide-react";
 import { InputRequest, Workspace } from "../../types/datamodel";
 import { debounce, set } from "lodash";
 import { planAPI } from "../api";
 import RelevantPlans from "./relevant_plans";
 import { IPlan } from "../../types/plan";
 import PlanView from "./plan";
-import CreateWorkspaceMenu from "./createworkspace";
-import ShowWorkspaceMenu from "./showworkspace";
 
 // Maximum file size in bytes (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -83,6 +78,8 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
     },
     ref
   ) => {
+    const [isExtractingMenuVisible, setIsExtractingMenuVisible] = React.useState(false);
+    const [extractTerm, setExtractTerm] = React.useState("");
     const [isCreateWorkspaceMenuVisible, setCreateWorkspaceMenuVisible] = React.useState(false);
     const [isShowWorkspaceMenuVisible, setShowWorkspaceMenuVisible] = React.useState(false);
     const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
@@ -505,6 +502,12 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       }
     };
 
+    const handleExtract = (term: string) => {
+      if (!isInputDisabled) {
+        submitInternal("extract \"" + term + "\"", [], false);
+      }
+    };
+
     const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
@@ -685,18 +688,16 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
         {/* Attached Items Preview */}
         {(attachedPlan || fileList.length > 0) && (
           <div
-            className={`-mb-2 mx-1 ${
-              darkMode === "dark" ? "bg-[#333333]" : "bg-gray-100"
-            } rounded-t border-b-0 p-2 flex border flex-wrap gap-2`}
+            className={`-mb-2 mx-1 ${darkMode === "dark" ? "bg-[#333333]" : "bg-gray-100"
+              } rounded-t border-b-0 p-2 flex border flex-wrap gap-2`}
           >
             {/* Attached Plan */}
             {attachedPlan && (
               <div
-                className={`flex items-center gap-1 ${
-                  darkMode === "dark"
+                className={`flex items-center gap-1 ${darkMode === "dark"
                     ? "bg-[#444444] text-white"
                     : "bg-white text-black"
-                } rounded px-2 py-1 text-xs cursor-pointer hover:opacity-80 transition-opacity`}
+                  } rounded px-2 py-1 text-xs cursor-pointer hover:opacity-80 transition-opacity`}
                 onClick={handlePlanClick}
               >
                 <span className="truncate max-w-[150px]">
@@ -719,11 +720,10 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
             {fileList.map((file) => (
               <div
                 key={file.uid}
-                className={`flex items-center gap-1 ${
-                  darkMode === "dark"
+                className={`flex items-center gap-1 ${darkMode === "dark"
                     ? "bg-[#444444] text-white"
                     : "bg-white text-black"
-                } rounded px-2 py-1 text-xs`}
+                  } rounded px-2 py-1 text-xs`}
               >
                 {getFileIcon(file)}
                 <span className="truncate max-w-[150px]">{file.name}</span>
@@ -757,7 +757,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
               task={attachedPlan.task || ""}
               plan={attachedPlan.steps || []}
               viewOnly={true}
-              setPlan={() => {}}
+              setPlan={() => { }}
             />
           )}
         </Modal>
@@ -785,13 +785,11 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     defaultValue={""}
                     onChange={handleTextChange}
                     onKeyDown={handleKeyDown}
-                    className={`flex items-center w-full resize-none border-l border-t border-b border-accent p-2 pl-5 rounded-l-lg ${
-                      darkMode === "dark"
+                    className={`flex items-center w-full resize-none border-l border-t border-b border-accent p-2 pl-5 rounded-l-lg ${darkMode === "dark"
                         ? "bg-[#444444] text-white"
                         : "bg-white text-black"
-                    } ${
-                      isInputDisabled ? "cursor-not-allowed" : ""
-                    } focus:outline-none`}
+                      } ${isInputDisabled ? "cursor-not-allowed" : ""
+                      } focus:outline-none`}
                     style={{
                       maxHeight: "120px",
                       overflowY: "auto",
@@ -801,10 +799,10 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                       runStatus === "awaiting_input"
                         ? "Type a command here."
                         : enable_upload
-                        ? dragOver
-                          ? "Drop files here..."
+                          ? dragOver
+                            ? "Drop files here..."
+                            : "Type a command here..."
                           : "Type a command here..."
-                        : "Type a command here..."
                     }
                     disabled={isInputDisabled}
                   />
@@ -812,11 +810,10 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
               </div>
 
               <div
-                className={`flex items-center justify-center gap-2 border-t border-r border-b border-accent px-2 rounded-r-lg ${
-                  darkMode === "dark"
+                className={`flex items-center justify-center gap-2 border-t border-r border-b border-accent px-2 rounded-r-lg ${darkMode === "dark"
                     ? "bg-[#444444] text-white"
                     : "bg-white text-black"
-                }`}
+                  }`}
               >
                 {runStatus === "active" && (
                   <button
@@ -828,25 +825,63 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                   </button>
                 )}
                 {
-                  <Tooltip title="Submit the command">
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={isInputDisabled}
-                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9 ${
-                      isInputDisabled
-                        ? "cursor-not-allowed"
-                        : "hover:bg-magenta-900"
-                    }`}
-                  >
-                    <PaperAirplaneIcon className="h-6 w-6 text-white" />
-                  </button>
+                  <Tooltip title="Perform Action">
+                    <button
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={isInputDisabled}
+                      className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9 ${isInputDisabled
+                          ? "cursor-not-allowed"
+                          : "hover:bg-magenta-900"
+                        }`}
+                    >
+                      <CornerDownLeftIcon className="h-6 w-6 text-white" />
+                    </button>
+                  </Tooltip>
+                }
+                {
+                  <Tooltip title="Extract Data">
+                    <button
+                      type="button"
+                      onClick={() => setIsExtractingMenuVisible(true)}
+                      disabled={isInputDisabled}
+                      className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9 ${isInputDisabled
+                          ? "cursor-not-allowed"
+                          : "hover:bg-magenta-900"
+                        }`}
+                    >
+                      <ScanSearchIcon className="h-6 w-6 text-white" />
+                    </button>
                   </Tooltip>
                 }
               </div>
             </div>
           </div>
         </div>
+        <Modal
+          title="Extract Data from the Current Page"
+          open={isExtractingMenuVisible}
+          onOk={() => {
+            if (!extractTerm.trim()) {
+              message.error("Please enter an extract term.");
+              return;
+            }
+            //onCreateWorkflow(newWorkflowName.trim());
+            setIsExtractingMenuVisible(false);
+            setExtractTerm("");
+            handleExtract(extractTerm);
+          }}
+          onCancel={() => {
+            setIsExtractingMenuVisible(false);
+            setExtractTerm("");
+          }}
+        >
+          <Input
+            placeholder="Enter term to extract"
+            value={extractTerm}
+            onChange={(e) => setExtractTerm(e.target.value)}
+          />
+        </Modal>
 
         {error && !error.status && (
           <div className="p-2 border rounded mt-4 text-orange-500 text-sm">
@@ -854,26 +889,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
             {error.message}
           </div>
         )}
-
-        <ShowWorkspaceMenu
-          isVisible={isShowWorkspaceMenuVisible}
-          workspace={workspace}
-          currentWorkflow={currentWorkflow}
-          onClose={() => setShowWorkspaceMenuVisible(false)}
-          onDeleteSteps={onDeleteSteps}
-          onSwitchWorkflow={onSwitchWorkflow}
-          onCreateWorkflow={onCreateWorkflow}
-          onRunWorkflow={onRunWorkflow}
-          onDownloadWorkspace={onDownloadWorkspace}
-        />
-
-        <CreateWorkspaceMenu
-          isVisible={isCreateWorkspaceMenuVisible}
-          onCreateWorkspace={createWorkspace}
-          onClose={() => setCreateWorkspaceMenuVisible(false)}
-          onLoadWorkspace={onLoadWorkspace}
-        />
-
       </div>
     );
   }

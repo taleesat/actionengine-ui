@@ -11,7 +11,6 @@ import { IStatus } from "../../types/app";
 import { RcFile } from "antd/es/upload";
 import { Modal, Button, Collapse, Checkbox, Input, message } from "antd";
 
-import ShowWorkspaceMenu from "./showworkspace";
 import WorkspaceDisplay from "./workspacedisplay";
 
 const DETAIL_VIEWER_CONTAINER_ID = "detail-viewer-container";
