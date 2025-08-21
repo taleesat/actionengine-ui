@@ -1,3 +1,3 @@
 VERSION = "0.0.4"
 __version__ = VERSION
-APP_NAME = "ActionEngine-UI"
+APP_NAME = "Bedrock-UI"

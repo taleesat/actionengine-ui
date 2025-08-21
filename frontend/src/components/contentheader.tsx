@@ -45,8 +45,8 @@ const ContentHeader = ({
             </Tooltip>
           </div>
           <div className="flex items-center space-x-2">
-            <img src={logo} alt="ActionEngine-UI Logo" className="h-10 w-10" />
-            <div className="text-primary text-2xl font-bold">ActionEngine-UI</div>
+            <img src={logo} alt="Bedrock Logo" className="h-10 w-10" />
+            <div className="text-primary text-2xl font-bold">Bedrock</div>
           </div>
         </div>
 

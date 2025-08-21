@@ -381,7 +381,7 @@ action_guard_client: *client
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-2">
                         Allow Replans
-                        <Tooltip title="When enabled, ActionEngine-UI will automatically replan if the current plan is not working or you change the original request">
+                        <Tooltip title="When enabled, Bedrock-UI will automatically replan if the current plan is not working or you change the original request">
                           <InfoCircleOutlined className="text-secondary hover:text-primary cursor-help" />
                         </Tooltip>
                       </span>

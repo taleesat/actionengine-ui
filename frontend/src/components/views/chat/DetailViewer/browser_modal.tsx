@@ -94,7 +94,7 @@ const BrowserModal: React.FC<BrowserModalProps> = (props) => {
                   className="font-medium shadow-md flex justify-center items-center"
                   size="large"
                 >
-                  Give control back to ActionEngine-UI 
+                  Give control back to Bedrock
                 </Button>
               )}
             </div>
