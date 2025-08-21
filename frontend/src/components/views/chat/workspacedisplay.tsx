@@ -10,6 +10,8 @@ import {
   Typography,
   List,
   Space,
+  Modal,
+  Input,
   message
 } from "antd";
 
@@ -20,6 +22,7 @@ import {
 } from "@ant-design/icons";
 
 import "antd/dist/reset.css";
+import { on } from "events";
 
 const { Header, Sider, Content } = Layout;
 const { Title, Paragraph } = Typography;
@@ -27,16 +30,28 @@ const { Title, Paragraph } = Typography;
 interface WorkspaceDisplayProps {
   workspace: Workspace | null;
   currentWorkflow: string | null;
+  onDeleteSteps: (steps: string[]) => void;
+  onSwitchWorkflow: (name: string) => void;
+  onCreateWorkflow: (name: string) => void;
+  onRunWorkflow: (workflow: string) => void;
+  onDownloadWorkspace: () => void;
 }
 
 const WorkspaceDisplay: React.FC<WorkspaceDisplayProps> = ({
   workspace,
   currentWorkflow,
+  onDeleteSteps,
+  onSwitchWorkflow,
+  onCreateWorkflow,
+  onRunWorkflow,
+  onDownloadWorkspace,
 }) => {
 
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>( null);
   const [selectedSteps, setSelectedSteps] = useState<number[]>([]);
 
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [newWorkflowName, setNewWorkflowName] = useState("");
 
   useEffect(() => {
       const wf =
@@ -49,6 +64,7 @@ const WorkspaceDisplay: React.FC<WorkspaceDisplayProps> = ({
   
 const handleWorkflowSelect = (name: string) => {
     const wf = workspace?.workflows.find((w) => w.name === name);
+    onSwitchWorkflow(name);
     setSelectedWorkflow(wf || null);
     setSelectedSteps([]);
   };
@@ -62,6 +78,7 @@ const handleWorkflowSelect = (name: string) => {
   };
 
   const downloadWorkspace = () => {
+    /*
     const blob = new Blob([JSON.stringify(workspace, null, 2)], {
       type: "application/json"
     });
@@ -70,24 +87,28 @@ const handleWorkflowSelect = (name: string) => {
     a.href = url;
     a.download = `${workspace?.name}.json`;
     a.click();
+    */
+   onDownloadWorkspace();
   };
 
   const deleteSelectedSteps = () => {
-    if (!selectedWorkflow) return;
-    if (selectedSteps.length === 0) {
-      message.warning("Please select steps to delete.");
-      return;
-    }
-    const updatedSteps = selectedWorkflow.steps.filter(
-      (_, i) => !selectedSteps.includes(i)
-    );
-    setSelectedWorkflow({ ...selectedWorkflow, steps: updatedSteps });
-    setSelectedSteps([]);
-    message.success("Selected steps deleted.");
-  };
+  if (!selectedWorkflow) return;
+  if (selectedSteps.length === 0) {
+    message.warning("Please select steps to delete.");
+    return;
+  }
+
+  // Collect step identifiers (e.g., method names or descriptions)
+  const stepsToDelete = selectedSteps.map((i) => i.toString());
+
+  // Call the parent callback
+  onDeleteSteps(stepsToDelete);
+  setSelectedSteps([]);
+  message.success("Selected steps deleted.");
+};
 
   const runWorkflow = () => {
-    console.log("Running workflow:", selectedWorkflow);
+    onRunWorkflow(selectedWorkflow?.name || "");
     message.success(`Workflow "${selectedWorkflow?.name}" is running...`);
   };
 
@@ -135,24 +156,9 @@ return (
     </Menu>
 
     <div style={{ padding: "10px" }}>
-      <Button
-        block
-        onClick={() => {
-          if (!workspace) return;
-          const newWorkflow: Workflow = {
-            name: `Workflow ${workspace.workflows.length + 1}`,
-            description: "New workflow description",
-            args: [],
-            steps: [],
-          };
-          const updatedWorkflows = [...workspace.workflows, newWorkflow];
-          workspace.workflows = updatedWorkflows; // If workspace is immutable, lift state up
-          setSelectedWorkflow(newWorkflow);
-          message.success("New workflow added!");
-        }}
-      >
-      New Workflow
-      </Button>
+        <Button block onClick={() => setIsModalVisible(true)}>
+            New Workflow
+        </Button>
     </div>
   </div>
 </Sider>
@@ -200,6 +206,30 @@ return (
           )}
         </Content>
       </Layout>
+      <Modal
+  title="Create New Workflow"
+  open={isModalVisible}
+  onOk={() => {
+    if (!newWorkflowName.trim()) {
+      message.error("Please enter a workflow name.");
+      return;
+    }
+    onCreateWorkflow(newWorkflowName.trim());
+    setIsModalVisible(false);
+    setNewWorkflowName("");
+    message.success(`Workflow "${newWorkflowName}" created!`);
+  }}
+  onCancel={() => {
+    setIsModalVisible(false);
+    setNewWorkflowName("");
+  }}
+>
+  <Input
+    placeholder="Enter workflow name"
+    value={newWorkflowName}
+    onChange={(e) => setNewWorkflowName(e.target.value)}
+  />
+</Modal>
     </Layout>
   );
 

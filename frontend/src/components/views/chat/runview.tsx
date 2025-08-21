@@ -559,27 +559,22 @@ const RunView: React.FC<RunViewProps> = ({
 
   const onDeleteSteps = (steps: string[]) => {
     onExecuteCommand?.("delete " + steps.join(","));
-    onExecuteCommand?.("print");
   }
 
   const onSwitchWorkflow = (workflow: string) => {
     onExecuteCommand?.("workflow " + workflow);
-    onExecuteCommand?.("print");
   }
 
   const onCreateWorkflow = (workflow: string) => {
-    console.log("Creating workflow:", workflow);
     onExecuteCommand?.("workflow " + workflow);
-    onExecuteCommand?.("print");
   }
 
   const onRunWorkflow = (workflow: string) => {
     onExecuteCommand?.("run " + workflow);
-    setIsShowWorkspaceMenuVisible(false);
   }
 
   const onDownloadWorkspace = () => {
-    onExecuteCommand?.("save workspace.json");
+    onExecuteCommand?.("save_as workspace.json");
   };
 
   const onToggleRecording = () => {
@@ -606,7 +601,15 @@ const RunView: React.FC<RunViewProps> = ({
         {/* Thread Section - use flex-1 for height, but remove overflow-y-auto */}
         <div className="w-full flex-1">
           <div className="w-full flex-1">
-            <WorkspaceDisplay workspace={workspace} currentWorkflow={currentWorkflow} />
+            <WorkspaceDisplay 
+              workspace={workspace}
+              currentWorkflow={currentWorkflow}
+              onDeleteSteps={onDeleteSteps}
+              onSwitchWorkflow={onSwitchWorkflow}
+              onCreateWorkflow={onCreateWorkflow}
+              onRunWorkflow={onRunWorkflow}
+              onDownloadWorkspace={onDownloadWorkspace}
+            />
           </div>
         </div>
 
@@ -687,17 +690,6 @@ const RunView: React.FC<RunViewProps> = ({
             </div>
           </div>
         )}
-        <ShowWorkspaceMenu
-          isVisible={isShowWorkspaceMenuVisible}
-          workspace={workspace}
-          currentWorkflow={currentWorkflow}
-          onClose={() => setIsShowWorkspaceMenuVisible(false)}
-          onDeleteSteps={onDeleteSteps}
-          onSwitchWorkflow={onSwitchWorkflow}
-          onCreateWorkflow={onCreateWorkflow}
-          onRunWorkflow={onRunWorkflow}
-          onDownloadWorkspace={onDownloadWorkspace}
-        />
     </div>
   );
 };
