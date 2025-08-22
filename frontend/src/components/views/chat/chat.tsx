@@ -533,15 +533,36 @@ export default function ChatView({
     );
   };
 
+  const executeCommandAndUpdate = async (command: string) => {
+    await executeCommand(command);
+    await executeCommand("print");
+  };
+
   const createWorkspace = async (workspaceName: string, websiteUrl: string) => {
     await executeCommand("workspace \"" + workspaceName + "\"");
     await executeCommand("goto \"" + websiteUrl + "\"");
     await executeCommand("print");
   };
 
-  const executeCommandAndUpdate = async (command: string) => {
-    await executeCommand(command);
-    await executeCommand("print");
+  const loadWorkspace = async (file: File) => {
+    const content = await file.text();
+    await executeCommand("load_workspace \"" + content + "\"");
+
+    const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        if (content) {
+          executeCommandAndUpdate("loadj " + JSON.stringify(content));
+        } else {
+          console.error("Failed to read file content.");
+        }
+      };
+
+      reader.onerror = () => {
+        console.error("Error reading file:", reader.error);
+      };
+
+      reader.readAsText(file);
   };
 
   const handleInputResponse = async (
@@ -1146,7 +1167,10 @@ export default function ChatView({
                 } sm:px-6 md:px-8`}
             >
               <div className="mt-4">
-                <NewWorkspaceForm onSubmit={createWorkspace} />
+                <NewWorkspaceForm
+                  onNewWorkspace={createWorkspace}
+                  onLoadWorkspace={loadWorkspace}
+                />
               </div>
             </div>
           )}

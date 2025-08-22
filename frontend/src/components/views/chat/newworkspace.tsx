@@ -3,14 +3,29 @@ import { Card, Form, Input, Button, Typography, Divider } from "antd";
 const { Title } = Typography;
 
 type Props = {
-  onSubmit: (workspaceName: string, websiteUrl: string) => void;
+  onNewWorkspace: (workspaceName: string, websiteUrl: string) => void;
+  onLoadWorkspace: (file: File) => void;
 };
 
-const NewWorkspaceForm: React.FC<Props> = ({ onSubmit }) => {
+const NewWorkspaceForm: React.FC<Props> = ({ onNewWorkspace, onLoadWorkspace }) => {
   const [form] = Form.useForm();
 
   const handleFinish = (workspaceName: string, websiteUrl: string) => {
-    onSubmit(workspaceName, websiteUrl);
+    onNewWorkspace(workspaceName, websiteUrl);
+  };
+
+  const handleLoadFromFile = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json"; // Adjust allowed file types if needed
+    input.onchange = (event: Event) => {
+      const target = event.target as HTMLInputElement;
+      if (target.files && target.files.length > 0) {
+        const file = target.files[0];
+        onLoadWorkspace(file);
+      }
+    };
+    input.click();
   };
 
   return (
@@ -88,7 +103,7 @@ const NewWorkspaceForm: React.FC<Props> = ({ onSubmit }) => {
       </Title>
       <Button
         type="default"
-        onClick={() => { }}
+        onClick={handleLoadFromFile}
         block
         style={{
           height: 46,
