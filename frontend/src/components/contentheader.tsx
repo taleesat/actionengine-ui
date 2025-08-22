@@ -1,14 +1,10 @@
 import React from "react";
-import { PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Tooltip, Modal } from "antd";
 import { appContext } from "../hooks/provider";
 import { useConfigStore } from "../hooks/store";
-import { Info, Settings } from "lucide-react";
-import SignInModal from "./signin";
-import HelpMenu from "./help";
 import logo from "../assets/logo.svg";
 import { Button } from "./common/Button";
-import { on } from "events";
 
 const { confirm } = Modal;
 
@@ -27,8 +23,6 @@ const ContentHeader = ({
 }: ContentHeaderProps) => {
   const { user } = React.useContext(appContext);
   useConfigStore();
-  const [isEmailModalOpen, setIsEmailModalOpen] = React.useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
 
   const handleNewSession = () => {
     confirm({
@@ -71,55 +65,7 @@ const ContentHeader = ({
             <div className="text-primary text-2xl font-bold">Bedrock</div>
           </div>
         </div>
-
-        {/* User Profile and Settings */}
-        <div className="flex items-center space-x-4">
-          {/* User Profile */}
-          {user && (
-            <Tooltip title="View or update your profile">
-              <div
-                className="flex items-center space-x-2 cursor-pointer"
-                onClick={() => setIsEmailModalOpen(true)}
-              >
-                {user.avatar_url ? (
-                  <img
-                    className="h-8 w-8 rounded-full"
-                    src={user.avatar_url}
-                    alt={user.name}
-                  />
-                ) : (
-                  <div className="bg-blue-400 h-8 w-8 rounded-full flex items-center justify-center text-gray-800 font-semibold hover:text-message">
-                    {user.name?.[0]}
-                  </div>
-                )}
-              </div>
-            </Tooltip>
-          )}
-
-          {/* Settings Button */}
-          <div className="text-primary">
-            <Tooltip title="Help">
-              <Button
-                variant="tertiary"
-                size="sm"
-                icon={<Info className="h-8 w-8" />}
-                onClick={() => setIsSettingsOpen(true)}
-                className="!px-0 transition-colors hover:text-accent"
-                aria-label="Help"
-              />
-            </Tooltip>
-          </div>
-        </div>
       </div>
-
-      <SignInModal
-        isVisible={isEmailModalOpen}
-        onClose={() => setIsEmailModalOpen(false)}
-      />
-      <HelpMenu
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
     </div>
   );
 };

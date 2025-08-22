@@ -43,9 +43,6 @@ const LARGE_TEXT_THRESHOLD = 1500;
 interface ChatInputProps {
   onSubmit: (
     text: string,
-    files: RcFile[],
-    accepted?: boolean,
-    plan?: IPlan
   ) => void;
   error: IStatus | null;
   disabled?: boolean;

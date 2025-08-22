@@ -14,7 +14,6 @@ import { Modal, Button, Collapse, Checkbox, Input, message } from "antd";
 import WorkspaceDisplay from "./workspacedisplay";
 
 const DETAIL_VIEWER_CONTAINER_ID = "detail-viewer-container";
-const { Panel } = Collapse;
 
 interface RunViewProps {
   run: Run;
@@ -72,7 +71,6 @@ const RunView: React.FC<RunViewProps> = ({
   recordStatus,
   enable_upload = false,
 }) => {
-  const [isShowWorkspaceMenuVisible, setIsShowWorkspaceMenuVisible] = useState(false);
   const threadContainerRef = useRef<HTMLDivElement | null>(null);
   const [novncEndpoint, setNovncEndpoint] = useState<string | undefined>();
   const [detailViewerExpanded, setDetailViewerExpanded] = useState(false);
@@ -423,7 +421,7 @@ const RunView: React.FC<RunViewProps> = ({
                     // delay for 100ms
                     await new Promise((resolve) => setTimeout(resolve, 100));
                   }
-                } catch {}
+                } catch { }
               }
             }
             continue;
@@ -448,11 +446,11 @@ const RunView: React.FC<RunViewProps> = ({
                       await new Promise((resolve) => setTimeout(resolve, 100));
                     }
                   }
-                } catch {}
+                } catch { }
               }
             }
           }
-        } catch {}
+        } catch { }
       }
 
       if (
@@ -587,20 +585,18 @@ const RunView: React.FC<RunViewProps> = ({
     >
       {/* Messages section */}
       <div
-        className={`items-start relative flex flex-col h-full ${
-          showDetailViewer &&
-          novncEndpoint !== undefined &&
-          !isDetailViewerMinimized
+        className={`items-start relative flex flex-col h-full ${showDetailViewer &&
+            novncEndpoint !== undefined &&
+            !isDetailViewerMinimized
             ? detailViewerExpanded
               ? "w-0"
               : "w-[40%]"
             : "w-full"
-        } transition-all duration-300`}
+          } transition-all duration-300`}
       >
         {/* Thread Section - use flex-1 for height, but remove overflow-y-auto */}
         <div className="w-full flex-1">
-          <div className="w-full flex-1">
-            <WorkspaceDisplay 
+            <WorkspaceDisplay
               workspace={workspace}
               currentWorkflow={currentWorkflow}
               onDeleteSteps={onDeleteSteps}
@@ -609,7 +605,6 @@ const RunView: React.FC<RunViewProps> = ({
               onRunWorkflow={onRunWorkflow}
               onDownloadWorkspace={onDownloadWorkspace}
             />
-          </div>
         </div>
 
         {/* ChatInput - use sticky positioning to keep at bottom with full width */}
@@ -624,9 +619,6 @@ const RunView: React.FC<RunViewProps> = ({
             ref={chatInputRef}
             onSubmit={(
               query: string,
-              files: RcFile[],
-              accepted = false,
-              plan?: IPlan
             ) => {
               onExecuteCommand?.(query);
             }}
@@ -659,9 +651,8 @@ const RunView: React.FC<RunViewProps> = ({
         novncEndpoint !== undefined &&
         !isDetailViewerMinimized && (
           <div
-            className={`${
-              detailViewerExpanded ? "w-full" : "w-[60%]"
-            } self-start sticky top-0 h-full`}
+            className={`${detailViewerExpanded ? "w-full" : "w-[60%]"
+              } self-start sticky top-0 h-full`}
           >
             <div className="h-full flex-1">
               <DetailViewer
