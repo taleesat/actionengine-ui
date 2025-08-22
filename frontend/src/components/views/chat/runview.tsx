@@ -17,29 +17,18 @@ const DETAIL_VIEWER_CONTAINER_ID = "detail-viewer-container";
 
 interface RunViewProps {
   run: Run;
-  onSavePlan?: (plan: IPlanStep[]) => void;
   onPause?: () => void;
   onRegeneratePlan?: () => void;
   isDetailViewerMinimized: boolean;
   setIsDetailViewerMinimized: (minimized: boolean) => void;
   showDetailViewer: boolean;
   setShowDetailViewer: (show: boolean) => void;
-  onApprove?: () => void;
-  onDeny?: () => void;
-  onAcceptPlan?: (text: string) => void;
   // Add new props needed for ChatInput
   onExecuteCommand?: (command: string) => void;
   onInputResponse?: (query: string, accepted?: boolean, plan?: IPlan) => void;
-  onRunTask?: (
-    query: string,
-    files: RcFile[],
-    plan?: IPlan,
-    fresh_socket?: boolean
-  ) => void;
   onCancel?: () => void;
   error?: IStatus | null;
   chatInputRef?: React.RefObject<any>;
-  onExecutePlan?: (plan: IPlan) => void;
   workspace: Workspace | null;
   currentWorkflow: string | null;
   recordStatus: string | null; // "off" | "on"
@@ -48,24 +37,18 @@ interface RunViewProps {
 
 const RunView: React.FC<RunViewProps> = ({
   run,
-  onSavePlan,
   onPause,
   onRegeneratePlan,
   isDetailViewerMinimized,
   setIsDetailViewerMinimized,
   showDetailViewer,
   setShowDetailViewer,
-  onApprove,
-  onDeny,
-  onAcceptPlan,
   // Add new props here
   onExecuteCommand,
   onInputResponse,
-  onRunTask,
   onCancel,
   error,
   chatInputRef,
-  onExecutePlan,
   workspace,
   currentWorkflow,
   recordStatus,

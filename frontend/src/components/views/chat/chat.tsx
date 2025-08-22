@@ -1116,24 +1116,18 @@ export default function ChatView({
                 {currentRun && (
                   <RunView
                     run={currentRun}
-                    onSavePlan={handlePlanUpdate}
                     onPause={handlePause}
                     onRegeneratePlan={handleRegeneratePlan}
                     isDetailViewerMinimized={isDetailViewerMinimized}
                     setIsDetailViewerMinimized={setIsDetailViewerMinimized}
                     showDetailViewer={showDetailViewer}
                     setShowDetailViewer={setShowDetailViewer}
-                    onApprove={handleApprove}
-                    onDeny={handleDeny}
-                    onAcceptPlan={handleAcceptPlan}
                     // Add these to connect the functions from chat.tsx to RunView
                     onExecuteCommand={executeCommandAndUpdate}
                     onInputResponse={handleInputResponse}
-                    onRunTask={runTask}
                     onCancel={handleCancel}
                     error={error}
                     chatInputRef={chatInputRef}
-                    onExecutePlan={handleExecutePlan}
                     workspace={workspace}
                     currentWorkflow={currentWorkflow}
                     recordStatus={recordStatus}
