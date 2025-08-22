@@ -586,25 +586,25 @@ const RunView: React.FC<RunViewProps> = ({
       {/* Messages section */}
       <div
         className={`items-start relative flex flex-col h-full ${showDetailViewer &&
-            novncEndpoint !== undefined &&
-            !isDetailViewerMinimized
-            ? detailViewerExpanded
-              ? "w-0"
-              : "w-[40%]"
-            : "w-full"
+          novncEndpoint !== undefined &&
+          !isDetailViewerMinimized
+          ? detailViewerExpanded
+            ? "w-0"
+            : "w-[40%]"
+          : "w-full"
           } transition-all duration-300`}
       >
         {/* Thread Section - use flex-1 for height, but remove overflow-y-auto */}
         <div className="w-full flex-1">
-            <WorkspaceDisplay
-              workspace={workspace}
-              currentWorkflow={currentWorkflow}
-              onDeleteSteps={onDeleteSteps}
-              onSwitchWorkflow={onSwitchWorkflow}
-              onCreateWorkflow={onCreateWorkflow}
-              onRunWorkflow={onRunWorkflow}
-              onDownloadWorkspace={onDownloadWorkspace}
-            />
+          <WorkspaceDisplay
+            workspace={workspace}
+            currentWorkflow={currentWorkflow}
+            onDeleteSteps={onDeleteSteps}
+            onSwitchWorkflow={onSwitchWorkflow}
+            onCreateWorkflow={onCreateWorkflow}
+            onRunWorkflow={onRunWorkflow}
+            onDownloadWorkspace={onDownloadWorkspace}
+          />
         </div>
 
         {/* ChatInput - use sticky positioning to keep at bottom with full width */}
@@ -629,9 +629,6 @@ const RunView: React.FC<RunViewProps> = ({
             onPause={onPause}
             enable_upload={enable_upload}
             inputRequest={run.input_request}
-            onExecutePlan={onExecutePlan}
-            workspace={workspace}
-            currentWorkflow={currentWorkflow}
           />
         </div>
       </div>

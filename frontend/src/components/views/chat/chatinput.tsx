@@ -52,9 +52,6 @@ interface ChatInputProps {
   isPlanMessage?: boolean;
   onPause?: () => void;
   enable_upload?: boolean;
-  onExecutePlan?: (plan: IPlan) => void;
-  workspace?: Workspace | null;
-  currentWorkflow?: string | null;
 }
 
 const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
@@ -69,16 +66,11 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       isPlanMessage = false,
       onPause,
       enable_upload = false,
-      onExecutePlan,
-      workspace = null,
-      currentWorkflow = null,
     },
     ref
   ) => {
     const [isExtractingMenuVisible, setIsExtractingMenuVisible] = React.useState(false);
     const [extractTerm, setExtractTerm] = React.useState("");
-    const [isCreateWorkspaceMenuVisible, setCreateWorkspaceMenuVisible] = React.useState(false);
-    const [isShowWorkspaceMenuVisible, setShowWorkspaceMenuVisible] = React.useState(false);
     const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
     const textAreaDivRef = React.useRef<HTMLDivElement>(null);
     const [text, setText] = React.useState("");
@@ -381,14 +373,12 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
 
     const submitInternal = (
       query: string,
-      files: RcFile[],
-      accepted: boolean,
       doResetInput: boolean = true
     ) => {
       if (attachedPlan) {
-        onSubmit(query, files, accepted, attachedPlan);
+        onSubmit(query);
       } else {
-        onSubmit(query, files, accepted);
+        onSubmit(query);
       }
 
       if (doResetInput) {
@@ -409,68 +399,14 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
           .filter((file) => file.originFileObj)
           .map((file) => file.originFileObj as RcFile);
 
-        submitInternal(query, files, false);
+        submitInternal(query);
       }
     };
 
-    const onDeleteSteps = (steps: string[]) => {
+    const handleBySubmitting = (query: string) => {
       if (!isInputDisabled) {
-        submitInternal("delete " + steps.join(","), [], false);
-        submitInternal("print", [], false);
+        submitInternal(query);
       }
-    }
-
-    const onSwitchWorkflow = (workflow: string) => {
-      if (!isInputDisabled) {
-        submitInternal("workflow " + workflow, [], false);
-        submitInternal("print", [], false);
-      }
-    }
-
-    const onCreateWorkflow = (workflow: string) => {
-      console.log("Creating workflow:", workflow);
-      if (!isInputDisabled) {
-        submitInternal("workflow " + workflow, [], false);
-        submitInternal("print", [], false);
-      }
-    }
-
-    const onRunWorkflow = (workflow: string) => {
-      if (!isInputDisabled) {
-        submitInternal("run " + workflow, [], false);
-        submitInternal("print", [], false);
-      }
-      setShowWorkspaceMenuVisible(false);
-    }
-
-    const onDownloadWorkspace = () => {
-      if (!isInputDisabled) {
-        submitInternal("save_as workspace.json", [], false);
-      }
-    };
-
-    const handleShowWorkspace = () => {
-      if (!isInputDisabled) {
-        submitInternal("print", [], false);
-      }
-      setShowWorkspaceMenuVisible(true);
-    };
-
-    const handleCreateWorkspace = () => {
-      if (!isInputDisabled) {
-        setCreateWorkspaceMenuVisible(true);
-      }
-    };
-
-    const handleRecord = () => {
-      if (!isInputDisabled) {
-        submitInternal("browser", [], false);
-      }
-    };
-
-    const createWorkspace = (workspaceName: string) => {
-      submitInternal("workspace " + workspaceName, [], false);
-      setCreateWorkspaceMenuVisible(false)
     };
 
     const onLoadWorkspace = (file: File) => {
@@ -479,7 +415,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       reader.onload = (event) => {
         const content = event.target?.result as string;
         if (content) {
-          submitInternal("loadj " + JSON.stringify(content), [], false);
+          submitInternal("loadj " + JSON.stringify(content));
         } else {
           console.error("Failed to read file content.");
         }
@@ -490,7 +426,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       };
 
       reader.readAsText(file);
-      setCreateWorkspaceMenuVisible(false)
     };
 
     const handlePause = () => {
@@ -511,13 +446,13 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
           .filter((file) => file.originFileObj)
           .map((file) => file.originFileObj as RcFile);
 
-        submitInternal("act \"" + query + "\"", files, false);
+        submitInternal("act \"" + query + "\"");
       }
     };
 
     const handleExtract = (term: string) => {
       if (!isInputDisabled) {
-        submitInternal("extract \"" + term + "\"", [], false);
+        submitInternal("extract \"" + term + "\"");
       }
     };
 
