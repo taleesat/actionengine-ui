@@ -1,5 +1,5 @@
 import * as React from "react";
-import { message } from "antd";
+import { Button, Divider, message } from "antd";
 import { convertFilesToBase64, getServerUrl } from "../../utils";
 import { IStatus } from "../../types/app";
 import {
@@ -1099,14 +1099,14 @@ export default function ChatView({
         <div
           ref={chatContainerRef}
           className={`flex-1 overflow-y-auto scroll mt-1 min-h-0 relative w-full h-full ${noMessagesYet && currentRun
-              ? "flex items-center justify-center"
-              : ""
+            ? "flex items-center justify-center"
+            : ""
             }`}
         >
           <div
             className={`${showDetailViewer && !isDetailViewerMinimized
-                ? "w-full"
-                : "max-w-full md:max-w-5xl lg:max-w-6xl xl:max-w-7xl"
+              ? "w-full"
+              : "max-w-full md:max-w-5xl lg:max-w-6xl xl:max-w-7xl"
               } mx-auto px-4 sm:px-6 md:px-8 h-full ${noMessagesYet && currentRun ? "hidden" : ""
               }`}
           >
@@ -1122,7 +1122,6 @@ export default function ChatView({
                     setIsDetailViewerMinimized={setIsDetailViewerMinimized}
                     showDetailViewer={showDetailViewer}
                     setShowDetailViewer={setShowDetailViewer}
-                    // Add these to connect the functions from chat.tsx to RunView
                     onExecuteCommand={executeCommandAndUpdate}
                     onInputResponse={handleInputResponse}
                     onCancel={handleCancel}
@@ -1142,17 +1141,10 @@ export default function ChatView({
           {currentRun && noMessagesYet && teamConfig && (
             <div
               className={`text-center ${showDetailViewer && !isDetailViewerMinimized
-                  ? "w-full"
-                  : "w-full max-w-full md:max-w-4xl lg:max-w-5xl xl:max-w-6xl"
-                } mx-auto px-4 sm:px-6 md:px-8`}
+                ? ""
+                : "md:max-w-4xl lg:max-w-5xl xl:max-w-6xl"
+                } sm:px-6 md:px-8`}
             >
-              <div className="mt-4">
-
-                <Title level={3} style={{ color: "#cbd5e1", marginBottom: 24 }}>
-                  Please provide your workspace name and the website URL to get started.
-                </Title>
-              </div>
-
               <div className="mt-4">
                 <NewWorkspaceForm onSubmit={createWorkspace} />
               </div>
