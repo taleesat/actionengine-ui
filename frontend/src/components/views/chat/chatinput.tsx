@@ -471,8 +471,8 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     onChange={handleTextChange}
                     onKeyDown={handleKeyDown}
                     className={`flex items-center w-full resize-none border-l border-t border-b border-accent p-2 pl-5 rounded-l-lg ${darkMode === "dark"
-                        ? "bg-[#444444] text-white"
-                        : "bg-white text-black"
+                      ? "bg-[#444444] text-white"
+                      : "bg-white text-black"
                       } ${isInputDisabled ? "cursor-not-allowed" : ""
                       } focus:outline-none`}
                     style={{
@@ -496,8 +496,8 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
 
               <div
                 className={`flex items-center justify-center gap-2 border-t border-r border-b border-accent px-2 rounded-r-lg ${darkMode === "dark"
-                    ? "bg-[#444444] text-white"
-                    : "bg-white text-black"
+                  ? "bg-[#444444] text-white"
+                  : "bg-white text-black"
                   }`}
               >
                 {runStatus === "active" && (
