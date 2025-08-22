@@ -1,5 +1,4 @@
 import {
-  PaperAirplaneIcon,
   ExclamationTriangleIcon,
   PauseCircleIcon,
 } from "@heroicons/react/24/outline";
@@ -20,11 +19,6 @@ import {
 import type { UploadFile, UploadProps, RcFile } from "antd/es/upload/interface";
 import { FileTextIcon, ImageIcon, XIcon, CornerDownLeftIcon, ScanSearchIcon } from "lucide-react";
 import { InputRequest, Workspace } from "../../types/datamodel";
-import { debounce, set } from "lodash";
-import { planAPI } from "../api";
-import RelevantPlans from "./relevant_plans";
-import { IPlan } from "../../types/plan";
-import PlanView from "./plan";
 
 // Maximum file size in bytes (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -49,7 +43,6 @@ interface ChatInputProps {
   onCancel?: () => void;
   runStatus?: string;
   inputRequest?: InputRequest;
-  isPlanMessage?: boolean;
   onPause?: () => void;
   enable_upload?: boolean;
 }
@@ -63,7 +56,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       onCancel,
       runStatus,
       inputRequest,
-      isPlanMessage = false,
       onPause,
       enable_upload = false,
     },
@@ -82,15 +74,8 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
     };
     const [notificationApi, notificationContextHolder] =
       notification.useNotification();
-    const [isSearching, setIsSearching] = React.useState(false);
-    const [relevantPlans, setRelevantPlans] = React.useState<any[]>([]);
-    const [allPlans, setAllPlans] = React.useState<any[]>([]);
-    const [attachedPlan, setAttachedPlan] = React.useState<IPlan | null>(null);
-    const [isLoading, setIsLoading] = React.useState(false);
-    const userId = user?.email || "default_user";
     const [isRelevantPlansVisible, setIsRelevantPlansVisible] =
       React.useState(false);
-    const [isPlanModalVisible, setIsPlanModalVisible] = React.useState(false);
     const textAreaDefaultHeight = "64px";
     const isInputDisabled =
       disabled ||
@@ -123,32 +108,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
         textAreaRef.current.focus();
       }
     }, [isInputDisabled]);
-
-    React.useEffect(() => {
-      const fetchAllPlans = async () => {
-        try {
-          setIsLoading(true);
-
-          const response = await planAPI.listPlans(userId);
-
-          if (response) {
-            if (Array.isArray(response)) {
-              setAllPlans(response);
-            } else {
-              console.warn("Unexpected response format:", response);
-            }
-          } else {
-            console.warn("Empty response received");
-          }
-        } catch (error) {
-          console.error("Error fetching plans:", error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      fetchAllPlans();
-    }, [userId]);
 
     // Add paste event listener for images and large text
     const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -274,113 +233,22 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
         textAreaRef.current.value = "";
         textAreaRef.current.style.height = textAreaDefaultHeight;
         setText("");
-        setFileList([]);
-        setRelevantPlans([]);
-        setAttachedPlan(null);
       }
       if (textAreaDivRef.current) {
         textAreaDivRef.current.style.height = textAreaDefaultHeight;
       }
     };
 
-    const searchableData = React.useMemo(() => {
-      return allPlans.map((plan) => ({
-        ...plan,
-        taskLower: plan.task?.toLowerCase() || "",
-        stepTexts:
-          plan.steps?.map(
-            (step: { title: string; details: string }) =>
-              (step.title?.toLowerCase() || "") +
-              " " +
-              (step.details?.toLowerCase() || "")
-          ) || [],
-      }));
-    }, [allPlans]);
-
-    const searchPlans = React.useCallback(
-      debounce((query: string) => {
-        console.log("Search request with query:", query);
-
-        // Don't search if query is too short, no plans available, or plan is already attached
-        if (
-          query.length < 3 ||
-          !searchableData ||
-          searchableData.length === 0 ||
-          attachedPlan
-        ) {
-          return;
-        }
-
-        setIsSearching(true);
-        try {
-          const searchTerms = query.toLowerCase().split(" ");
-          const matchingPlans = searchableData.filter((plan) => {
-            if (query.length <= 2) {
-              if (plan.taskLower.startsWith(query.toLowerCase())) {
-                return true;
-              }
-            }
-            const taskMatches = searchTerms.every((term) =>
-              plan.taskLower.includes(term)
-            );
-            if (taskMatches) {
-              return true;
-            }
-
-            return plan.stepTexts.some((stepText: string | string[]) =>
-              searchTerms.every((term) => stepText.includes(term))
-            );
-          });
-
-          if (matchingPlans.length > 0) {
-            setRelevantPlans(matchingPlans.slice(0, 5));
-            setIsRelevantPlansVisible(true);
-            // TODO: add sorting
-          } else {
-            setRelevantPlans([]);
-            setAttachedPlan(null);
-            setIsRelevantPlansVisible(false);
-          }
-        } catch (error) {
-          console.error("Error searching plans:", error);
-        } finally {
-          setIsSearching(false);
-        }
-      }, 1000),
-      [searchableData, runStatus, isPlanMessage, attachedPlan]
-    );
-
-    const handleTextChange = (
-      event: React.ChangeEvent<HTMLTextAreaElement>
-    ) => {
+    const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
       const newText = event.target.value;
       setText(newText);
-
-      // Clear relevant plans and attached plan as soon as the query changes
-      setRelevantPlans([]);
-
-      const shouldSearch = !(
-        runStatus === "connected" || runStatus === "awaiting_input"
-      );
-      if (shouldSearch) {
-        searchPlans(newText);
-      } else if (relevantPlans.length > 0) {
-        // Clear any relevant plans if not in the right state
-        setRelevantPlans([]);
-        setAttachedPlan(null);
-      }
     };
 
     const submitInternal = (
       query: string,
       doResetInput: boolean = true
     ) => {
-      if (attachedPlan) {
-        onSubmit(query);
-      } else {
-        onSubmit(query);
-      }
-
+      onSubmit(query);
       if (doResetInput) {
         resetInput();
       }
@@ -507,37 +375,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       return true;
     };
 
-    // Update the upload props to use the new helper function
-    const uploadProps: UploadProps = {
-      name: "file",
-      multiple: true,
-      fileList,
-      beforeUpload: (file: RcFile) => {
-        if (handleFileValidationAndAdd(file)) {
-          return false; // Prevent automatic upload
-        }
-        return Upload.LIST_IGNORE;
-      },
-      onRemove: (file: UploadFile) => {
-        setFileList(fileList.filter((item) => item.uid !== file.uid));
-      },
-      showUploadList: false, // We'll handle our own custom file preview
-      customRequest: (options: any) => {
-        // Mock successful upload since we're not actually uploading anywhere yet
-        if (options.onSuccess) {
-          options.onSuccess("ok", options.file);
-        }
-      },
-    };
-
-    const getFileIcon = (file: UploadFile) => {
-      const fileType = file.type || "";
-      if (fileType.startsWith("image/")) {
-        return <ImageIcon className="w-4 h-4" />;
-      }
-      return <FileTextIcon className="w-4 h-4" />;
-    };
-
     // Add drag and drop handlers
     const handleDragOver = (e: React.DragEvent) => {
       e.preventDefault();
@@ -563,19 +400,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
 
       const droppedFiles = Array.from(e.dataTransfer.files);
       droppedFiles.forEach(handleFileValidationAndAdd);
-    };
-
-    const handleUsePlan = (plan: IPlan) => {
-      setRelevantPlans([]); // Close the dropdown
-      setAttachedPlan(plan);
-    };
-
-    const handlePlanClick = () => {
-      setIsPlanModalVisible(true);
-    };
-
-    const handlePlanModalClose = () => {
-      setIsPlanModalVisible(false);
     };
 
     React.useEffect(() => {
@@ -622,93 +446,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
     return (
       <div className="mt-2 w-full relative">
         {notificationContextHolder}
-
-        {/* Relevant Plans Indicator and Dropdown */}
-        {isRelevantPlansVisible && (
-          <RelevantPlans
-            isSearching={isSearching}
-            relevantPlans={relevantPlans}
-            darkMode={darkMode}
-            onUsePlan={handleUsePlan}
-          />
-        )}
-
-        {/* Attached Items Preview */}
-        {(attachedPlan || fileList.length > 0) && (
-          <div
-            className={`-mb-2 mx-1 ${darkMode === "dark" ? "bg-[#333333]" : "bg-gray-100"
-              } rounded-t border-b-0 p-2 flex border flex-wrap gap-2`}
-          >
-            {/* Attached Plan */}
-            {attachedPlan && (
-              <div
-                className={`flex items-center gap-1 ${darkMode === "dark"
-                    ? "bg-[#444444] text-white"
-                    : "bg-white text-black"
-                  } rounded px-2 py-1 text-xs cursor-pointer hover:opacity-80 transition-opacity`}
-                onClick={handlePlanClick}
-              >
-                <span className="truncate max-w-[150px]">
-                  📋 {attachedPlan.task}
-                </span>
-                <Button
-                  type="text"
-                  size="small"
-                  className="p-0 ml-1 flex items-center justify-center"
-                  onClick={(e: { stopPropagation: () => void }) => {
-                    e.stopPropagation();
-                    setAttachedPlan(null);
-                  }}
-                  icon={<XIcon className="w-3 h-3" />}
-                />
-              </div>
-            )}
-
-            {/* Attached Files */}
-            {fileList.map((file) => (
-              <div
-                key={file.uid}
-                className={`flex items-center gap-1 ${darkMode === "dark"
-                    ? "bg-[#444444] text-white"
-                    : "bg-white text-black"
-                  } rounded px-2 py-1 text-xs`}
-              >
-                {getFileIcon(file)}
-                <span className="truncate max-w-[150px]">{file.name}</span>
-                <Button
-                  type="text"
-                  size="small"
-                  className="p-0 ml-1 flex items-center justify-center"
-                  onClick={() =>
-                    setFileList((prev) =>
-                      prev.filter((f) => f.uid !== file.uid)
-                    )
-                  }
-                  icon={<XIcon className="w-3 h-3" />}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Plan View Modal */}
-        <Modal
-          title={`Plan: ${attachedPlan?.task || "Untitled Plan"}`}
-          open={isPlanModalVisible}
-          onCancel={handlePlanModalClose}
-          footer={null}
-          width={800}
-          destroyOnClose
-        >
-          {attachedPlan && (
-            <PlanView
-              task={attachedPlan.task || ""}
-              plan={attachedPlan.steps || []}
-              viewOnly={true}
-              setPlan={() => { }}
-            />
-          )}
-        </Modal>
 
         <div className="mt-2 rounded shadow-sm flex">
           <div

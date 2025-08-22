@@ -512,18 +512,6 @@ const RunView: React.FC<RunViewProps> = ({
     setLastPlanIndex(lastIdx);
   }, [run.messages]);
 
-  // Update handleRegeneratePlan to work with the effect
-  const handleRegeneratePlan = () => {
-    if (onRegeneratePlan) {
-      onRegeneratePlan();
-    }
-  };
-
-  // Add this before the return statement
-  const lastMessage = localMessages[localMessages.length - 1];
-  const isPlanMsg =
-    lastMessage && messageUtils.isPlanMessage(lastMessage.config.metadata);
-
   // Add this effect to handle scrolling when status changes
   useEffect(() => {
     if (run.status === "awaiting_input" && buttonsContainerRef.current) {
@@ -608,7 +596,6 @@ const RunView: React.FC<RunViewProps> = ({
             error={error ?? null}
             onCancel={onCancel}
             runStatus={run.status}
-            isPlanMessage={isPlanMsg}
             onPause={onPause}
             enable_upload={enable_upload}
             inputRequest={run.input_request}
