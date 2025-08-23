@@ -61,6 +61,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
     },
     ref
   ) => {
+    const [selectedCommand, setSelectedCommand] = React.useState<string>("act");
     const [isExtractingMenuVisible, setIsExtractingMenuVisible] = React.useState(false);
     const [extractTerm, setExtractTerm] = React.useState("");
     const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
@@ -461,43 +462,65 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     e.preventDefault();
                     handleSubmit();
                   }}
+                  className="flex"
                 >
+                  {/* Dropdown for command */}
+                  <select
+                    id="commandSelect"
+                    name="commandSelect"
+                    value={selectedCommand}
+                    onChange={(e) => setSelectedCommand(e.target.value)}
+                    disabled={isInputDisabled}
+                    className={`w-24 text-center text-lg border-l border-t border-b border-r border-accent p-2 rounded-l-lg ${darkMode === "dark"
+                        ? "bg-[#333333] text-white"
+                        : "bg-white text-black"
+                      } ${isInputDisabled ? "cursor-not-allowed" : ""} focus:outline-none`}
+                  >
+                    <option value="" disabled>
+                      Command
+                    </option>
+                    <option value="act">ACT</option>
+                    <option value="goto">GOTO</option>
+                    <option value="extract">EXTRACT</option>
+                  </select>
+
+                  {/* Textarea for arguments */}
                   <textarea
                     id="queryInput"
                     name="queryInput"
                     onPaste={handlePaste}
                     ref={textAreaRef}
-                    defaultValue={""}
+                    defaultValue=""
                     onChange={handleTextChange}
                     onKeyDown={handleKeyDown}
-                    className={`flex items-center w-full resize-none border-l border-t border-b border-accent p-2 pl-5 rounded-l-lg ${darkMode === "dark"
-                      ? "bg-[#444444] text-white"
-                      : "bg-white text-black"
-                      } ${isInputDisabled ? "cursor-not-allowed" : ""
-                      } focus:outline-none`}
+                    className={`flex items-center w-full resize-none border-t border-b border-accent p-2 ${darkMode === "dark"
+                        ? "bg-[#444444] text-white"
+                        : "bg-white text-black"
+                      } ${isInputDisabled ? "cursor-not-allowed" : ""} focus:outline-none leading-[50px]`}
                     style={{
-                      maxHeight: "120px",
-                      overflowY: "auto",
-                      minHeight: "50px",
+                      height: "50px",
+                      overflowY: "hidden",
+                      resize: "none",
                     }}
                     placeholder={
-                      runStatus === "awaiting_input"
-                        ? "Type a command here."
-                        : enable_upload
-                          ? dragOver
-                            ? "Drop files here..."
-                            : "Type a command here..."
-                          : "Type a command here..."
+                      selectedCommand === "goto"
+                        ? "Enter website URL"
+                        : selectedCommand === "act"
+                          ? "What do you want to do?"
+                          : selectedCommand === "extract"
+                            ? "Explain data you want to extract"
+                            : "Select a command first..."
                     }
                     disabled={isInputDisabled}
                   />
                 </form>
               </div>
 
+              {/* Action buttons */}
               <div
                 className={`flex items-center justify-center gap-2 border-t border-r border-b border-accent px-2 rounded-r-lg ${darkMode === "dark"
-                  ? "bg-[#444444] text-white"
-                  : "bg-white text-black"
+                    ? "bg-[#444444] text-white"
+                    : "bg-white text-black"
                   }`}
               >
                 {runStatus === "active" && (
@@ -509,71 +532,21 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     <PauseCircleIcon className="h-6 w-6" />
                   </button>
                 )}
-                {
-                  <Tooltip title="Perform Action">
-                    <button
-                      type="button"
-                      onClick={handleAct}
-                      disabled={isInputDisabled}
-                      className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9 ${isInputDisabled
-                          ? "cursor-not-allowed"
-                          : "hover:bg-magenta-900"
-                        }`}
-                    >
-                      <CornerDownLeftIcon className="h-6 w-6 text-white" />
-                    </button>
-                  </Tooltip>
-                }
-                {
-                  <Tooltip title="Extract Data">
-                    <button
-                      type="button"
-                      onClick={() => setIsExtractingMenuVisible(true)}
-                      disabled={isInputDisabled}
-                      className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9 ${isInputDisabled
-                          ? "cursor-not-allowed"
-                          : "hover:bg-magenta-900"
-                        }`}
-                    >
-                      <ScanSearchIcon className="h-6 w-6 text-white" />
-                    </button>
-                  </Tooltip>
-                }
+                <Tooltip title="Perform Action">
+                  <button
+                    type="button"
+                    onClick={handleAct}
+                    disabled={isInputDisabled}
+                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9 ${isInputDisabled ? "cursor-not-allowed" : "hover:bg-magenta-900"
+                      }`}
+                  >
+                    <CornerDownLeftIcon className="h-6 w-6 text-white" />
+                  </button>
+                </Tooltip>
               </div>
             </div>
           </div>
         </div>
-        <Modal
-          title="Extract Data from the Current Page"
-          open={isExtractingMenuVisible}
-          onOk={() => {
-            if (!extractTerm.trim()) {
-              message.error("Please enter an extract term.");
-              return;
-            }
-            //onCreateWorkflow(newWorkflowName.trim());
-            setIsExtractingMenuVisible(false);
-            setExtractTerm("");
-            handleExtract(extractTerm);
-          }}
-          onCancel={() => {
-            setIsExtractingMenuVisible(false);
-            setExtractTerm("");
-          }}
-        >
-          <Input
-            placeholder="Enter term to extract"
-            value={extractTerm}
-            onChange={(e) => setExtractTerm(e.target.value)}
-          />
-        </Modal>
-
-        {error && !error.status && (
-          <div className="p-2 border rounded mt-4 text-orange-500 text-sm">
-            <ExclamationTriangleIcon className="h-5 text-orange-500 inline-block mr-2" />
-            {error.message}
-          </div>
-        )}
       </div>
     );
   }
