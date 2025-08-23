@@ -303,7 +303,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       }
     };
 
-    const handleAct = () => {
+    const handleExecute = () => {
       if (
         (textAreaRef.current?.value || fileList.length > 0) &&
         !isInputDisabled
@@ -315,7 +315,13 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
           .filter((file) => file.originFileObj)
           .map((file) => file.originFileObj as RcFile);
 
-        submitInternal("act \"" + query + "\"");
+        // Use selectedCommand dynamically
+        if (selectedCommand) {
+          submitInternal(`${selectedCommand} "${query}"`);
+          setSelectedCommand("act");
+        } else {
+          message.error("Please select a command before performing the action.");
+        }
       }
     };
 
@@ -328,7 +334,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
     const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
-        handleAct();
+        handleExecute();
       }
     };
 
@@ -471,13 +477,13 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     value={selectedCommand}
                     onChange={(e) => setSelectedCommand(e.target.value)}
                     disabled={isInputDisabled}
-                    className={`w-24 text-center text-lg border-l border-t border-b border-r border-accent p-2 rounded-l-lg ${darkMode === "dark"
-                        ? "bg-[#333333] text-white"
-                        : "bg-white text-black"
+                    className={`text-center border-l border-t border-b border-r border-accent p-2 rounded-l-lg ${darkMode === "dark"
+                      ? "bg-[#333333] text-white"
+                      : "bg-white text-black"
                       } ${isInputDisabled ? "cursor-not-allowed" : ""} focus:outline-none`}
                   >
                     <option value="" disabled>
-                      Command
+                      Command:
                     </option>
                     <option value="act">ACT</option>
                     <option value="goto">GOTO</option>
@@ -494,8 +500,8 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     onChange={handleTextChange}
                     onKeyDown={handleKeyDown}
                     className={`flex items-center w-full resize-none border-t border-b border-accent p-2 ${darkMode === "dark"
-                        ? "bg-[#444444] text-white"
-                        : "bg-white text-black"
+                      ? "bg-[#444444] text-white"
+                      : "bg-white text-black"
                       } ${isInputDisabled ? "cursor-not-allowed" : ""} focus:outline-none leading-[50px]`}
                     style={{
                       height: "50px",
@@ -519,8 +525,8 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
               {/* Action buttons */}
               <div
                 className={`flex items-center justify-center gap-2 border-t border-r border-b border-accent px-2 rounded-r-lg ${darkMode === "dark"
-                    ? "bg-[#444444] text-white"
-                    : "bg-white text-black"
+                  ? "bg-[#444444] text-white"
+                  : "bg-white text-black"
                   }`}
               >
                 {runStatus === "active" && (
@@ -535,7 +541,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                 <Tooltip title="Perform Action">
                   <button
                     type="button"
-                    onClick={handleAct}
+                    onClick={handleExecute}
                     disabled={isInputDisabled}
                     className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9 ${isInputDisabled ? "cursor-not-allowed" : "hover:bg-magenta-900"
                       }`}
