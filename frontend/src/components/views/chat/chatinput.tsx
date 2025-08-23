@@ -1,7 +1,4 @@
-import {
-  ExclamationTriangleIcon,
-  PauseCircleIcon,
-} from "@heroicons/react/24/outline";
+import { PauseCircleIcon, } from "@heroicons/react/24/outline";
 import * as React from "react";
 import { appContext } from "../../../hooks/provider";
 import { IStatus } from "../../types/app";
@@ -15,6 +12,7 @@ import {
   Input,
   Dropdown,
   Menu,
+  Spin,
 } from "antd";
 import type { UploadFile, UploadProps, RcFile } from "antd/es/upload/interface";
 import { FileTextIcon, ImageIcon, XIcon, CornerDownLeftIcon, ScanSearchIcon } from "lucide-react";
@@ -22,14 +20,6 @@ import { InputRequest, Workspace } from "../../types/datamodel";
 
 // Maximum file size in bytes (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-// Allowed file types
-const ALLOWED_FILE_TYPES = [
-  "text/plain",
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/svg+xml",
-];
 
 // Threshold for large text files (in characters)
 const LARGE_TEXT_THRESHOLD = 1500;
@@ -45,6 +35,7 @@ interface ChatInputProps {
   inputRequest?: InputRequest;
   onPause?: () => void;
   enable_upload?: boolean;
+  extractingResult?: string;
 }
 
 const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
@@ -58,12 +49,16 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       inputRequest,
       onPause,
       enable_upload = false,
+      extractingResult = "",
     },
     ref
   ) => {
     const [selectedCommand, setSelectedCommand] = React.useState<string>("act");
-    const [isExtractingMenuVisible, setIsExtractingMenuVisible] = React.useState(false);
-    const [extractTerm, setExtractTerm] = React.useState("");
+    const [isExtractingFlow, setIsExtractingFlow] = React.useState(false);
+    const [isExtractingModalOpen, setIsExtractingModalOpen] = React.useState(false);
+    const [extractModalMode, setExtractModalMode] = React.useState<"progress" | "result" | "canceled">("progress");
+    const [wasManuallyCanceled, setWasManuallyCanceled] = React.useState(false);
+    const [isStoppingExtract, setIsStoppingExtract] = React.useState(false);
     const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
     const textAreaDivRef = React.useRef<HTMLDivElement>(null);
     const [text, setText] = React.useState("");
@@ -310,24 +305,48 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       ) {
         const query = textAreaRef.current?.value || "";
 
-        // Get all valid RcFile objects
+        // Get all valid RcFile objects (left here for completeness)
         const files = fileList
           .filter((file) => file.originFileObj)
           .map((file) => file.originFileObj as RcFile);
 
-        // Use selectedCommand dynamically
-        if (selectedCommand) {
-          submitInternal(`${selectedCommand} "${query}"`);
-          setSelectedCommand("act");
-        } else {
+        if (!selectedCommand) {
           message.error("Please select a command before performing the action.");
+          return;
         }
+
+        // Reset cancel flags before running
+        setWasManuallyCanceled(false);
+        setIsStoppingExtract(false);
+
+        // If extract, open the progress modal before kicking off the run
+        if (selectedCommand === "extract") {
+          setIsExtractingFlow(true);
+          setExtractModalMode("progress");
+          setIsExtractingModalOpen(true);
+        }
+
+        // Execute the command
+        submitInternal(`${selectedCommand} "${query}"`);
+
+        // Reset command back to "act" for next time
+        setSelectedCommand("act");
       }
     };
 
-    const handleExtract = (term: string) => {
-      if (!isInputDisabled) {
-        submitInternal("extract \"" + term + "\"");
+    const handleStopExtract = async () => {
+      try {
+        setIsStoppingExtract(true);
+        // Prefer your existing pause/stop mechanism
+        // onExtractCancelled();
+        setWasManuallyCanceled(true);
+
+        // Option A: Immediately switch the modal to "canceled"
+        // (runStatus effect below will also settle the flow)
+        setExtractModalMode("canceled");
+        setIsExtractingFlow(false);
+      } finally {
+        setIsStoppingExtract(false);
       }
     };
 
@@ -345,69 +364,14 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       },
     }));
 
-    // Add helper function for file validation and addition
-    const handleFileValidationAndAdd = (file: File): boolean => {
-      // Check file size
-      if (file.size > MAX_FILE_SIZE) {
-        message.error(`${file.name} is too large. Maximum size is 5MB.`);
-        return false;
+    React.useEffect(() => {
+      if (!isExtractingFlow) return;
+
+      if (runStatus !== "active") {
+        setExtractModalMode(wasManuallyCanceled ? "canceled" : "result");
+        setIsExtractingFlow(false);
       }
-
-      // Check file type
-      if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-        notificationApi.warning({
-          message: <span className="text-sm">Unsupported File Type</span>,
-          description: (
-            <span className="text-sm text-secondary">
-              Please upload only text (.txt) or images (.jpg, .png, .gif, .svg)
-              files.
-            </span>
-          ),
-          duration: 8.5,
-        });
-        return false;
-      }
-
-      // Add valid file to fileList
-      const uploadFile: UploadFile = {
-        uid: `file-${Date.now()}-${file.name}`,
-        name: file.name,
-        status: "done",
-        size: file.size,
-        type: file.type,
-        originFileObj: file as RcFile,
-      };
-
-      setFileList((prev) => [...prev, uploadFile]);
-      return true;
-    };
-
-    // Add drag and drop handlers
-    const handleDragOver = (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!isInputDisabled && enable_upload) {
-        setDragOver(true);
-      }
-    };
-
-    const handleDragLeave = (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setDragOver(false);
-    };
-
-    // Update the drop handler to use the new helper function
-    const handleDrop = async (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setDragOver(false);
-
-      if (isInputDisabled || !enable_upload) return;
-
-      const droppedFiles = Array.from(e.dataTransfer.files);
-      droppedFiles.forEach(handleFileValidationAndAdd);
-    };
+    }, [runStatus, isExtractingFlow, wasManuallyCanceled]);
 
     React.useEffect(() => {
       const handleClickOutside = (e: MouseEvent) => {
@@ -455,12 +419,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
         {notificationContextHolder}
 
         <div className="mt-2 rounded shadow-sm flex">
-          <div
-            className={`flex w-full ${dragOver ? "opacity-50" : ""}`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
+          <div className={`flex w-full ${dragOver ? "opacity-50" : ""}`}>
             <div className="flex w-full">
               <div className="flex-1">
                 <form
@@ -553,6 +512,82 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
             </div>
           </div>
         </div>
+        <Modal
+          title={
+            extractModalMode === "progress"
+              ? "Extracting data"
+              : extractModalMode === "result"
+                ? "Extract result"
+                : "Extract canceled"
+          }
+          open={isExtractingModalOpen}
+          onCancel={() => {
+            // Allow closing only once we’re not in progress
+            if (extractModalMode !== "progress") {
+              setIsExtractingModalOpen(false);
+            }
+          }}
+          closable={extractModalMode !== "progress"}
+          footer={
+            extractModalMode === "progress"
+              ? [
+                <button
+                  key="stop"
+                  onClick={handleStopExtract}
+                  disabled={isStoppingExtract}
+                  className={`rounded px-4 py-2 text-white ${isStoppingExtract ? "bg-red-500" : "bg-red-600 hover:bg-red-700"}`}
+                >
+                  {isStoppingExtract ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Spin size="small" /> Stopping…
+                    </span>
+                  ) : (
+                    "Stop extract"
+                  )}
+                </button>,
+              ]
+              : [
+                <button
+                  key="close"
+                  className="bg-magenta-800 hover:bg-magenta-900 text-white rounded px-4 py-2"
+                  onClick={() => setIsExtractingModalOpen(false)}
+                >
+                  Close
+                </button>,
+              ]
+          }
+        >
+          {extractModalMode === "progress" ? (
+            <div className="flex items-center gap-3 py-4">
+              <Spin />
+              <span>Extracting is in progress. This may take a moment…</span>
+            </div>
+          ) : extractModalMode === "result" ? (
+            <div className="py-2">
+              {extractingResult ? (
+                <pre className={`${darkMode === "dark" ? "text-white" : "text-black"} whitespace-pre-wrap`}>
+                  {typeof extractingResult === "string" ? extractingResult : JSON.stringify(extractingResult, null, 2)}
+                </pre>
+              ) : (
+                <span>No extract result was returned.</span>
+              )}
+            </div>
+          ) : (
+            // canceled
+            <div className="py-2">
+              <span>The extract operation was canceled.</span>
+              {/* Optional: Show partial results if any */}
+              {extractingResult ? (
+                <>
+                  <div className="mt-3 font-semibold">Partial result:</div>
+                  <pre className={`${darkMode === "dark" ? "text-white" : "text-black"} whitespace-pre-wrap mt-1`}>
+                    {typeof extractingResult === "string" ? extractingResult : JSON.stringify(extractingResult, null, 2)}
+                  </pre>
+                </>
+              ) : null}
+            </div>
+          )}
+        </Modal>
       </div>
     );
   }

@@ -620,45 +620,6 @@ export default function ChatView({
     }
   };
 
-  const handleRegeneratePlan = async () => {
-    if (!currentRun || !activeSocketRef.current) {
-      handleError(new Error("WebSocket connection not available"));
-      return;
-    }
-
-    if (activeSocketRef.current.readyState !== WebSocket.OPEN) {
-      handleError(new Error("WebSocket connection not available"));
-      return;
-    }
-
-    try {
-      // Check if the last message is a plan
-      const lastMessage = currentRun.messages.slice(-1)[0];
-      var planString = "";
-      if (
-        lastMessage &&
-        messageUtils.isPlanMessage(lastMessage.config.metadata)
-      ) {
-        planString = convertPlanStepsToJsonString(updatedPlan);
-      }
-
-      const responseJson = {
-        content: "Regenerate a plan that improves on the current plan",
-        ...(planString !== "" && { plan: planString }),
-      };
-      const responseString = JSON.stringify(responseJson);
-
-      activeSocketRef.current.send(
-        JSON.stringify({
-          type: "input_response",
-          response: responseString,
-        })
-      );
-    } catch (error) {
-      handleError(error);
-    }
-  };
-
   const handleCancel = async () => {
     if (!activeSocketRef.current || !currentRun) return;
 
@@ -861,11 +822,6 @@ export default function ChatView({
   const lastMessage = currentRun?.messages.slice(-1)[0];
   const isPlanMessage =
     lastMessage && messageUtils.isPlanMessage(lastMessage.config.metadata);
-
-  // Update the handler to be more specific about its purpose
-  const handlePlanUpdate: PlanUpdateHandler = (plan: IPlanStep[]) => {
-    setUpdatedPlan(plan);
-  };
 
   React.useEffect(() => {
     if (localPlan && !planProcessed && visible && session?.id && currentRun) {
@@ -1138,7 +1094,6 @@ export default function ChatView({
                   <RunView
                     run={currentRun}
                     onPause={handlePause}
-                    onRegeneratePlan={handleRegeneratePlan}
                     isDetailViewerMinimized={isDetailViewerMinimized}
                     setIsDetailViewerMinimized={setIsDetailViewerMinimized}
                     showDetailViewer={showDetailViewer}

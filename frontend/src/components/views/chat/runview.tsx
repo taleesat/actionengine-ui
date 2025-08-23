@@ -1,14 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Globe2 } from "lucide-react";
 import { Run, Message, Workspace, Workflow, WorkflowStep } from "../../types/datamodel";
-import { RenderMessage, messageUtils } from "./rendermessage";
-import { getStatusIcon } from "../statusicon";
+import { messageUtils } from "./rendermessage";
 import DetailViewer from "./detail_viewer";
 import { IPlanStep, IPlan } from "../../types/plan";
-import ApprovalButtons from "./approval_buttons";
 import ChatInput from "./chatinput";
 import { IStatus } from "../../types/app";
-import { RcFile } from "antd/es/upload";
 import { Modal, Button, Collapse, Checkbox, Input, message } from "antd";
 
 import WorkspaceDisplay from "./workspacedisplay";
@@ -18,7 +15,6 @@ const DETAIL_VIEWER_CONTAINER_ID = "detail-viewer-container";
 interface RunViewProps {
   run: Run;
   onPause?: () => void;
-  onRegeneratePlan?: () => void;
   isDetailViewerMinimized: boolean;
   setIsDetailViewerMinimized: (minimized: boolean) => void;
   showDetailViewer: boolean;
@@ -38,7 +34,6 @@ interface RunViewProps {
 const RunView: React.FC<RunViewProps> = ({
   run,
   onPause,
-  onRegeneratePlan,
   isDetailViewerMinimized,
   setIsDetailViewerMinimized,
   showDetailViewer,
@@ -599,6 +594,7 @@ const RunView: React.FC<RunViewProps> = ({
             onPause={onPause}
             enable_upload={enable_upload}
             inputRequest={run.input_request}
+            extractingResult="aaa"
           />
         </div>
       </div>
