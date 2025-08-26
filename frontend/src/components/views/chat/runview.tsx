@@ -28,6 +28,7 @@ interface RunViewProps {
   workspace: Workspace | null;
   currentWorkflow: string | null;
   recordStatus: string | null; // "off" | "on"
+  extractingResult: string | null;
   enable_upload?: boolean;
 }
 
@@ -47,6 +48,7 @@ const RunView: React.FC<RunViewProps> = ({
   workspace,
   currentWorkflow,
   recordStatus,
+  extractingResult,
   enable_upload = false,
 }) => {
   const threadContainerRef = useRef<HTMLDivElement | null>(null);
@@ -594,7 +596,7 @@ const RunView: React.FC<RunViewProps> = ({
             onPause={onPause}
             enable_upload={enable_upload}
             inputRequest={run.input_request}
-            extractingResult="aaa"
+            extractingResult={extractingResult}
           />
         </div>
       </div>

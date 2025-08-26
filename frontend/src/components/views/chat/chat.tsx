@@ -17,6 +17,7 @@ import {
   RecordMessageConfig,
   Workspace,
   WorkspaceMessageConfig,
+  ExtractingResultMessageConfig
 } from "../../types/datamodel";
 import { appContext } from "../../../hooks/provider";
 import { sessionAPI, settingsAPI } from "../api";
@@ -135,6 +136,8 @@ export default function ChatView({
   // Add state for workspace and workflow
   const [workspace, setWorkspace] = React.useState<Workspace | null>(null);
   const [currentWorkflow, setCurrentWorkflow] = React.useState<string | null>(null);
+
+  const [extractingResult, setExtractingResult] = React.useState<string | null>(null);
 
   const [recordStatus, setRecordStatus] = React.useState<string | null>("off");
 
@@ -374,6 +377,12 @@ export default function ChatView({
           console.log("Workspace message received:", workspaceMessage);
           setWorkspace(workspaceMessage.workspace);
           setCurrentWorkflow(workspaceMessage.current_workflow);
+          return current;
+
+        case "extracting_result":
+          const extractingResultMessage = message.data as ExtractingResultMessageConfig;
+          console.log("Extracting result message received:", extractingResultMessage);
+          setExtractingResult(extractingResultMessage.result);
           return current;
 
         case "input_request":
@@ -1106,6 +1115,7 @@ export default function ChatView({
                     workspace={workspace}
                     currentWorkflow={currentWorkflow}
                     recordStatus={recordStatus}
+                    extractingResult={extractingResult}
                     enable_upload={false} // Or true if needed
                   />
                 )}

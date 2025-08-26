@@ -45,6 +45,17 @@ from ...utils.utils import compress_state
 
 logger = logging.getLogger(__name__)
 
+class ExtractingResultMessage(BaseMessage):
+    """A message containing extracted result information."""
+
+    result: str
+    "The extracted data from the task"
+
+    type: Literal["ExtractingResultMessage"] = "ExtractingResultMessage"
+
+    def to_text(self) -> str:
+        return self.result
+
 class WorkspaceMessage(BaseMessage):
     """A message containing workspace information."""
 
@@ -183,6 +194,13 @@ class WebSocketManager:
                     content=execution_result["result"]["content"],
                 )
                 final_result = await self.send_format_message(run_id, download_event)
+            elif action == "extract":
+                result = execution_result["extracting_result"]
+                extracting_result_message = ExtractingResultMessage(
+                    source="Orchestrator",
+                    result=result,
+                )
+                final_result = await self.send_format_message(run_id, extracting_result_message)
             elif action == "print_workspace":
                 workspace_message = TextMessage(
                     source="Orchestrator",
@@ -825,6 +843,9 @@ class WebSocketManager:
 
             elif isinstance(message, WorkspaceMessage):
                 return {"type": "workspace", "data": message.model_dump()}
+
+            elif isinstance(message, ExtractingResultMessage):
+                return {"type": "extracting_result", "data": message.model_dump()}
 
             elif isinstance(message, DownloadEvent):
                 return {"type": "download", "data": message.model_dump()}

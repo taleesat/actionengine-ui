@@ -68,6 +68,10 @@ export interface WorkspaceMessageConfig extends BaseMessageConfig {
   current_workflow: string;
 }
 
+export interface ExtractingResultMessageConfig extends BaseMessageConfig {
+  result: any;
+}
+
 // Message type unions (matching Python type aliases)
 export type InnerMessageConfig =
   | ToolCallMessageConfig
@@ -88,7 +92,8 @@ export type AgentMessageConfig =
   | ToolCallResultMessageConfig
   | DownloadMessageConfig
   | RecordMessageConfig
-  | WorkspaceMessageConfig;
+  | WorkspaceMessageConfig
+  | ExtractingResultMessageConfig;
 
 // Database model
 export interface DBModel {
@@ -130,7 +135,8 @@ export interface WebSocketMessage {
     | "system"
     | "download"
     | "record"
-    | "workspace";
+    | "workspace"
+    | "extracting_result";
   data?: AgentMessageConfig | TaskResult;
   input_type?: InputType;
   status?: RunStatus;

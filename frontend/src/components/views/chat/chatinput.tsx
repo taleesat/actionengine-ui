@@ -35,7 +35,7 @@ interface ChatInputProps {
   inputRequest?: InputRequest;
   onPause?: () => void;
   enable_upload?: boolean;
-  extractingResult?: string;
+  extractingResult: string | null;
 }
 
 const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
@@ -49,16 +49,13 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       inputRequest,
       onPause,
       enable_upload = false,
-      extractingResult = "",
+      extractingResult
     },
     ref
   ) => {
     const [selectedCommand, setSelectedCommand] = React.useState<string>("act");
-    const [isExtractingFlow, setIsExtractingFlow] = React.useState(false);
     const [isExtractingModalOpen, setIsExtractingModalOpen] = React.useState(false);
-    const [extractModalMode, setExtractModalMode] = React.useState<"progress" | "result" | "canceled">("progress");
-    const [wasManuallyCanceled, setWasManuallyCanceled] = React.useState(false);
-    const [isStoppingExtract, setIsStoppingExtract] = React.useState(false);
+    const [currentExtractingResult, setCurrentExtractingResult] = React.useState<string | null>(null);
     const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
     const textAreaDivRef = React.useRef<HTMLDivElement>(null);
     const [text, setText] = React.useState("");
@@ -315,14 +312,9 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
           return;
         }
 
-        // Reset cancel flags before running
-        setWasManuallyCanceled(false);
-        setIsStoppingExtract(false);
-
         // If extract, open the progress modal before kicking off the run
         if (selectedCommand === "extract") {
-          setIsExtractingFlow(true);
-          setExtractModalMode("progress");
+          setCurrentExtractingResult(null)
           setIsExtractingModalOpen(true);
         }
 
@@ -330,23 +322,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
         submitInternal(`${selectedCommand} "${query}"`);
 
         // Reset command back to "act" for next time
-        setSelectedCommand("act");
-      }
-    };
-
-    const handleStopExtract = async () => {
-      try {
-        setIsStoppingExtract(true);
-        // Prefer your existing pause/stop mechanism
-        // onExtractCancelled();
-        setWasManuallyCanceled(true);
-
-        // Option A: Immediately switch the modal to "canceled"
-        // (runStatus effect below will also settle the flow)
-        setExtractModalMode("canceled");
-        setIsExtractingFlow(false);
-      } finally {
-        setIsStoppingExtract(false);
+        //setSelectedCommand("act");
       }
     };
 
@@ -365,13 +341,8 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
     }));
 
     React.useEffect(() => {
-      if (!isExtractingFlow) return;
-
-      if (runStatus !== "active") {
-        setExtractModalMode(wasManuallyCanceled ? "canceled" : "result");
-        setIsExtractingFlow(false);
-      }
-    }, [runStatus, isExtractingFlow, wasManuallyCanceled]);
+      setCurrentExtractingResult(extractingResult);
+    }, [extractingResult]);
 
     React.useEffect(() => {
       const handleClickOutside = (e: MouseEvent) => {
@@ -513,40 +484,17 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
           </div>
         </div>
         <Modal
-          title={
-            extractModalMode === "progress"
-              ? "Extracting data"
-              : extractModalMode === "result"
-                ? "Extract result"
-                : "Extract canceled"
-          }
+          title={currentExtractingResult == null ? "Extracting data" : "Result"}
           open={isExtractingModalOpen}
           onCancel={() => {
-            // Allow closing only once we’re not in progress
-            if (extractModalMode !== "progress") {
+            // Allow closing only when we’re showing the result
+            if (currentExtractingResult != null) {
               setIsExtractingModalOpen(false);
             }
           }}
-          closable={extractModalMode !== "progress"}
           footer={
-            extractModalMode === "progress"
+            currentExtractingResult != null
               ? [
-                <button
-                  key="stop"
-                  onClick={handleStopExtract}
-                  disabled={isStoppingExtract}
-                  className={`rounded px-4 py-2 text-white ${isStoppingExtract ? "bg-red-500" : "bg-red-600 hover:bg-red-700"}`}
-                >
-                  {isStoppingExtract ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Spin size="small" /> Stopping…
-                    </span>
-                  ) : (
-                    "Stop extract"
-                  )}
-                </button>,
-              ]
-              : [
                 <button
                   key="close"
                   className="bg-magenta-800 hover:bg-magenta-900 text-white rounded px-4 py-2"
@@ -555,36 +503,25 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                   Close
                 </button>,
               ]
+              : null
           }
+          closable={currentExtractingResult != null}
         >
-          {extractModalMode === "progress" ? (
+          {currentExtractingResult == null ? (
             <div className="flex items-center gap-3 py-4">
               <Spin />
               <span>Extracting is in progress. This may take a moment…</span>
             </div>
-          ) : extractModalMode === "result" ? (
+          ) : (
             <div className="py-2">
               {extractingResult ? (
+                // Render as preformatted text; adjust to your result shape
                 <pre className={`${darkMode === "dark" ? "text-white" : "text-black"} whitespace-pre-wrap`}>
                   {typeof extractingResult === "string" ? extractingResult : JSON.stringify(extractingResult, null, 2)}
                 </pre>
               ) : (
                 <span>No extract result was returned.</span>
               )}
-            </div>
-          ) : (
-            // canceled
-            <div className="py-2">
-              <span>The extract operation was canceled.</span>
-              {/* Optional: Show partial results if any */}
-              {extractingResult ? (
-                <>
-                  <div className="mt-3 font-semibold">Partial result:</div>
-                  <pre className={`${darkMode === "dark" ? "text-white" : "text-black"} whitespace-pre-wrap mt-1`}>
-                    {typeof extractingResult === "string" ? extractingResult : JSON.stringify(extractingResult, null, 2)}
-                  </pre>
-                </>
-              ) : null}
             </div>
           )}
         </Modal>
