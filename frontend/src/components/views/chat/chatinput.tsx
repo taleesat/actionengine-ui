@@ -55,6 +55,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
   ) => {
     const [selectedCommand, setSelectedCommand] = React.useState<string>("act");
     const [isExtractingModalOpen, setIsExtractingModalOpen] = React.useState(false);
+    const [currentExtractingTerm, setCurrentExtractingTerm] = React.useState<string | null>(null);
     const [currentExtractingResult, setCurrentExtractingResult] = React.useState<string | null>(null);
     const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
     const textAreaDivRef = React.useRef<HTMLDivElement>(null);
@@ -250,16 +251,10 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
 
     const handleSubmit = () => {
       if (
-        (textAreaRef.current?.value || fileList.length > 0) &&
+        (textAreaRef.current?.value) &&
         !isInputDisabled
       ) {
         const query = textAreaRef.current?.value || "";
-
-        // Get all valid RcFile objects
-        const files = fileList
-          .filter((file) => file.originFileObj)
-          .map((file) => file.originFileObj as RcFile);
-
         submitInternal(query);
       }
     };
@@ -297,15 +292,10 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
 
     const handleExecute = () => {
       if (
-        (textAreaRef.current?.value || fileList.length > 0) &&
+        (textAreaRef.current?.value) &&
         !isInputDisabled
       ) {
         const query = textAreaRef.current?.value || "";
-
-        // Get all valid RcFile objects (left here for completeness)
-        const files = fileList
-          .filter((file) => file.originFileObj)
-          .map((file) => file.originFileObj as RcFile);
 
         if (!selectedCommand) {
           message.error("Please select a command before performing the action.");
@@ -315,6 +305,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
         // If extract, open the progress modal before kicking off the run
         if (selectedCommand === "extract") {
           setCurrentExtractingResult(null)
+          setCurrentExtractingTerm(query);
           setIsExtractingModalOpen(true);
         }
 
@@ -325,6 +316,20 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
         //setSelectedCommand("act");
       }
     };
+
+    const handleReExtract = (term: string) => {
+      if (!isInputDisabled) {
+        setCurrentExtractingResult(null)
+        setCurrentExtractingTerm(term);
+        submitInternal(`extract "${term}"`);
+      }
+    };
+
+    const handleGenerateCode = () => {
+      if (!isInputDisabled) {
+        submitInternal("gencode");
+      }
+    }
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Enter" && !event.shiftKey) {
@@ -486,38 +491,64 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
         <Modal
           title={currentExtractingResult == null ? "Extracting data" : "Result"}
           open={isExtractingModalOpen}
+          width={800}
           onCancel={() => {
-            // Allow closing only when we’re showing the result
+            // Allow closing only when we're showing the result
             if (currentExtractingResult != null) {
               setIsExtractingModalOpen(false);
             }
           }}
           footer={
-            currentExtractingResult != null
-              ? [
+            currentExtractingResult != null ? (
+              <div className="flex flex-col sm:flex-row gap-3 items-center text-black w-full">
+                {/* 1) Text box for new extract term */}
+                <input
+                  type="text"
+                  placeholder="Enter new extract term"
+                  value={currentExtractingTerm != null ? currentExtractingTerm : ""}
+                  onChange={(e) => setCurrentExtractingTerm(e.target.value)}
+                  className="border rounded px-3 py-2 flex-1"
+                />
+
+                {/* 2) Re-extract button */}
                 <button
-                  key="close"
                   className="bg-magenta-800 hover:bg-magenta-900 text-white rounded px-4 py-2"
-                  onClick={() => setIsExtractingModalOpen(false)}
+                  onClick={() => {
+                    if (currentExtractingTerm != null && currentExtractingTerm.trim()) {
+                      handleReExtract(currentExtractingTerm);
+                    }
+                  }}
                 >
-                  Close
-                </button>,
-              ]
-              : null
+                  Re-Extract
+                </button>
+
+                {/* 3) Generate Extracting Code button */}
+                <button
+                  className="bg-magenta-800 hover:bg-magenta-900 text-white rounded px-4 py-2"
+                  onClick={() => {
+                    handleGenerateCode();
+                  }}
+                >
+                  Generate Code
+                </button>
+
+              </div>
+            ) : null
           }
+
           closable={currentExtractingResult != null}
         >
           {currentExtractingResult == null ? (
             <div className="flex items-center gap-3 py-4">
               <Spin />
-              <span>Extracting is in progress. This may take a moment…</span>
+              <span>Extracting "<em>{currentExtractingTerm}</em>" from the current page. <br />This may take a moment…</span>
             </div>
           ) : (
             <div className="py-2">
-              {extractingResult ? (
+              {currentExtractingResult ? (
                 // Render as preformatted text; adjust to your result shape
                 <pre className={`${darkMode === "dark" ? "text-white" : "text-black"} whitespace-pre-wrap`}>
-                  {typeof extractingResult === "string" ? extractingResult : JSON.stringify(extractingResult, null, 2)}
+                  {typeof currentExtractingResult === "string" ? currentExtractingResult : JSON.stringify(currentExtractingResult, null, 2)}
                 </pre>
               ) : (
                 <span>No extract result was returned.</span>
