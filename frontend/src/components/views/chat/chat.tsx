@@ -486,7 +486,6 @@ export default function ChatView({
       }
     }
 
-    console.log("run:", run);
     if (run.status === "created") {
       setError(null);
       setNoMessagesYet(false);
@@ -533,7 +532,6 @@ export default function ChatView({
       run.status = "awaiting_input";
       onSessionNameChange(sessionData);
     }
-    console.log("after run:", run);
     activeSocketRef.current?.send(
       JSON.stringify({
         type: "command",
