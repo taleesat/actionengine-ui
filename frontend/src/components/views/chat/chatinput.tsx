@@ -15,7 +15,7 @@ import {
   Spin,
 } from "antd";
 import type { UploadFile, UploadProps, RcFile } from "antd/es/upload/interface";
-import { FileTextIcon, ImageIcon, XIcon, CornerDownLeftIcon, ScanSearchIcon } from "lucide-react";
+import { CornerDownLeftIcon } from "lucide-react";
 import { InputRequest, Workspace } from "../../types/datamodel";
 
 // Maximum file size in bytes (5MB)
@@ -478,8 +478,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     type="button"
                     onClick={handleExecute}
                     disabled={isInputDisabled}
-                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9 ${isInputDisabled ? "cursor-not-allowed" : "hover:bg-magenta-900"
-                      }`}
+                    className={`bg-magenta-800 transition duration-300 rounded flex justify-center items-center w-11 h-9 ${isInputDisabled ? "cursor-not-allowed" : "hover:bg-magenta-900"}`}
                   >
                     <CornerDownLeftIcon className="h-6 w-6 text-white" />
                   </button>
@@ -499,12 +498,13 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
             }
           }}
           footer={
-            currentExtractingResult != null ? (
+            !isInputDisabled ? (
               <div className="flex flex-col sm:flex-row gap-3 items-center text-black w-full">
                 {/* 1) Text box for new extract term */}
                 <input
                   type="text"
                   placeholder="Enter new extract term"
+                  disabled={isInputDisabled}
                   value={currentExtractingTerm != null ? currentExtractingTerm : ""}
                   onChange={(e) => setCurrentExtractingTerm(e.target.value)}
                   className="border rounded px-3 py-2 flex-1"
@@ -513,6 +513,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                 {/* 2) Re-extract button */}
                 <button
                   className="bg-magenta-800 hover:bg-magenta-900 text-white rounded px-4 py-2"
+                  disabled={isInputDisabled}
                   onClick={() => {
                     if (currentExtractingTerm != null && currentExtractingTerm.trim()) {
                       handleReExtract(currentExtractingTerm);
@@ -525,6 +526,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                 {/* 3) Generate Extracting Code button */}
                 <button
                   className="bg-magenta-800 hover:bg-magenta-900 text-white rounded px-4 py-2"
+                  disabled={isInputDisabled}
                   onClick={() => {
                     handleGenerateCode();
                   }}
@@ -538,11 +540,18 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
 
           closable={currentExtractingResult != null}
         >
-          {currentExtractingResult == null ? (
-            <div className="flex items-center gap-3 py-4">
-              <Spin />
-              <span>Extracting "<em>{currentExtractingTerm}</em>" from the current page. <br />This may take a moment…</span>
-            </div>
+          {isInputDisabled ? (currentExtractingResult == null ?
+            (
+              <div className="flex items-center gap-3 py-4">
+                <Spin />
+                <span>Extracting "<em>{currentExtractingTerm}</em>" from the current page. <br />This may take a moment…</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 py-4">
+                <Spin />
+                <span>Generating extraction code for "<em>{currentExtractingTerm}</em>". <br />This may take a moment…</span>
+              </div>
+            )
           ) : (
             <div className="py-2">
               {currentExtractingResult ? (
