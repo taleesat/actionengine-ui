@@ -539,10 +539,15 @@ const RunView: React.FC<RunViewProps> = ({
     onExecuteCommand?.("run " + workflow);
   }
 
-  const onDownloadWorkspace = () => {
+  const onDownloadWorkspace = (format: string, generalized: boolean) => {
     const guid = uuidv4();
-    const file_name = `${guid}/workspace.json`
-    onExecuteCommand?.(`save_as ${file_name}`);
+    let filename = guid;
+    if (format === "python") {
+      filename = `${guid}/workspace.py`;
+    } else if (format === "json") {
+      filename = `${guid}/workspace.json`;
+    }
+    onExecuteCommand?.(`save_as ${filename} ${generalized} ${format}`);
   };
 
   const onToggleRecording = () => {

@@ -13,6 +13,7 @@ import {
   Modal,
   Input,
   Divider,
+  Radio,
   message
 } from "antd";
 
@@ -35,7 +36,7 @@ interface WorkspaceDisplayProps {
   onSwitchWorkflow: (name: string) => void;
   onCreateWorkflow: (name: string) => void;
   onRunWorkflow: (workflow: string) => void;
-  onDownloadWorkspace: () => void;
+  onDownloadWorkspace: (format: string, generalized: boolean) => void;
 }
 
 const WorkspaceDisplay: React.FC<WorkspaceDisplayProps> = ({
@@ -54,14 +55,16 @@ const WorkspaceDisplay: React.FC<WorkspaceDisplayProps> = ({
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [newWorkflowName, setNewWorkflowName] = useState("");
 
+  const [isDownloadModalVisible, setIsDownloadModalVisible] = useState(false);
+  const [downloadFormat, setDownloadFormat] = useState<"json" | "python" | "mcp">("json");
+  const [isGeneralized, setIsGeneralized] = useState(false);
+
   useEffect(() => {
     const wf =
       workspace?.workflows.find((w) => w.name === currentWorkflow) ||
       workspace?.workflows[0];
     setSelectedWorkflow(wf || null);
   }, [workspace, currentWorkflow]);
-
-
 
   const handleWorkflowSelect = (name: string) => {
     const wf = workspace?.workflows.find((w) => w.name === name);
@@ -78,9 +81,18 @@ const WorkspaceDisplay: React.FC<WorkspaceDisplayProps> = ({
     );
   };
 
-  const downloadWorkspace = () => {
-    onDownloadWorkspace();
+  const openDownloadModal = () => {
+    setIsDownloadModalVisible(true);
   };
+
+  const handleDownload = () => {
+    // Pass selected options to parent callback
+    onDownloadWorkspace(downloadFormat, isGeneralized);
+    setIsDownloadModalVisible(false);
+    var format = downloadFormat == "json" ? "JSON" : downloadFormat == "python" ? "Python" : "MCP";
+    message.success(`Downloading workspace as ${format}${isGeneralized ? " (generalized)" : ""}`);
+  };
+
 
   const deleteSelectedSteps = () => {
     if (!selectedWorkflow) return;
@@ -120,7 +132,7 @@ const WorkspaceDisplay: React.FC<WorkspaceDisplayProps> = ({
         <Button
           type="primary"
           icon={<DownloadOutlined />}
-          onClick={downloadWorkspace}
+          onClick={openDownloadModal}
         >
           Download Workspace
         </Button>
@@ -231,6 +243,32 @@ const WorkspaceDisplay: React.FC<WorkspaceDisplayProps> = ({
           value={newWorkflowName}
           onChange={(e) => setNewWorkflowName(e.target.value)}
         />
+      </Modal>
+      <Modal
+        title="Download Workspace"
+        open={isDownloadModalVisible}
+        onOk={handleDownload}
+        onCancel={() => setIsDownloadModalVisible(false)}
+      >
+        <Typography.Text>Select format:</Typography.Text>
+        <Radio.Group
+          onChange={(e) => setDownloadFormat(e.target.value)}
+          value={downloadFormat}
+          style={{ display: "block", marginTop: 8 }}
+        >
+          <Radio value="json">JSON</Radio>
+          <Radio value="python">Python</Radio>
+          <Radio value="mcp">MCP</Radio>
+        </Radio.Group>
+
+        <Divider />
+
+        <Checkbox
+          checked={isGeneralized}
+          onChange={(e) => setIsGeneralized(e.target.checked)}
+        >
+          Generalize workspace
+        </Checkbox>
       </Modal>
     </Layout>
   );

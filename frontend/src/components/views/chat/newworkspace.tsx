@@ -74,7 +74,6 @@ const NewWorkspaceForm: React.FC<Props> = ({ onNewWorkspace, onLoadWorkspace }) 
             name="websiteUrl"
             rules={[
               { required: true, message: "Please enter your website URL" },
-              { type: "url", message: "Please enter a valid URL (include http/https)" },
             ]}
           >
             <Input placeholder="Website URL (e.g., https://microsoft.com)" style={{ background: "#222730", color: "#fff" }} />
