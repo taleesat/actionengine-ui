@@ -354,16 +354,29 @@ export default function ChatView({
 
         case "download":
           var agent_message_config = message.data as DownloadMessageConfig;
-          const data = agent_message_config?.content;
-          const blob = new Blob([data as string], { type: "text/json" });
+          const base64Data = agent_message_config?.content;
+
+          // Decode Base64 to binary
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+
+          // Create a Blob for ZIP
+          const blob = new Blob([byteArray], { type: "application/zip" });
+
+          // Create a download link
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
-          a.download = "workspace.json";
+          a.download = "workspace.zip"; // Use .zip since it's a ZIP file
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
+
           return current;
 
         case "record":
@@ -556,20 +569,20 @@ export default function ChatView({
     await executeCommand("load_workspace \"" + content + "\"");
 
     const reader = new FileReader();
-      reader.onload = (event) => {
-        const content = event.target?.result as string;
-        if (content) {
-          executeCommandAndUpdate("loadj " + JSON.stringify(content));
-        } else {
-          console.error("Failed to read file content.");
-        }
-      };
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        executeCommandAndUpdate("loadj " + JSON.stringify(content));
+      } else {
+        console.error("Failed to read file content.");
+      }
+    };
 
-      reader.onerror = () => {
-        console.error("Error reading file:", reader.error);
-      };
+    reader.onerror = () => {
+      console.error("Error reading file:", reader.error);
+    };
 
-      reader.readAsText(file);
+    reader.readAsText(file);
   };
 
   const handleInputResponse = async (

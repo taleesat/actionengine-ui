@@ -1,3 +1,8 @@
+import os
+import zipfile
+import io
+import base64
+import shutil
 import asyncio
 import logging
 import traceback
@@ -44,6 +49,25 @@ from ...teammanager import TeamManager
 from ...utils.utils import compress_state
 
 logger = logging.getLogger(__name__)
+
+# Example usage:
+# zipped_content = zip_files_in_memory('/path/to/directory')
+# Now you can send zipped_content.getvalue() over a network or save it later
+def zip_files_in_memory(directory_path):
+    # Create an in-memory bytes buffer
+    memory_zip = io.BytesIO()
+    
+    # Create a ZipFile object using the buffer
+    with zipfile.ZipFile(memory_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(directory_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, start=directory_path)
+                zipf.write(file_path, arcname)
+    
+    # Move the pointer to the beginning of the buffer
+    memory_zip.seek(0)
+    return memory_zip
 
 class ExtractingResultMessage(BaseMessage):
     """A message containing extracted result information."""
@@ -189,11 +213,16 @@ class WebSocketManager:
         if execution_result:
             action = execution_result.get("action", None)
             if action == "save":
-                download_event = DownloadEvent(
-                    source="Orchestrator",
-                    content=execution_result["result"]["content"],
-                )
-                final_result = await self.send_format_message(run_id, download_event)
+                directory_path = execution_result["result"]["directory_path"]
+                if os.path.exists(directory_path) and os.path.isdir(directory_path):
+                    zipped_content = zip_files_in_memory(directory_path)
+                    encoded_zip = base64.b64encode(zipped_content.getvalue()).decode('utf-8')
+                    download_event = DownloadEvent(
+                        source="Orchestrator",
+                        content=encoded_zip,
+                    )
+                    final_result = await self.send_format_message(run_id, download_event)
+                    shutil.rmtree(directory_path)
             elif action == "extract":
                 result = execution_result["extracting_result"]
                 extracting_result_message = ExtractingResultMessage(

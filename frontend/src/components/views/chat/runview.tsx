@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import React, { useState, useRef, useEffect } from "react";
 import { Globe2 } from "lucide-react";
 import { Run, Message, Workspace, Workflow, WorkflowStep } from "../../types/datamodel";
@@ -539,7 +540,9 @@ const RunView: React.FC<RunViewProps> = ({
   }
 
   const onDownloadWorkspace = () => {
-    onExecuteCommand?.("save_as workspace.json");
+    const guid = uuidv4();
+    const file_name = `${guid}/workspace.json`
+    onExecuteCommand?.(`save_as ${file_name}`);
   };
 
   const onToggleRecording = () => {
