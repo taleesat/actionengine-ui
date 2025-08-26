@@ -32,6 +32,8 @@ const { Title, Paragraph } = Typography;
 interface WorkspaceDisplayProps {
   workspace: Workspace | null;
   currentWorkflow: string | null;
+  runStatus?: string;
+  disabled?: boolean;
   onDeleteSteps: (steps: string[]) => void;
   onSwitchWorkflow: (name: string) => void;
   onCreateWorkflow: (name: string) => void;
@@ -42,6 +44,8 @@ interface WorkspaceDisplayProps {
 const WorkspaceDisplay: React.FC<WorkspaceDisplayProps> = ({
   workspace,
   currentWorkflow,
+  runStatus,
+  disabled = false,
   onDeleteSteps,
   onSwitchWorkflow,
   onCreateWorkflow,
@@ -58,6 +62,11 @@ const WorkspaceDisplay: React.FC<WorkspaceDisplayProps> = ({
   const [isDownloadModalVisible, setIsDownloadModalVisible] = useState(false);
   const [downloadFormat, setDownloadFormat] = useState<"json" | "python" | "mcp">("json");
   const [isGeneralized, setIsGeneralized] = useState(false);
+
+  const isInputDisabled =
+    disabled ||
+    runStatus === "active" ||
+    runStatus === "pausing";
 
   useEffect(() => {
     const wf =
@@ -191,6 +200,7 @@ const WorkspaceDisplay: React.FC<WorkspaceDisplayProps> = ({
                     <Checkbox
                       checked={selectedSteps.includes(index)}
                       onChange={() => toggleStepSelection(index)}
+                      disabled={isInputDisabled}
                     >
                       <strong>{step.method}</strong> - {step.description}
                     </Checkbox>
@@ -204,7 +214,7 @@ const WorkspaceDisplay: React.FC<WorkspaceDisplayProps> = ({
                   danger
                   icon={<DeleteOutlined />}
                   onClick={deleteSelectedSteps}
-                  disabled={selectedSteps.length === 0}
+                  disabled={isInputDisabled || selectedSteps.length === 0}
                 >
                   Delete Selected Steps
                 </Button>
@@ -212,6 +222,7 @@ const WorkspaceDisplay: React.FC<WorkspaceDisplayProps> = ({
                   type="primary"
                   icon={<PlayCircleOutlined />}
                   onClick={runWorkflow}
+                  disabled={isInputDisabled}
                 >
                   Run Workflow
                 </Button>

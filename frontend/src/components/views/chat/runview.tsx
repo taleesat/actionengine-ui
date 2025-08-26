@@ -575,6 +575,7 @@ const RunView: React.FC<RunViewProps> = ({
           <WorkspaceDisplay
             workspace={workspace}
             currentWorkflow={currentWorkflow}
+            runStatus={run.status}
             onDeleteSteps={onDeleteSteps}
             onSwitchWorkflow={onSwitchWorkflow}
             onCreateWorkflow={onCreateWorkflow}
