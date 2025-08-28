@@ -80,6 +80,8 @@ async def run_websocket(
             return stagehand_config
 
         mcpstudio_shell = AIRecorderShell(get_stagehand_config=get_custom_stagehand_config, output=shell_output)
+        await mcpstudio_shell._ensure_ai_ready()
+        mcpstudio_shell.ai_recorder.set_show_recording_button(False)
 
         deployment = os.getenv("DEPLOYMENT", "local")
         if deployment.lower() == "msrhub":
