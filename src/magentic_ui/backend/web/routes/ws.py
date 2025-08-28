@@ -27,8 +27,12 @@ def get_stagehand_config() -> StagehandConfig:
         AzureCliCredential(),
         os.getenv("AZURE_SCOPE")
     )
+    deployment = os.getenv("DEPLOYMENT", "local")
+    modelname = os.getenv("AZURE_OPENAI_TEXT_MODEL")
+    if deployment.lower() == "msrhub":
+        modelname = f"azure/{modelname}"
     config = StagehandConfig(
-        model_name=os.getenv("AZURE_OPENAI_TEXT_MODEL"),
+        model_name=modelname,
         model_api_base=os.getenv("AZURE_OPENAI_ENDPOINT"),
         model_api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
         azure_ad_token_provider=azure_ad_token_provider
@@ -97,22 +101,15 @@ async def run_websocket(
 
         deployment = os.getenv("DEPLOYMENT", "local")
         if deployment.lower() == "msrhub":
-            msrhub_default_endpoint = os.getenv("MSRHUB_DEFAULT_ENDPOINT")
-            protocol = "http"
-            if msrhub_default_endpoint.startswith("https://"):
-                msrhub_default_endpoint = msrhub_default_endpoint[len("https://"):]
-                protocol = "https"
-            elif msrhub_default_endpoint.startswith("http://"):
-                msrhub_default_endpoint = msrhub_default_endpoint[len("http://"):]
-            split_address = msrhub_default_endpoint.split(".")
-            split_address[0] = f"{split_address[0]}-{playwright_server.novnc_port}"
-            playwright_server_address = ".".join(split_address)
+            app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
+            service_name = os.getenv("SERVICE_NAME")
+            playwright_server_address = f"{service_name}-{playwright_server.novnc_port}.{app_env_domain}"
             await ws_manager.send_novnc_endpoint(
                 run_id,
                 playwright_server_address,
                 playwright_server.playwright_port,
                 443,
-                protocol
+                "https"
             )
         else:
             await ws_manager.send_novnc_endpoint(
