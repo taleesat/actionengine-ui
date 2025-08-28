@@ -336,6 +336,8 @@ export default function ChatView({
             activeSocketRef.current = null;
           }
           console.log("Error: ", message.error);
+          messageApi.error(message.error || "Error during request processing");
+          return current;
 
         case "message":
           if (!message.data) return current;

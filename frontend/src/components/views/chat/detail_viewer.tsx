@@ -228,7 +228,7 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
         {/* Tabs and Controls */}
         <div className="flex justify-between items-center mb-4 border-b flex-shrink-0">
           <div className="flex">
-              Recording Browser Actions: {recordingStatus === "on" ? "🟢" : "🔴"}
+              Recording Browser Actions: {recordingStatus === "on" ? "🟢 (actions you performed will be reflected in the workflow after stopping the recording)" : "🔴"}
           </div>
 
           <div className="flex gap-5">

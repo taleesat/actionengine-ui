@@ -39,11 +39,14 @@ class MultiPlaywrightServer:
 all_multi_playwright_servers = set()
 sess_lock = asyncio.Lock()
 ongoing_sess = set()
+max_ongoing_sess = int(os.getenv("MAX_USERS", 10))
 
 async def create_multi_playwright_server_from_env() -> MultiPlaywrightServer:
     multi_playwright_server_address = os.getenv("MULTI_PLAYWRIGHT_SERVER_ADDRESS", "localhost")
     multi_playwright_server_port = int(os.getenv("MULTI_PLAYWRIGHT_SERVER_PORT", 3000))
     async with sess_lock:
+        if len(ongoing_sess) >= max_ongoing_sess:
+            raise RuntimeError("Maximum number of ongoing sessions reached")
         sess_id = 0
         while sess_id in ongoing_sess:
             sess_id += 1

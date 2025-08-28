@@ -66,7 +66,19 @@ async def run_websocket(
     try:
         logger.info(f"WebSocket connection established for run {run_id}")
 
-        playwright_server: playwright_manager.MultiPlaywrightServer = await playwright_manager.create_multi_playwright_server_from_env()
+        playwright_server: playwright_manager.MultiPlaywrightServer | None = None
+        try:
+            playwright_server = await playwright_manager.create_multi_playwright_server_from_env()
+        except Exception as e:
+            logger.error(f"Failed to create Playwright server: {str(e)}")
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "error": "The service reaches the maximum capacity. Please try again later",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            )
+            return
         playwright_server.start_server()
         logger.info(f"Playwright server started for run {run_id} on ports {playwright_server.playwright_port} and {playwright_server.novnc_port}")
         await asyncio.sleep(2)  # Allow some time for the container to start
@@ -129,5 +141,6 @@ async def run_websocket(
         logger.error(f"WebSocket error: {str(e)}")
     finally:
         await ws_manager.disconnect(run_id)
-        playwright_server.stop_server()
-        await playwright_manager.return_multi_playwright_server(playwright_server)
+        if playwright_server:
+            playwright_server.stop_server()
+            await playwright_manager.return_multi_playwright_server(playwright_server)
