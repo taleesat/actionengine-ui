@@ -80,12 +80,26 @@ async def run_websocket(
             return stagehand_config
 
         mcpstudio_shell = AIRecorderShell(get_stagehand_config=get_custom_stagehand_config, output=shell_output)
-        await ws_manager.send_novnc_endpoint(
-            run_id,
-            playwright_server.server_address,
-            playwright_server.playwright_port,
-            playwright_server.novnc_port
-        )
+
+        deployment = os.getenv("DEPLOYMENT", "local")
+        if deployment.lower() == "msrhub":
+            msrhub_default_endpoint = os.getenv("MSRHUB_DEFAULT_ENDPOINT")
+            split_address = msrhub_default_endpoint.split(".")
+            split_address[0] = f"{split_address[0]}-{playwright_server.novnc_port}"
+            playwright_server_address = ".".join(split_address)
+            await ws_manager.send_novnc_endpoint(
+                run_id,
+                playwright_server_address,
+                playwright_server.playwright_port,
+                443
+            )
+        else:
+            await ws_manager.send_novnc_endpoint(
+                run_id,
+                playwright_server.server_address,
+                playwright_server.playwright_port,
+                playwright_server.novnc_port
+            )
 
         while True:
             try:
