@@ -98,6 +98,10 @@ async def run_websocket(
         deployment = os.getenv("DEPLOYMENT", "local")
         if deployment.lower() == "msrhub":
             msrhub_default_endpoint = os.getenv("MSRHUB_DEFAULT_ENDPOINT")
+            if msrhub_default_endpoint.startswith("https://"):
+                msrhub_default_endpoint = msrhub_default_endpoint[len("https://"):]
+            elif msrhub_default_endpoint.startswith("http://"):
+                msrhub_default_endpoint = msrhub_default_endpoint[len("http://"):]
             split_address = msrhub_default_endpoint.split(".")
             split_address[0] = f"{split_address[0]}-{playwright_server.novnc_port}"
             playwright_server_address = ".".join(split_address)
