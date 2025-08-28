@@ -84,8 +84,10 @@ async def run_websocket(
         deployment = os.getenv("DEPLOYMENT", "local")
         if deployment.lower() == "msrhub":
             msrhub_default_endpoint = os.getenv("MSRHUB_DEFAULT_ENDPOINT")
+            protocol = "http"
             if msrhub_default_endpoint.startswith("https://"):
                 msrhub_default_endpoint = msrhub_default_endpoint[len("https://"):]
+                protocol = "https"
             elif msrhub_default_endpoint.startswith("http://"):
                 msrhub_default_endpoint = msrhub_default_endpoint[len("http://"):]
             split_address = msrhub_default_endpoint.split(".")
@@ -95,14 +97,16 @@ async def run_websocket(
                 run_id,
                 playwright_server_address,
                 playwright_server.playwright_port,
-                443
+                443,
+                protocol
             )
         else:
             await ws_manager.send_novnc_endpoint(
                 run_id,
                 playwright_server.server_address,
                 playwright_server.playwright_port,
-                playwright_server.novnc_port
+                playwright_server.novnc_port,
+                "http"
             )
 
         while True:

@@ -36,6 +36,7 @@ interface DetailViewerProps {
   currentIndex: number;
   onIndexChange: (index: number) => void;
   novncEndpoint?: string;
+  novncProtocol?: string;
   onPause?: () => void;
   runStatus: string;
   detailViewerContainerId?: string;
@@ -52,6 +53,7 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
   currentIndex,
   onIndexChange,
   novncEndpoint,
+  novncProtocol,
   onPause,
   runStatus,
   detailViewerContainerId,
@@ -176,6 +178,7 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
         {viewMode === "iframe" ? (
           <BrowserIframe
             novncEndpoint={novncEndpoint}
+            novncProtocol={novncProtocol}
             style={{
               height: "100%",
               flex: "1 1 auto",
