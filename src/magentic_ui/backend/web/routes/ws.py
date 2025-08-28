@@ -25,10 +25,10 @@ def get_stagehand_config() -> StagehandConfig:
     """Dependency provider for Stagehand configuration"""
     azure_ad_token_provider = get_bearer_token_provider(
         AzureCliCredential(),
-        "https://cognitiveservices.azure.com/.default"
+        os.getenv("AZURE_SCOPE")
     )
     config = StagehandConfig(
-        model_name="azure/gpt-4o-2",
+        model_name=os.getenv("AZURE_OPENAI_TEXT_MODEL"),
         model_api_base=os.getenv("AZURE_OPENAI_ENDPOINT"),
         model_api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
         azure_ad_token_provider=azure_ad_token_provider

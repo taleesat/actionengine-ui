@@ -74,6 +74,8 @@ const BrowserIframe: React.FC<BrowserIframeProps> = ({
     viewOnly ? 1 : 0
   }`;
 
+  console.log("VNC URL:", vncUrl);
+
   return (
     <div
       className={`relative w-full h-full ${className}`}
