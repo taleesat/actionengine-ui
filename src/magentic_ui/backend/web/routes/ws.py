@@ -5,7 +5,7 @@ import asyncio
 import json
 from datetime import datetime
 
-from azure.identity import AzureCliCredential, get_bearer_token_provider
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from loguru import logger
 from dotenv import load_dotenv
@@ -24,13 +24,14 @@ load_dotenv()
 def get_stagehand_config() -> StagehandConfig:
     """Dependency provider for Stagehand configuration"""
     azure_ad_token_provider = get_bearer_token_provider(
-        AzureCliCredential(),
+        DefaultAzureCredential(),
         os.getenv("AZURE_SCOPE")
     )
     deployment = os.getenv("DEPLOYMENT", "local")
     modelname = os.getenv("AZURE_OPENAI_TEXT_MODEL")
     if deployment.lower() == "msrhub":
         modelname = f"azure/{modelname}"
+    logger.info(f"Using model: {modelname} in deployment: {deployment}")
     config = StagehandConfig(
         model_name=modelname,
         model_api_base=os.getenv("AZURE_OPENAI_ENDPOINT"),
