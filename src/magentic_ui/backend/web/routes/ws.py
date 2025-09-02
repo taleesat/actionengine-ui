@@ -5,7 +5,7 @@ import asyncio
 import json
 from datetime import datetime
 
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+from azure.identity import DefaultAzureCredential, ManagedIdentityCredential, AzureCliCredential, get_bearer_token_provider
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from loguru import logger
 from dotenv import load_dotenv
@@ -21,10 +21,38 @@ from ...utils.utils import construct_task
 router = APIRouter()
 load_dotenv()
 
+def get_azure_credential():
+
+    MANAGED_IDENTITY = "managed_identity"
+    CLI = "cli"
+    DEFAULT = "default"
+
+    identity_provider = os.getenv("AZURE_IDENTITY_PROVIDER")
+    credential = None
+    if not identity_provider:
+        logger.info(f"Using default identity provider: {identity_provider!r} (Env var NOT set)")
+        identity_provider = DEFAULT
+        credential = DefaultAzureCredential()
+    elif identity_provider == DEFAULT:
+        logger.info("Initializing DefaultAzureCredential (Env var set)")
+        credential = DefaultAzureCredential()
+    elif identity_provider == MANAGED_IDENTITY:
+        logger.info("Initializing ManagedIdentityCredential (Env var set)")
+        credential = ManagedIdentityCredential()
+    elif identity_provider == CLI:
+        logger.info("Initializing AzureCliCredential (Env var set)")
+        credential = AzureCliCredential()
+    else:  # Default or unrecognized value
+        logger.warning(f"Warning: Unrecognized identity provider value: {identity_provider!r}")
+        logger.info("Initializing DefaultAzureCredential")
+        credential = DefaultAzureCredential()
+    return credential
+
 def get_stagehand_config() -> StagehandConfig:
     """Dependency provider for Stagehand configuration"""
+    azure_credential = get_azure_credential()
     azure_ad_token_provider = get_bearer_token_provider(
-        DefaultAzureCredential(),
+        azure_credential,
         os.getenv("AZURE_SCOPE")
     )
     deployment = os.getenv("DEPLOYMENT", "local")
@@ -39,8 +67,6 @@ def get_stagehand_config() -> StagehandConfig:
         azure_ad_token_provider=azure_ad_token_provider
     )
     return config
-
-default_stagehand_config = get_stagehand_config()
 
 @router.websocket("/runs/{run_id}")
 async def run_websocket(
