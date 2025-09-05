@@ -1,4 +1,4 @@
-FROM node:lts-slim
+FROM mcr.microsoft.com/devcontainers/typescript-node:20-bookworm
 
 # Avoid prompts from apt
 ENV DEBIAN_FRONTEND=noninteractive
