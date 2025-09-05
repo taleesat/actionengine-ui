@@ -6151,7 +6151,7 @@ gatsby-plugin-image@^3.15.0:
     objectFitPolyfill "^2.3.5"
     prop-types "^15.8.1"
 
-gatsby-plugin-manifest@^5.14.0:
+gatsby-plugin-manifest@^5.15.0:
   version "5.15.0"
   resolved "https://registry.yarnpkg.com/gatsby-plugin-manifest/-/gatsby-plugin-manifest-5.15.0.tgz#c772a99abfc9d21b520315dba71e55b787904da6"
   integrity sha512-Sa7IbCC+lx3ib650k/vXho1B+oGUAGBYGFuBrUgQNuI7RhQhzJzM2h/ePHAdQWfxhoHh1K007uHnTtiOFnq3Dw==
@@ -6162,7 +6162,7 @@ gatsby-plugin-manifest@^5.14.0:
     semver "^7.5.3"
     sharp "^0.32.6"
 
-gatsby-plugin-mdx@^5.14.0:
+gatsby-plugin-mdx@^5.15.0:
   version "5.15.0"
   resolved "https://registry.yarnpkg.com/gatsby-plugin-mdx/-/gatsby-plugin-mdx-5.15.0.tgz#6482f902bca4e60e3f4a532389e3a7da03cc0d5e"
   integrity sha512-JYT6OHxmgBJ7J8q9IPz/01OyK3GQFJ+2snEtdsENbucXH/DYFpeit8r2N2m/nwiTz4lfuYyg7S7ht3By5epL3w==
@@ -6204,7 +6204,7 @@ gatsby-plugin-page-creator@^5.15.0:
     globby "^11.1.0"
     lodash "^4.17.21"
 
-gatsby-plugin-postcss@^6.14.0:
+gatsby-plugin-postcss@^6.15.0:
   version "6.15.0"
   resolved "https://registry.yarnpkg.com/gatsby-plugin-postcss/-/gatsby-plugin-postcss-6.15.0.tgz#2aa7f3f686fa6fac9524a1f465a92180c1cfa071"
   integrity sha512-FGr3KGbM+EkRmwzhUdgVe7V/4G8KJLqeSUJgbY6HfKy3eyw+cKEAV+SlDM/cdDsjzSV7M+0NWth1TlldlRHPmg==
@@ -6212,7 +6212,7 @@ gatsby-plugin-postcss@^6.14.0:
     "@babel/runtime" "^7.20.13"
     postcss-loader "^7.3.4"
 
-gatsby-plugin-sharp@^5.14.0:
+gatsby-plugin-sharp@^5.15.0:
   version "5.15.0"
   resolved "https://registry.yarnpkg.com/gatsby-plugin-sharp/-/gatsby-plugin-sharp-5.15.0.tgz#01b137898be8ccf7dfce0663a4a80979bff6454e"
   integrity sha512-FxwNZzug1lRimcubCKfqVc86BOwXPtYVA+Qp3XRoxPb38TJBIG+cFDMNhtJfzjUWyaDNb/hIyXf03bQsifhRDw==
@@ -6230,7 +6230,7 @@ gatsby-plugin-sharp@^5.14.0:
     semver "^7.5.3"
     sharp "^0.32.6"
 
-gatsby-plugin-sitemap@^6.14.0:
+gatsby-plugin-sitemap@^6.15.0:
   version "6.15.0"
   resolved "https://registry.yarnpkg.com/gatsby-plugin-sitemap/-/gatsby-plugin-sitemap-6.15.0.tgz#4b44d6c3b88c1b1149812bb0542832584149c860"
   integrity sha512-T4gchKmWh9n3ld0AylXfyfr498IAwMawIHM9U4oC8twxpOb6AOtmitba3UvSykUK1/FBNEriJFVi+slQylUZvg==
@@ -6288,7 +6288,7 @@ gatsby-sharp@^1.15.0:
   dependencies:
     sharp "^0.32.6"
 
-gatsby-source-filesystem@^5.14.0:
+gatsby-source-filesystem@^5.15.0:
   version "5.15.0"
   resolved "https://registry.yarnpkg.com/gatsby-source-filesystem/-/gatsby-source-filesystem-5.15.0.tgz#4157ae2ae41939f83f4599033ede5160bd58e010"
   integrity sha512-i8pJdgGEVo+M9F1BCChKg3kzxpMTsK/wddtNvUPZj47yJGNJlW3Cax6Qr8mTu8/Rm5kno4+uM8eLKjwdB0ajMQ==
@@ -6303,7 +6303,7 @@ gatsby-source-filesystem@^5.14.0:
     valid-url "^1.0.9"
     xstate "^4.38.0"
 
-gatsby-transformer-sharp@^5.14.0:
+gatsby-transformer-sharp@^5.15.0:
   version "5.15.0"
   resolved "https://registry.yarnpkg.com/gatsby-transformer-sharp/-/gatsby-transformer-sharp-5.15.0.tgz#0cb22cebaedf09bad116145ae1c4e397d1843926"
   integrity sha512-VXxxwcQZAfxom/h3Mz/e+oey4+hN2rNmdZxpEP0Wt6T5FETCxjlQ3CU83j0Q+lXLMwFtbup7eslSpp/x5GB5DA==
