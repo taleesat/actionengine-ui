@@ -478,6 +478,14 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
             </div>
           </div>
         </div>
+        
+        {/* Disclaimer Footer */}
+        <div className="mt-2 text-center">
+          <p className={`text-xs ${darkMode === "dark" ? "text-gray-400" : "text-gray-600"}`}>
+            Bedrock uses <u><a href="https://learn.microsoft.com/en-us/azure/ai-foundry/responsible-ai/openai/transparency-note?tabs=text">AOAI</a></u> as AI backend. AI-generated content may be incorrect. Please check for accuracy.
+          </p>
+        </div>
+        
         <Modal
           title={currentExtractingResult == null ? "Extracting data" : "Result"}
           open={isExtractingModalOpen}

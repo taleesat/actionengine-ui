@@ -657,6 +657,15 @@ const RunView: React.FC<RunViewProps> = ({
             </div>
           </div>
         )}
+      
+      {/* Footer - Data Privacy Notice */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-background border-t border-gray-200 py-2 z-10">
+        <div className="text-center">
+          <p className="text-xs text-gray-400">
+            <u><a href="https://www.microsoft.com/en-us/privacy/data-privacy-notice" className="hover:text-gray-600">Data Privacy Notice</a></u>
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };
