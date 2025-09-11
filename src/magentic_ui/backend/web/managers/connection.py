@@ -338,17 +338,14 @@ class WebSocketManager:
                 final_result = await self.send_format_message(run_id, answer_message)
                 step += 1
 
-    async def send_novnc_endpoint(self, run_id: int, docker_address: str, playwright_port: int, novnc_port: int, protocol: str = "http") -> None:
-        novnc_endpoint = f"{docker_address}:{novnc_port}"
+    async def send_novnc_endpoint(self, run_id: int, novnc_endpoint: int) -> None:
         vnc_message: TextMessage = TextMessage(
             source="system",
-            content=f"Browser noVNC address can be found at {protocol}://{novnc_endpoint}/vnc.html",
+            content=f"Browser noVNC address can be found at {novnc_endpoint}/vnc.html",
             metadata={
                 "internal": "no",
                 "type": "browser_address",
                 "novnc_endpoint": novnc_endpoint,
-                "playwright_port": str(playwright_port),
-                "protocol": protocol
             },
         )
         await self.send_format_message(run_id, vnc_message)

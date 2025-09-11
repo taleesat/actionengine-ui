@@ -111,7 +111,8 @@ async def run_websocket(
             )
             return
         playwright_server.start_server()
-        logger.info(f"Playwright server started for run {run_id} on ports {playwright_server.playwright_port} and {playwright_server.novnc_port}")
+        playwright_server_info = playwright_server.build_playwright_info()
+        logger.info(f"Playwright server started for run {run_id} on ({playwright_server_info['playwright_endpoint']} and {playwright_server_info['novnc_endpoint']})")
         await asyncio.sleep(2)  # Allow some time for the container to start
 
         shell_output = io.StringIO()
@@ -119,33 +120,17 @@ async def run_websocket(
         def get_custom_stagehand_config():
             stagehand_config: StagehandConfig = get_stagehand_config()
             stagehand_config.env = "REMOTE"
-            stagehand_config.remote_browser_ws_endpoint = f"ws://{playwright_server.server_address}:{playwright_server.playwright_port}{playwright_manager.playwright_ws_path}"
+            stagehand_config.remote_browser_ws_endpoint = playwright_server_info["playwright_endpoint"]
             return stagehand_config
 
         mcpstudio_shell = AIRecorderShell(get_stagehand_config=get_custom_stagehand_config, output=shell_output)
         await mcpstudio_shell._ensure_ai_ready()
         mcpstudio_shell.ai_recorder.set_show_recording_button(False)
 
-        deployment = os.getenv("DEPLOYMENT", "local")
-        if deployment.lower() == "msrhub":
-            app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
-            service_name = os.getenv("SERVICE_NAME")
-            playwright_server_address = f"{service_name}-{playwright_server.novnc_port}.{app_env_domain}"
-            await ws_manager.send_novnc_endpoint(
-                run_id,
-                playwright_server_address,
-                playwright_server.playwright_port,
-                443,
-                "https"
-            )
-        else:
-            await ws_manager.send_novnc_endpoint(
-                run_id,
-                playwright_server.server_address,
-                playwright_server.playwright_port,
-                playwright_server.novnc_port,
-                "http"
-            )
+        await ws_manager.send_novnc_endpoint(
+            run_id,
+            playwright_server_info["novnc_endpoint"],
+        )
 
         while True:
             try:

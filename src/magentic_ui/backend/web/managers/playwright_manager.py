@@ -4,46 +4,77 @@ import requests
 import docker
 import asyncio
 
+from loguru import logger
+
 docker_image = "magentic-ui-vnc-browser:latest"
 playwright_ws_path = "/ws"
 
 class MultiPlaywrightServer:
 
-    def __init__(self, server_address: str, server_port: int, sess_id: int):
+    def __init__(self, server_address: str, server_port: int, deployment: str, sess_id: int):
         self.server_address = server_address
         self.server_port = server_port
+        self.deployment = deployment
         self.sess_id = sess_id
-        self.playwright_port = None
-        self.novnc_port = None
+        self.playwright_server = None
 
     def start_server(self):
-        url = f"http://{self.server_address}:{self.server_port}/launch/{self.sess_id}"
+        protocol = "https" if self.deployment == "msrhub" else "http"
+        url = f"{protocol}://{self.server_address}:{self.server_port}/launch/{self.sess_id}"
+        logger.info(f"Starting Playwright server at {url}")
         response = requests.post(url, data={})  # empty body
         if response.status_code != 200:
+            logger.error(f"Failed to start Playwright server: {response.text}")
             raise RuntimeError(f"Failed to start Playwright server: {response.text}")
-        playwright_server = response.json()
-        self.playwright_port = playwright_server.get("playwright_port")
-        self.novnc_port = playwright_server.get("novnc_port")
-        return {
-            "playwright_server": self.server_address,
-            "playwright_port": self.playwright_port,
-            "novnc_port": self.novnc_port,
-        }
+        self.playwright_server = response.json()
+        logger.info(f"Playwright server started: {self.playwright_server}")
 
     def stop_server(self):
-        url = f"http://{self.server_address}:{self.server_port}/stop/{self.sess_id}"
+        protocol = "https" if self.deployment == "msrhub" else "http"
+        url = f"{protocol}://{self.server_address}:{self.server_port}/stop/{self.sess_id}"
+        logger.info(f"Stopping Playwright server at {url}")
         response = requests.post(url, data={})
         if response.status_code != 200:
             raise RuntimeError(f"Failed to stop Playwright server: {response.text}")
+    
+    def build_playwright_info(self) -> dict:
+        if self.deployment == "local":
+            playwright_endpoint = f"ws://{self.server_address}:{self.playwright_server.get('playwright_port')}{playwright_ws_path}"
+            novnc_endpoint = f"http://{self.server_address}:{self.playwright_server.get('novnc_port')}"
+            return {
+                "playwright_endpoint": playwright_endpoint,
+                "novnc_endpoint": novnc_endpoint,
+            }
+        elif self.deployment == "msrhub":
+            playwright_app_env_domain = os.getenv("PLAYWRIGHT_CONTAINER_APP_ENV_DOMAIN")
+            playwright_service_name = os.getenv("PLAYWRIGHT_SERVICE_NAME")
+            playwright_endpoint = f"wss://{playwright_service_name}-{self.playwright_server.get('playwright_port')}.{playwright_app_env_domain}{playwright_ws_path}"
+            novnc_endpoint = f"https://{playwright_service_name}-{self.playwright_server.get('novnc_port')}.{playwright_app_env_domain}"
+            return {
+                "playwright_endpoint": playwright_endpoint,
+                "novnc_endpoint": novnc_endpoint,
+            }
+        else:
+            raise RuntimeError(f"Unsupported deployment type: {self.deployment}")
 
 all_multi_playwright_servers = set()
 sess_lock = asyncio.Lock()
 ongoing_sess = set()
-max_ongoing_sess = int(os.getenv("MAX_USERS", 10))
+max_ongoing_sess = int(os.getenv("MAX_USERS", 5))
 
 async def create_multi_playwright_server_from_env() -> MultiPlaywrightServer:
-    multi_playwright_server_address = os.getenv("MULTI_PLAYWRIGHT_SERVER_ADDRESS", "localhost")
-    multi_playwright_server_port = int(os.getenv("MULTI_PLAYWRIGHT_SERVER_PORT", 3000))
+    deployment = os.getenv("DEPLOYMENT", "local")
+    deployment = deployment.lower()
+    if deployment == "local":
+        multi_playwright_server_address = os.getenv("MULTI_PLAYWRIGHT_SERVER_ADDRESS", "localhost")
+        multi_playwright_server_port = int(os.getenv("MULTI_PLAYWRIGHT_SERVER_PORT", 3000))
+    elif deployment == "msrhub":
+        playwright_app_env_domain = os.getenv("PLAYWRIGHT_CONTAINER_APP_ENV_DOMAIN")
+        playwright_service_name = os.getenv("PLAYWRIGHT_SERVICE_NAME")
+        multi_playwright_server_address = f"{playwright_service_name}.{playwright_app_env_domain}"
+        multi_playwright_server_port = 443
+    else:
+        raise RuntimeError(f"Unsupported deployment type: {deployment}")
     async with sess_lock:
         if len(ongoing_sess) >= max_ongoing_sess:
             raise RuntimeError("Maximum number of ongoing sessions reached")
@@ -51,7 +82,7 @@ async def create_multi_playwright_server_from_env() -> MultiPlaywrightServer:
         while sess_id in ongoing_sess:
             sess_id += 1
         ongoing_sess.add(sess_id)
-    server = MultiPlaywrightServer(multi_playwright_server_address, multi_playwright_server_port, sess_id)
+    server = MultiPlaywrightServer(multi_playwright_server_address, multi_playwright_server_port, deployment, sess_id)
     all_multi_playwright_servers.add(server)
     return server
 

@@ -3,7 +3,6 @@ import SecurityBanner from "./SecurityBanner";
 
 interface BrowserIframeProps {
   novncEndpoint?: string;
-  novncProtocol?: string;
   style?: React.CSSProperties;
   className?: string;
   showDimensions?: boolean;
@@ -19,7 +18,6 @@ interface BrowserIframeProps {
 
 const BrowserIframe: React.FC<BrowserIframeProps> = ({
   novncEndpoint,
-  novncProtocol = "http",
   style = {},
   className = "",
   showDimensions = true,
@@ -68,7 +66,7 @@ const BrowserIframe: React.FC<BrowserIframeProps> = ({
   }
 
   // Build VNC URL with parameters
-  const vncUrl = `${novncProtocol}://${novncEndpoint}/vnc.html?autoconnect=true&resize=${
+  const vncUrl = `${novncEndpoint}/vnc.html?autoconnect=true&resize=${
     scaling === "remote" ? "remote" : "scale"
   }&show_dot=true&scaling=${scaling}&quality=${quality}&compression=0&view_only=${
     viewOnly ? 1 : 0

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/bash
 
 #BASE_DISPLAY=100
 #while true; do

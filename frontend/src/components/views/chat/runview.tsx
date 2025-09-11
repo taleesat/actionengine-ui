@@ -54,7 +54,6 @@ const RunView: React.FC<RunViewProps> = ({
 }) => {
   const threadContainerRef = useRef<HTMLDivElement | null>(null);
   const [novncEndpoint, setNovncEndpoint] = useState<string | undefined>();
-  const [novncProtocol, setNovncProtocol] = useState<string | undefined>();
   const [detailViewerExpanded, setDetailViewerExpanded] = useState(false);
   const [hiddenMessageIndices, setHiddenMessageIndices] = useState<Set<number>>(
     new Set()
@@ -110,7 +109,6 @@ const RunView: React.FC<RunViewProps> = ({
       lastBrowserAddressMsg.config.metadata?.novnc_endpoint !== novncEndpoint
     ) {
       setNovncEndpoint(lastBrowserAddressMsg.config.metadata?.novnc_endpoint);
-      setNovncProtocol(lastBrowserAddressMsg.config.metadata?.protocol || "http");
       // Show DetailViewer when novncEndpoint becomes available
       setShowDetailViewer(true);
       setIsDetailViewerMinimized(false);
@@ -647,7 +645,6 @@ const RunView: React.FC<RunViewProps> = ({
                   }))
                 }
                 novncEndpoint={novncEndpoint}
-                novncProtocol={novncProtocol}
                 onPause={onPause}
                 runStatus={run.status}
                 detailViewerContainerId={DETAIL_VIEWER_CONTAINER_ID}
