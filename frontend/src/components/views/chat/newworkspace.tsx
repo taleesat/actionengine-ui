@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Form, Input, Button, Typography, Divider } from "antd";
+import { Card, Form, Input, Button, Typography, Divider, Alert } from "antd";
 const { Title } = Typography;
 
 type Props = {
@@ -30,6 +30,19 @@ const NewWorkspaceForm: React.FC<Props> = ({ onNewWorkspace, onLoadWorkspace }) 
 
   return (
     <div className="mt-4">
+      <Alert
+        message="Security Policy Notice"
+        description="This deployment is allowed to work with *.microsoft.com domain only due to the security policy. We are working on enabling more domains."
+        type="warning"
+        showIcon
+        style={{
+          marginBottom: 24,
+          background: "#2d1b14",
+          border: "1px solid #d4601f",
+          borderRadius: 8,
+        }}
+        className="security-notice"
+      />
       <Title level={3} style={{ color: "#cbd5e1", marginBottom: 24 }}>
         Please provide your workspace name and the website URL to get started.
       </Title>
