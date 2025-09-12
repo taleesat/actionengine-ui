@@ -160,16 +160,23 @@ export const SessionManager: React.FC = () => {
     }
   };
 
-  const handleEditSession = (session?: Session) => {
+  const handleEditSession = (session?: Session | null) => {
+    console.log("handleEditSession", session);
+    console.log("debug session", sessionSockets);
     setActiveSubMenuItem("current_session");
     setIsLoading(true);
     if (session) {
-      setEditingSession(session);
-      setIsEditorOpen(true);
-    } else {
-      // this means we are creating a new session
-      handleSaveSession({});
+      const sessionId = session.id;
+      if (sessionId && sessionSockets[sessionId]) {
+        sessionSockets[sessionId].socket.close();
+        setSessionSockets((prev) => {
+          const updated = { ...prev };
+          delete updated[sessionId];
+          return updated;
+        });
+      }
     }
+    handleSaveSession({});
     setIsLoading(false);
   };
 
@@ -465,11 +472,7 @@ export const SessionManager: React.FC = () => {
       {contextHolder}
 
       <ContentHeader
-        isMobileMenuOpen={isMobileMenuOpen}
-        onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-        onNewSession={() => handleEditSession()}
+        onNewSession={() => handleEditSession(session)}
       />
 
       <div className="flex flex-1 relative">

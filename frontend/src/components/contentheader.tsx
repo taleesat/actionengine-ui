@@ -9,16 +9,10 @@ import { Button } from "./common/Button";
 const { confirm } = Modal;
 
 type ContentHeaderProps = {
-  onMobileMenuToggle: () => void;
-  isMobileMenuOpen: boolean;
-  isSidebarOpen: boolean;
-  onToggleSidebar: () => void;
   onNewSession: () => void;
 };
 
 const ContentHeader = ({
-  isSidebarOpen,
-  onToggleSidebar,
   onNewSession,
 }: ContentHeaderProps) => {
   const { user } = React.useContext(appContext);

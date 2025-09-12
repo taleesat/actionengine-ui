@@ -3,7 +3,7 @@ import os
 import io
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential, AzureCliCredential, get_bearer_token_provider
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
@@ -106,7 +106,7 @@ async def run_websocket(
                 {
                     "type": "error",
                     "error": "The service reaches the maximum capacity. Please try again later",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             )
             return
@@ -132,9 +132,34 @@ async def run_websocket(
             playwright_server_info["novnc_endpoint"],
         )
 
+        # Initialize timeout tracking
+        timeout_seconds = 120  # 2 minutes
+        last_activity = datetime.now(timezone.utc)
+        
         while True:
             try:
-                raw_message = await websocket.receive_text()
+                # Calculate remaining timeout
+                elapsed = datetime.now(timezone.utc) - last_activity
+                remaining_timeout = timeout_seconds - elapsed.total_seconds()
+                
+                if remaining_timeout <= 0:
+                    logger.info(f"WebSocket connection timeout for run {run_id} - inactive for 2 minutes")
+                    await websocket.send_json(
+                        {
+                            "type": "timeout",
+                            "error": "Connection closed due to inactivity",
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        }
+                    )
+                    await websocket.close(code=1000, reason="Inactivity timeout")
+                    break
+                
+                # Wait for message with timeout
+                raw_message = await asyncio.wait_for(
+                    websocket.receive_text(), 
+                    timeout=remaining_timeout
+                )
+                
                 message = json.loads(raw_message)
                 logger.debug(f"Received message for run {run_id}: {message}")
                 command = message.get("command")
@@ -142,13 +167,29 @@ async def run_websocket(
                 await ws_manager.execute_mcpstudio_command(
                     run_id, mcpstudio_shell, command
                 )
+
+                # Update last activity time
+                last_activity = datetime.now(timezone.utc)
+            except asyncio.TimeoutError:
+                logger.info(f"WebSocket connection timeout for run {run_id} - inactive for 2 minutes")
+                await websocket.send_json(
+                    {
+                        "type": "timeout",
+                        "error": "Connection closed due to inactivity",
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+                await websocket.close(code=1000, reason="Inactivity timeout")
+                break
             except json.JSONDecodeError:
                 logger.warning(f"Invalid JSON received: {raw_message}")
+                # Update last activity even for invalid messages to prevent timeout on malformed data
+                last_activity = datetime.now(timezone.utc)
                 await websocket.send_json(
                     {
                         "type": "error",
                         "error": "Invalid message format",
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
