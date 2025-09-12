@@ -605,7 +605,7 @@ export default function ChatView({
     try {
       // Check if the last message is a plan
       const lastMessage = currentRun.messages.slice(-1)[0];
-      var planString = "";
+      let planString = "";
       if (plan) {
         planString = convertPlanStepsToJsonString(plan.steps);
       } else if (
@@ -767,7 +767,7 @@ export default function ChatView({
       const processedFiles = await convertFilesToBase64(files);
       // Send start message
 
-      var planString = plan ? convertPlanStepsToJsonString(plan.steps) : "";
+      const planString = plan ? convertPlanStepsToJsonString(plan.steps) : "";
 
       const taskJson = {
         content: query,

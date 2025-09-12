@@ -98,7 +98,7 @@ const WorkspaceDisplay: React.FC<WorkspaceDisplayProps> = ({
     // Pass selected options to parent callback
     onDownloadWorkspace(downloadFormat, isGeneralized);
     setIsDownloadModalVisible(false);
-    var format = downloadFormat == "json" ? "JSON" : downloadFormat == "python" ? "Python" : "MCP";
+    const format = downloadFormat == "json" ? "JSON" : "Python";
     message.success(`Downloading workspace as ${format}${isGeneralized ? " (generalized)" : ""}`);
   };
 
@@ -269,7 +269,6 @@ const WorkspaceDisplay: React.FC<WorkspaceDisplayProps> = ({
         >
           <Radio value="json">JSON</Radio>
           <Radio value="python">Python</Radio>
-          <Radio value="mcp">MCP</Radio>
         </Radio.Group>
 
         <Divider />

@@ -51,6 +51,7 @@ const ContentHeader = ({
                 icon={<Plus className="w-6 h-6" />}
                 onClick={handleNewSession}
                 className="transition-colors hover:text-accent"
+                title="Create new workspace"
               />
             </Tooltip>
           </div>
