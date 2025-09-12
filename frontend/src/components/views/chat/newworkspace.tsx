@@ -55,8 +55,8 @@ const NewWorkspaceForm: React.FC<Props> = ({ onNewWorkspace, onLoadWorkspace }) 
             }
           ]}
           onFinish={() => {
-            var workspaceName: string = form.getFieldValue("workspaceName");
-            var websiteUrl = form.getFieldValue("websiteUrl");
+            const workspaceName: string = form.getFieldValue("workspaceName");
+            const websiteUrl = form.getFieldValue("websiteUrl");
             handleFinish(workspaceName, websiteUrl);
           }}
           requiredMark={false}

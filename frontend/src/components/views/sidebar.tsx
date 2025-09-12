@@ -122,7 +122,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   ? " border-l-2 border-magenta-800 bg-secondary"
                   : ""
               }`}
+              role="button"
+              tabIndex={0}
               onClick={() => !isLoading && onSelectSession(s)}
+              onKeyDown={(e) => {
+                if (!isLoading && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  onSelectSession(s);
+                }
+              }}
             >
               <div className="flex items-center gap-2 flex-1">
                 <span className="truncate text-sm">

@@ -491,11 +491,6 @@ export const SessionManager: React.FC = () => {
             )
           ) : (
             <div className="h-full overflow-hidden pl-4">
-              <PlanList
-                onTabChange={setActiveSubMenuItem}
-                onSelectSession={handleSelectSession}
-                onCreateSessionFromPlan={handleCreateSessionFromPlan}
-              />
             </div>
           )}
         </div>
