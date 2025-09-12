@@ -209,6 +209,13 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
         <div className="flex-1 flex flex-col min-h-0">
           {renderLiveTab}
         </div>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 border-t pt-2 mt-2">
+          <p className="text-xs text-gray-200 text-center">
+            You are working with the real website.
+          </p>
+        </div>
       </div>
 
       <BrowserModal
