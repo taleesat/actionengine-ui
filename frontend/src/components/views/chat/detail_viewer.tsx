@@ -8,7 +8,6 @@ import {
   MousePointerClick,
   X,
 } from "lucide-react";
-import { ClickableImage } from "../atoms";
 import BrowserIframe from "./DetailViewer/browser_iframe";
 import BrowserModal from "./DetailViewer/browser_modal";
 import FullscreenOverlay from "./DetailViewer/fullscreen_overlay"; // Import our new component
@@ -117,52 +116,6 @@ const DetailViewer: React.FC<DetailViewerProps> = ({
   const handleMaximizeClick = () => {
     setIsModalOpen(true);
   };
-
-  const renderScreenshotsTab = () => (
-    <>
-      <div className="flex flex-col h-[65vh] w-full">
-        {images.length === 0 ? (
-          <div className="flex-1 w-full flex items-center justify-center">
-            <p>No screenshots</p>
-          </div>
-        ) : (
-          <>
-            <div className="relative flex-1 flex items-center justify-center overflow-y-auto">
-              <div className="w-full h-full flex flex-col items-center justify-center">
-                {/* Pill navigation overlay */}
-                <div className="absolute border top-4 left-1/2 transform -translate-x-1/2 z-10 bg-secondary rounded-full px-3 py-1 flex items-center justify-center gap-4 shadow-md">
-                  <button
-                    onClick={handlePrevious}
-                    className="text-primary hover:text-opacity-80 transition-colors"
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-
-                  <p className="text-sm text-primary">
-                    {currentIndex + 1} / {images.length}
-                  </p>
-
-                  <button
-                    onClick={handleNext}
-                    className="text-primary hover:text-opacity-80 transition-colors"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
-                </div>
-
-                <ClickableImage
-                  src={images[currentIndex]}
-                  alt={imageTitles[currentIndex]}
-                  className="max-w-full max-h-full object-contain rounded"
-                  expandedClassName="object-contain max-h-[80vh] max-w-[90vw] w-auto h-auto"
-                />
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </>
-  );
 
   const renderLiveTab = React.useMemo(() => {
     if (!novncEndpoint) {

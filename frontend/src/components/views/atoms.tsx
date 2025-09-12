@@ -144,22 +144,25 @@ const Modal: React.FC<ModalProps> = ({
   if (!isOpen) return null;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-50"
-      aria-modal="true"
-      role="dialog"
-      onClick={onClose}
-    >
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+    <div className="fixed inset-0 z-50" aria-modal="true" role="dialog">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm border-none p-0 cursor-default"
+        onClick={onClose}
+        aria-label="Close modal"
+      />
       <div
         className={`
         relative z-10 
         w-full h-full
         flex items-center justify-center
+        pointer-events-none
         ${className}
       `}
       >
-        {children}
+        <div className="pointer-events-auto">
+          {children}
+        </div>
       </div>
     </div>,
     document.body
@@ -184,7 +187,7 @@ const FullScreenImage: React.FC<{
       >
         <X size={24} />
       </button>
-      <div className="relative" onClick={(e) => e.stopPropagation()}>
+      <div className="relative">
         <img
           src={src}
           alt={alt}
@@ -210,17 +213,33 @@ export const ClickableImage: React.FC<{
 
   return (
     <>
-      <img
-        src={src}
-        alt={alt}
+      <button
+        type="button"
         className={`
           ${className} 
           cursor-zoom-in 
           transition-all duration-300 
           hover:brightness-110
+          border-none
+          bg-transparent
+          p-0
+          display-block
         `}
         onClick={() => setIsFullScreen(true)}
-      />
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsFullScreen(true);
+          }
+        }}
+        aria-label={`Expand image: ${alt}`}
+      >
+        <img
+          src={src}
+          alt={alt}
+          className="w-full h-full object-cover"
+        />
+      </button>
       {isFullScreen && (
         <FullScreenImage
           src={src}

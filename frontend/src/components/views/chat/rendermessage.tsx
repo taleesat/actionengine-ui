@@ -16,9 +16,7 @@ import {
   FunctionExecutionResult,
   ImageContent,
 } from "../../types/datamodel";
-import { ClickableImage } from "../atoms";
 import MarkdownRenderer from "../../common/markdownrender";
-import PlanView from "./plan";
 import { IPlanStep, convertToIPlanSteps } from "../../types/plan";
 import LearnPlanButton from "../../features/Plans/LearnPlanButton";
 
