@@ -214,28 +214,16 @@ class WebSocketManager:
             action = execution_result.get("action", None)
             if action == "save":
                 save_result = execution_result["result"]
-                if save_result["type"] == ExportType.MCP:
-                    package_path = save_result["package_path"]
-                    with open(package_path, "rb") as zip_file:
-                        zip_data = zip_file.read()
-                        encoded_zip = base64.b64encode(zip_data).decode("utf-8")
-                        download_event = DownloadEvent(
-                            source="Orchestrator",
-                            content=encoded_zip,
-                        )
-                        final_result = await self.send_format_message(run_id, download_event)
-                    os.remove(package_path)
-                else:
-                    directory_path = save_result["directory_path"]
-                    if os.path.exists(directory_path) and os.path.isdir(directory_path):
-                        zipped_content = zip_files_in_memory(directory_path)
-                        encoded_zip = base64.b64encode(zipped_content.getvalue()).decode('utf-8')
-                        download_event = DownloadEvent(
-                            source="Orchestrator",
-                            content=encoded_zip,
-                        )
-                        final_result = await self.send_format_message(run_id, download_event)
-                        shutil.rmtree(directory_path)
+                directory_path = save_result["directory_path"]
+                if os.path.exists(directory_path) and os.path.isdir(directory_path):
+                    zipped_content = zip_files_in_memory(directory_path)
+                    encoded_zip = base64.b64encode(zipped_content.getvalue()).decode('utf-8')
+                    download_event = DownloadEvent(
+                        source="Orchestrator",
+                        content=encoded_zip,
+                    )
+                    final_result = await self.send_format_message(run_id, download_event)
+                    shutil.rmtree(directory_path)
             elif action == "extract":
                 result = execution_result["extracting_result"]
                 extracting_result_message = ExtractingResultMessage(
