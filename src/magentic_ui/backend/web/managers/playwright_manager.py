@@ -46,10 +46,11 @@ class MultiPlaywrightServer:
                 "novnc_endpoint": novnc_endpoint,
             }
         elif self.deployment == "msrhub":
-            playwright_app_env_domain = os.getenv("PLAYWRIGHT_CONTAINER_APP_ENV_DOMAIN")
-            playwright_service_name = os.getenv("PLAYWRIGHT_SERVICE_NAME")
-            playwright_endpoint = f"wss://{playwright_service_name}-{self.playwright_server.get('playwright_port')}.{playwright_app_env_domain}{playwright_ws_path}"
-            novnc_endpoint = f"https://{playwright_service_name}-{self.playwright_server.get('novnc_port')}.{playwright_app_env_domain}"
+            playwright_service_name_prefix = os.getenv("PLAYWRIGHT_SERVICE_NAME_PREFIX")
+            instance_id = os.getenv("INSTANCE_ID")
+            app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
+            playwright_endpoint = f"wss://{playwright_service_name_prefix}-{instance_id}-{self.playwright_server.get('playwright_port')}.{app_env_domain}{playwright_ws_path}"
+            novnc_endpoint = f"https://{playwright_service_name_prefix}-{instance_id}-{self.playwright_server.get('novnc_port')}.{app_env_domain}"
             return {
                 "playwright_endpoint": playwright_endpoint,
                 "novnc_endpoint": novnc_endpoint,
@@ -69,9 +70,10 @@ async def create_multi_playwright_server_from_env() -> MultiPlaywrightServer:
         multi_playwright_server_address = os.getenv("MULTI_PLAYWRIGHT_SERVER_ADDRESS", "localhost")
         multi_playwright_server_port = int(os.getenv("MULTI_PLAYWRIGHT_SERVER_PORT", 3000))
     elif deployment == "msrhub":
-        playwright_app_env_domain = os.getenv("PLAYWRIGHT_CONTAINER_APP_ENV_DOMAIN")
-        playwright_service_name = os.getenv("PLAYWRIGHT_SERVICE_NAME")
-        multi_playwright_server_address = f"{playwright_service_name}.{playwright_app_env_domain}"
+        playwright_service_name_prefix = os.getenv("PLAYWRIGHT_SERVICE_NAME_PREFIX")
+        instance_id = os.getenv("INSTANCE_ID")
+        app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
+        multi_playwright_server_address = f"{playwright_service_name_prefix}-{instance_id}.{app_env_domain}"
         multi_playwright_server_port = 443
     else:
         raise RuntimeError(f"Unsupported deployment type: {deployment}")
