@@ -48,6 +48,11 @@ def get_azure_credential():
         credential = DefaultAzureCredential()
     return credential
 
+def get_msrhub_token():
+    azure_credential = get_azure_credential()
+    token = azure_credential.get_token("api://msrhub/.default")
+    return token.token
+
 def get_stagehand_config() -> StagehandConfig:
     """Dependency provider for Stagehand configuration"""
     azure_credential = get_azure_credential()
@@ -66,6 +71,8 @@ def get_stagehand_config() -> StagehandConfig:
         model_api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
         azure_ad_token_provider=azure_ad_token_provider
     )
+    if deployment.lower() == "msrhub":
+        config.remote_browser_connect_options = { "headers" : { "Authorization": f"Bearer {get_msrhub_token()}" } }
     return config
 
 @router.websocket("/runs/{run_id}")

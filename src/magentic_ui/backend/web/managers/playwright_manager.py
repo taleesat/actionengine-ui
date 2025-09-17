@@ -4,10 +4,38 @@ import requests
 import docker
 import asyncio
 
+from azure.identity import DefaultAzureCredential, ManagedIdentityCredential, AzureCliCredential, get_bearer_token_provider
 from loguru import logger
 
 docker_image = "magentic-ui-vnc-browser:latest"
 playwright_ws_path = "/ws"
+
+def get_azure_credential():
+
+    MANAGED_IDENTITY = "managed_identity"
+    CLI = "cli"
+    DEFAULT = "default"
+
+    identity_provider = os.getenv("AZURE_IDENTITY_PROVIDER")
+    credential = None
+    if not identity_provider:
+        logger.info(f"Using default identity provider: {identity_provider!r} (Env var NOT set)")
+        identity_provider = DEFAULT
+        credential = DefaultAzureCredential()
+    elif identity_provider == DEFAULT:
+        logger.info("Initializing DefaultAzureCredential (Env var set)")
+        credential = DefaultAzureCredential()
+    elif identity_provider == MANAGED_IDENTITY:
+        logger.info("Initializing ManagedIdentityCredential (Env var set)")
+        credential = ManagedIdentityCredential()
+    elif identity_provider == CLI:
+        logger.info("Initializing AzureCliCredential (Env var set)")
+        credential = AzureCliCredential()
+    else:  # Default or unrecognized value
+        logger.warning(f"Warning: Unrecognized identity provider value: {identity_provider!r}")
+        logger.info("Initializing DefaultAzureCredential")
+        credential = DefaultAzureCredential()
+    return credential
 
 class MultiPlaywrightServer:
 
@@ -22,7 +50,15 @@ class MultiPlaywrightServer:
         protocol = "https" if self.deployment == "msrhub" else "http"
         url = f"{protocol}://{self.server_address}:{self.server_port}/launch/{self.sess_id}"
         logger.info(f"Starting Playwright server at {url}")
-        response = requests.post(url, data={})  # empty body
+        if self.deployment == "msrhub":
+            azure_credential = get_azure_credential()
+            token = azure_credential.get_token("api://msrhub/.default")
+            headers = {
+                "Authorization": f"Bearer {token.token}",
+            }
+            response = requests.post(url, headers=headers, data={}, verify=False)  # ignore SSL verification for now
+        else:
+            response = requests.post(url, data={})  # empty body
         if response.status_code != 200:
             logger.error(f"Failed to start Playwright server: {response.text}")
             raise RuntimeError(f"Failed to start Playwright server: {response.text}")
@@ -33,7 +69,15 @@ class MultiPlaywrightServer:
         protocol = "https" if self.deployment == "msrhub" else "http"
         url = f"{protocol}://{self.server_address}:{self.server_port}/stop/{self.sess_id}"
         logger.info(f"Stopping Playwright server at {url}")
-        response = requests.post(url, data={})
+        if self.deployment == "msrhub":
+            azure_credential = get_azure_credential()
+            token = azure_credential.get_token("api://msrhub/.default")
+            headers = {
+                "Authorization": f"Bearer {token.token}",
+            }
+            response = requests.post(url, headers=headers, data={}, verify=False)  # ignore SSL verification for now
+        else:
+            response = requests.post(url, data={})
         if response.status_code != 200:
             raise RuntimeError(f"Failed to stop Playwright server: {response.text}")
     
