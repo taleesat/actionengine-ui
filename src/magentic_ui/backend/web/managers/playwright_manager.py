@@ -47,7 +47,7 @@ class MultiPlaywrightServer:
         self.playwright_server = None
 
     def start_server(self):
-        protocol = "https" if self.deployment == "msrhub" else "http"
+        protocol = "http"
         url = f"{protocol}://{self.server_address}:{self.server_port}/launch/{self.sess_id}"
         logger.info(f"Starting Playwright server at {url}")
         if self.deployment == "msrhub":
@@ -56,7 +56,7 @@ class MultiPlaywrightServer:
             headers = {
                 "Authorization": f"Bearer {token.token}",
             }
-            response = requests.post(url, headers=headers, data={}, verify=False)  # ignore SSL verification for now
+            response = requests.post(url, headers=headers, data={})
         else:
             response = requests.post(url, data={})  # empty body
         if response.status_code != 200:
@@ -66,7 +66,7 @@ class MultiPlaywrightServer:
         logger.info(f"Playwright server started: {self.playwright_server}")
 
     def stop_server(self):
-        protocol = "https" if self.deployment == "msrhub" else "http"
+        protocol = "http"
         url = f"{protocol}://{self.server_address}:{self.server_port}/stop/{self.sess_id}"
         logger.info(f"Stopping Playwright server at {url}")
         if self.deployment == "msrhub":
@@ -75,7 +75,7 @@ class MultiPlaywrightServer:
             headers = {
                 "Authorization": f"Bearer {token.token}",
             }
-            response = requests.post(url, headers=headers, data={}, verify=False)  # ignore SSL verification for now
+            response = requests.post(url, headers=headers, data={}, verify=False)
         else:
             response = requests.post(url, data={})
         if response.status_code != 200:
@@ -93,7 +93,7 @@ class MultiPlaywrightServer:
             playwright_service_name_prefix = os.getenv("PLAYWRIGHT_SERVICE_NAME_PREFIX")
             instance_id = os.getenv("INSTANCE_ID")
             app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
-            playwright_endpoint = f"wss://{playwright_service_name_prefix}-{instance_id}-{self.playwright_server.get('playwright_port')}.{app_env_domain}{playwright_ws_path}"
+            playwright_endpoint = f"ws://{playwright_service_name_prefix}-{instance_id}-{self.playwright_server.get('playwright_port')}.msrhub.com{playwright_ws_path}"
             novnc_endpoint = f"https://{playwright_service_name_prefix}-{instance_id}-{self.playwright_server.get('novnc_port')}.{app_env_domain}"
             return {
                 "playwright_endpoint": playwright_endpoint,
@@ -116,9 +116,10 @@ async def create_multi_playwright_server_from_env() -> MultiPlaywrightServer:
     elif deployment == "msrhub":
         playwright_service_name_prefix = os.getenv("PLAYWRIGHT_SERVICE_NAME_PREFIX")
         instance_id = os.getenv("INSTANCE_ID")
-        app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
-        multi_playwright_server_address = f"{playwright_service_name_prefix}-{instance_id}.{app_env_domain}"
-        multi_playwright_server_port = 443
+        #app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
+        #multi_playwright_server_address = f"{playwright_service_name_prefix}-{instance_id}.{app_env_domain}"
+        multi_playwright_server_address = f"{playwright_service_name_prefix}-{instance_id}.msrhub.com"
+        multi_playwright_server_port = 80
     else:
         raise RuntimeError(f"Unsupported deployment type: {deployment}")
     async with sess_lock:
