@@ -1,0 +1,24 @@
+# Prerequisite
+
+```
+pip install uv
+uv venv
+uv sync --all-extras
+source .venv/bin/activate
+cd ..
+uv pip install -e .
+cd ui/frontend
+npm install -g gatsby-cli && npm install --global yarn && yarn install && yarn build
+```
+
+# Configure
+
+Go to frontend directory and edit all the environement variables in run.sh
+Note that for AZURE_OPENAI_TEXT_MODEL, you need to add the prefix "azure/" in front of your deployment.
+
+# Run Web UI
+
+```
+cd frontend
+./run.sh 
+```
