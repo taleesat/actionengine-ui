@@ -1,10 +1,10 @@
 # Prerequisite
 
 ```
-pip install uv
-uv venv
-uv sync --all-extras
+python -m vevn .venv
 source .venv/bin/activate
+pip install uv
+uv sync --all-extras
 cd ..
 uv pip install -e .
 cd ui/frontend
