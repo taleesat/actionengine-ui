@@ -10,7 +10,7 @@ import { useConfigStore } from "../../hooks/store";
 import { appContext } from "../../hooks/provider";
 import { sessionAPI } from "./api";
 import type { Session } from "../types/datamodel";
-import ChatView from "./chat/chat";
+import CrawlerView from "./crawler/crawler";
 import { getServerUrl } from "../utils";
 import { RunStatus } from "../types/datamodel";
 import ContentHeader from "../contentheader";
@@ -382,7 +382,7 @@ export const CrawlerManager: React.FC = () => {
               <Spin size="large" tip="Loading session..." />
             </div>
           )}
-          <ChatView
+          <CrawlerView
             session={s}
             onSessionNameChange={handleSessionName}
             getSessionSocket={getSessionSocket}
