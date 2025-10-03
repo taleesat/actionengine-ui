@@ -1,1 +1,1 @@
-magentic ui --port 8081 --config config.yaml
+magentic ui --port 8082 --config config.yaml
