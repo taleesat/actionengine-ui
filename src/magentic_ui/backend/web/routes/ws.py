@@ -1,7 +1,11 @@
 # api/ws.py
 import asyncio
 import json
+import os
+import subprocess
+import threading
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from loguru import logger
@@ -12,6 +16,216 @@ from ..managers import WebSocketManager
 from ...utils.utils import construct_task
 
 router = APIRouter()
+
+@router.websocket("/crawler")
+async def control_crawler(
+    websocket: WebSocket
+):
+    await websocket.accept()
+    
+    # Process and thread management variables
+    crawler_process: Optional[subprocess.Popen] = None
+    crawler_thread: Optional[threading.Thread] = None
+    output_file = "result.yaml"
+    
+    def run_crawler_process(url: str):
+        """Run the crawler process and capture stdout"""
+        nonlocal crawler_process
+        try:
+            # Command to run the crawler
+            cmd = [
+                "python", "./src/project24/apps/crawlerApp.py", 
+                "--app_url", url,
+                "--action_index_path", output_file,
+                "--crawl_action"
+            ]
+            
+            logger.info(f"Starting crawler process with command: {' '.join(cmd)}")
+            crawler_process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                universal_newlines=True
+            )
+            
+            # Read stdout line by line and send updates
+            log_messages = []
+            for line in iter(crawler_process.stdout.readline, ''):
+                if line:
+                    line = line.strip()
+                    log_messages.append(line)
+                    logger.info(f"Crawler output: {line}")
+                    
+                    # Send log update via websocket (in a thread-safe way)
+                    asyncio.run_coroutine_threadsafe(
+                        websocket.send_json({
+                            "type": "update_log",
+                            "messages": [line]
+                        }),
+                        asyncio.get_event_loop()
+                    )
+            
+            # Wait for process to complete
+            return_code = crawler_process.wait()
+            crawler_process = None
+            
+            # Send completion status
+            if return_code == 0:
+                asyncio.run_coroutine_threadsafe(
+                    websocket.send_json({
+                        "type": "status",
+                        "status": "done"
+                    }),
+                    asyncio.get_event_loop()
+                )
+                logger.info("Crawler process completed successfully")
+            else:
+                asyncio.run_coroutine_threadsafe(
+                    websocket.send_json({
+                        "type": "status", 
+                        "status": "error",
+                        "message": f"Process exited with code {return_code}"
+                    }),
+                    asyncio.get_event_loop()
+                )
+                logger.error(f"Crawler process failed with return code: {return_code}")
+                
+        except Exception as e:
+            logger.error(f"Error in crawler process: {str(e)}")
+            asyncio.run_coroutine_threadsafe(
+                websocket.send_json({
+                    "type": "status",
+                    "status": "error", 
+                    "message": str(e)
+                }),
+                asyncio.get_event_loop()
+            )
+    
+    try:
+        while True:
+            data = await websocket.receive_text()
+            message = json.loads(data)
+            logger.info(f"Received message: {message}")
+            
+            message_type = message.get("type")
+            
+            if message_type == "start":
+                url = message.get("url")
+                if not url:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "URL is required for start message"
+                    })
+                    continue
+                
+                # Check if crawler is already running
+                if crawler_process is not None or (crawler_thread is not None and crawler_thread.is_alive()):
+                    await websocket.send_json({
+                        "type": "error", 
+                        "message": "Crawler is already running"
+                    })
+                    continue
+                
+                # Start crawler process in a new thread
+                crawler_thread = threading.Thread(
+                    target=run_crawler_process,
+                    args=(url,),
+                    daemon=True
+                )
+                crawler_thread.start()
+                
+                # Send running status
+                await websocket.send_json({
+                    "type": "status",
+                    "status": "running"
+                })
+                logger.info(f"Started crawler for URL: {url}")
+            
+            elif message_type == "stop":
+                # Kill the process and thread
+                if crawler_process is not None:
+                    try:
+                        crawler_process.terminate()
+                        crawler_process.wait(timeout=5)
+                        crawler_process = None
+                        logger.info("Crawler process terminated")
+                    except subprocess.TimeoutExpired:
+                        crawler_process.kill()
+                        crawler_process = None
+                        logger.info("Crawler process killed (forced)")
+                    except Exception as e:
+                        logger.error(f"Error stopping crawler process: {str(e)}")
+                
+                if crawler_thread is not None and crawler_thread.is_alive():
+                    # Note: Python threads cannot be forcibly killed, but the process termination will end the thread
+                    crawler_thread = None
+                    logger.info("Crawler thread reference cleared")
+                
+                # Send stopped status
+                await websocket.send_json({
+                    "type": "status",
+                    "status": "stopped"
+                })
+                logger.info("Crawler stopped")
+            
+            elif message_type == "download":
+                # Read the output file and send back the data
+                try:
+                    if os.path.exists(output_file):
+                        with open(output_file, 'r', encoding='utf-8') as f:
+                            file_content = f.read()
+                        
+                        await websocket.send_json({
+                            "type": "save",
+                            "data": file_content
+                        })
+                        logger.info(f"Sent file content from {output_file}")
+                    else:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": f"Output file {output_file} not found"
+                        })
+                        logger.warning(f"Output file {output_file} does not exist")
+                        
+                except Exception as e:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"Error reading output file: {str(e)}"
+                    })
+                    logger.error(f"Error reading output file: {str(e)}")
+            
+            else:
+                await websocket.send_json({
+                    "type": "error",
+                    "message": f"Unknown message type: {message_type}"
+                })
+                logger.warning(f"Unknown message type received: {message_type}")
+                
+    except WebSocketDisconnect:
+        logger.info("Crawler WebSocket disconnected")
+        # Clean up on disconnect
+        if crawler_process is not None:
+            try:
+                crawler_process.terminate()
+                crawler_process.wait(timeout=5)
+            except:
+                crawler_process.kill()
+            finally:
+                crawler_process = None
+    except Exception as e:
+        logger.error(f"WebSocket error in crawler control: {str(e)}")
+    finally:
+        # Ensure cleanup
+        if crawler_process is not None:
+            try:
+                crawler_process.terminate()
+                crawler_process.wait(timeout=5)
+            except:
+                crawler_process.kill()
+            finally:
+                crawler_process = None
 
 @router.websocket("/runs/{run_id}")
 async def run_websocket(

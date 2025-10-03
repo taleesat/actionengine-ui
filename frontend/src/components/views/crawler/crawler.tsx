@@ -1,22 +1,12 @@
 import * as React from "react";
 import { message, Button, Input, Table, Typography } from "antd";
-import { PlayCircleOutlined, StopOutlined, ExportOutlined, PauseCircleOutlined } from "@ant-design/icons";
-import { Session } from "../../types/datamodel";
+import { PlayCircleOutlined, StopOutlined, ExportOutlined } from "@ant-design/icons";
+import { getServerUrl } from "../../utils";
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
 
 interface CrawlerViewProps {
-  session: Session | null;
-  onSessionNameChange: (sessionData: Partial<Session>) => void;
-  getSessionSocket: (
-    sessionId: number,
-    runId: string,
-    fresh_socket: boolean,
-    only_retrieve_existing_socket: boolean
-  ) => WebSocket | null;
-  visible?: boolean;
-  onRunStatusChange: (sessionId: number, status: any) => void;
+  // No props needed - self-contained component
 }
 
 interface CrawlResult {
@@ -26,13 +16,7 @@ interface CrawlResult {
   status: string;
 }
 
-export default function CrawlerView({
-  session,
-  onSessionNameChange,
-  getSessionSocket,
-  visible = true,
-  onRunStatusChange,
-}: CrawlerViewProps) {
+export default function CrawlerView(): JSX.Element {
   const [urlInput, setUrlInput] = React.useState("");
   const [isRunning, setIsRunning] = React.useState(false);
   const [logMessages, setLogMessages] = React.useState<string[]>([
@@ -41,6 +25,7 @@ export default function CrawlerView({
   ]);
   const [crawlResults, setCrawlResults] = React.useState<CrawlResult[]>([]);
   const [messageApi, contextHolder] = message.useMessage();
+  const [socket, setSocket] = React.useState<WebSocket | null>(null);
 
   const logContainerRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -50,6 +35,102 @@ export default function CrawlerView({
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
   }, [logMessages]);
+
+  // Setup WebSocket connection
+  const setupWebSocket = (): WebSocket | null => {
+    try {
+      const serverUrl = getServerUrl();
+      const baseUrl = serverUrl.replace(/(^\w+:|^)\/\//, "").replace("/api", "");
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${wsProtocol}//${baseUrl}/api/ws/crawler`;
+
+      const newSocket = new WebSocket(wsUrl);
+
+      newSocket.onopen = () => {
+        addLogMessage("[INFO] WebSocket connected");
+      };
+
+      newSocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleWebSocketMessage(data);
+        } catch (error) {
+          console.error("Error parsing WebSocket message:", error);
+        }
+      };
+
+      newSocket.onclose = () => {
+        addLogMessage("[INFO] WebSocket disconnected");
+        setSocket(null);
+      };
+
+      newSocket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        addLogMessage("[ERROR] WebSocket connection error");
+      };
+
+      setSocket(newSocket);
+      return newSocket;
+    } catch (error) {
+      console.error("Error setting up WebSocket:", error);
+      addLogMessage("[ERROR] Failed to setup WebSocket connection");
+      return null;
+    }
+  };
+
+  const handleWebSocketMessage = (data: any) => {
+    switch (data.type) {
+      case "status":
+        if (data.status === "running") {
+          setIsRunning(true);
+          addLogMessage("[INFO] Crawling started");
+        } else if (data.status === "stopped") {
+          setIsRunning(false);
+          addLogMessage("[INFO] Crawling stopped");
+        } else if (data.status === "done") {
+          setIsRunning(false);
+          addLogMessage("[INFO] Crawling completed");
+        }
+        break;
+      case "update_log":
+        if (data.messages && Array.isArray(data.messages)) {
+          data.messages.forEach((message: string) => {
+            addLogMessage(`[INFO] ${message}`);
+          });
+        }
+        break;
+      case "update_result":
+        if (data.action) {
+          setCrawlResults(prev => [...prev, {
+            key: Date.now().toString(),
+            url: urlInput,
+            actions: data.action,
+            status: "Success"
+          }]);
+          addLogMessage(`[SUCCESS] Action: ${data.action}`);
+        }
+        break;
+      case "save":
+        if (data.data) {
+          const yamlContent = data.data;
+          const blob = new Blob([yamlContent], { type: 'text/yaml' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `crawl_results_${Date.now()}.yaml`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          
+          messageApi.success("Results saved successfully");
+          addLogMessage("[INFO] Results saved to YAML file");
+        }
+        break;
+      default:
+        console.log("Unknown message type:", data.type);
+    }
+  };
 
   const addLogMessage = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -62,96 +143,62 @@ export default function CrawlerView({
       return;
     }
 
+    // Setup WebSocket if not connected
+    let currentSocket = socket;
+    if (!currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
+      currentSocket = setupWebSocket();
+      if (!currentSocket) {
+        messageApi.error("Failed to establish WebSocket connection");
+        return;
+      }
+    }
+
     setIsRunning(true);
-    addLogMessage(`[INFO] ${urlInput} crawl started...`);
+    setCrawlResults([]); // Clear previous results
     
-    // Update session name with URL
-    if (session?.id) {
-      onSessionNameChange({
-        id: session.id,
-        name: `Crawling: ${urlInput.slice(0, 30)}${urlInput.length > 30 ? '...' : ''}`,
-      });
-    }
+    // Wait for socket to be ready, then send crawl command
+    const sendCrawlCommand = () => {
+      if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+        currentSocket.send(JSON.stringify({
+          type: "start",
+          url: urlInput.trim()
+        }));
+        addLogMessage(`[INFO] ${urlInput} crawl started...`);
+      } else {
+        setTimeout(sendCrawlCommand, 100); // Retry after 100ms
+      }
+    };
 
-    // Simulate crawling process
-    setTimeout(() => {
-      addLogMessage(`[SUCCESS] Fetched: ${urlInput}`);
-      setCrawlResults(prev => [...prev, {
-        key: Date.now().toString(),
-        url: urlInput,
-        actions: "GET, Parse Links",
-        status: "Success"
-      }]);
-      
-      // Simulate additional pages being crawled
-      const subPages = ["/about", "/contact", "/products"];
-      subPages.forEach((page, index) => {
-        setTimeout(() => {
-          const fullUrl = `${urlInput}${page}`;
-          if (Math.random() > 0.2) { // 80% success rate
-            addLogMessage(`[SUCCESS] Fetched: ${fullUrl}`);
-            setCrawlResults(prev => [...prev, {
-              key: (Date.now() + index).toString(),
-              url: fullUrl,
-              actions: "GET, Extract Data",
-              status: "Success"
-            }]);
-          } else {
-            addLogMessage(`[ERROR] Failed: ${fullUrl}`);
-            setCrawlResults(prev => [...prev, {
-              key: (Date.now() + index).toString(),
-              url: fullUrl,
-              actions: "GET",
-              status: "Failed"
-            }]);
-          }
-        }, (index + 1) * 1000);
-      });
-
-      // Complete crawling after all pages
-      setTimeout(() => {
-        setIsRunning(false);
-        addLogMessage("[INFO] Crawling completed");
-        if (session?.id) {
-          onRunStatusChange(session.id, "complete");
-        }
-      }, 5000);
-    }, 1000);
-
-    if (session?.id) {
-      onRunStatusChange(session.id, "active");
-    }
+    sendCrawlCommand();
   };
 
   const handleStopCrawl = () => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: "stop"
+      }));
+    }
     setIsRunning(false);
     addLogMessage("[INFO] Crawling stopped by user");
-    if (session?.id) {
-      onRunStatusChange(session.id, "stopped");
-    }
   };
 
   const handleExportResults = () => {
-    if (crawlResults.length === 0) {
-      messageApi.warning("No results to export");
-      return;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: "download"
+      }));
     }
-
-    const csvContent = "data:text/csv;charset=utf-8," + 
-      "URL,Actions,Status\n" +
-      crawlResults.map(result => `${result.url},${result.actions},${result.status}`).join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `crawl_results_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    messageApi.success("Results exported successfully");
-    addLogMessage("[INFO] Results exported to CSV");
+    addLogMessage("[INFO] Export request sent");
   };
+
+  // Cleanup WebSocket on component unmount
+  React.useEffect(() => {
+    return () => {
+      if (socket) {
+        socket.close();
+      }
+    };
+  }, [socket]);
 
   const columns = [
     {
@@ -189,10 +236,6 @@ export default function CrawlerView({
       ),
     },
   ];
-
-  if (!visible) {
-    return null;
-  }
 
   return (
     <div className="text-primary h-[calc(100vh-100px)] bg-primary relative rounded flex-1 w-full">
