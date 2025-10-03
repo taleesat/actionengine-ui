@@ -15,19 +15,28 @@ cd ui/frontend
 
 npm install -g gatsby-cli
 
-npm install --global yarn
+npm install -g yarn
 
 yarn install
 
 yarn build
+
+chmod +x run.sh
+
+chmod +x run-github.sh
 ```
 
-# Configure
+# Configure to run on github
+- Open run-github.com
+
+- Edit this line, `export export CODESPACE_ID="sturdy-robot-jwv4gq46j9gfpp7q"` to your codespace ID.
+
+- Forward port 8000, 3000, 5000
 
 # Run Web UI
 
 ```
 cd frontend
 
-./run.sh 
+./run-github.sh 
 ```

@@ -100,10 +100,9 @@ class MultiPlaywrightServer:
                 "novnc_endpoint": novnc_endpoint,
             }
         elif self.deployment == "github":
-            playwright_service_name_prefix = os.getenv("PLAYWRIGHT_SERVICE_NAME_PREFIX")
-            instance_id = os.getenv("INSTANCE_ID")
-            playwright_endpoint = f"ws://{playwright_service_name_prefix}-{instance_id}-{self.playwright_server.get('playwright_port')}.app.github.dev{playwright_ws_path}"
-            novnc_endpoint = f"https://{playwright_service_name_prefix}-{instance_id}-{self.playwright_server.get('novnc_port')}.app.github.dev"
+            codespace_id = os.getenv("CODESPACE_ID")
+            playwright_endpoint = f"ws://{self.server_address}:{self.playwright_server.get('playwright_port')}{playwright_ws_path}"
+            novnc_endpoint = f"https://{codespace_id}-{self.playwright_server.get('novnc_port')}.app.github.dev"
             return {
                 "playwright_endpoint": playwright_endpoint,
                 "novnc_endpoint": novnc_endpoint,
@@ -130,10 +129,8 @@ async def create_multi_playwright_server_from_env() -> MultiPlaywrightServer:
         multi_playwright_server_address = f"{playwright_service_name_prefix}-{instance_id}.msrhub.com"
         multi_playwright_server_port = 80
     elif deployment == "github":
-        playwright_service_name_prefix = os.getenv("PLAYWRIGHT_SERVICE_NAME_PREFIX")
-        instance_id = os.getenv("INSTANCE_ID")
-        multi_playwright_server_address = f"{playwright_service_name_prefix}-{instance_id}.app.github.dev"
-        multi_playwright_server_port = 80
+        multi_playwright_server_address = os.getenv("MULTI_PLAYWRIGHT_SERVER_ADDRESS", "localhost")
+        multi_playwright_server_port = int(os.getenv("MULTI_PLAYWRIGHT_SERVER_PORT", 3000))
     else:
         raise RuntimeError(f"Unsupported deployment type: {deployment}")
     async with sess_lock:

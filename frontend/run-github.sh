@@ -8,6 +8,5 @@ export DEPLOYMENT="github"
 export MULTI_PLAYWRIGHT_SERVER_ADDRESS="localhost" # IP address of the browser server
 export MULTI_PLAYWRIGHT_SERVER_PORT="3000" # Port of the browser server
 export MCPSTUDIO_UI_PORT="8000" # Port to be opend
-export PLAYWRIGHT_SERVICE_NAME_PREFIX="automatic-zebra"
-export INSTANCE_ID="5pj49x46qgxfv466"
+export CODESPACE_ID="sturdy-robot-jwv4gq46j9gfpp7q"
 magentic ui --host 0.0.0.0 --port $MCPSTUDIO_UI_PORT --config config.yaml
