@@ -99,6 +99,15 @@ class MultiPlaywrightServer:
                 "playwright_endpoint": playwright_endpoint,
                 "novnc_endpoint": novnc_endpoint,
             }
+        elif self.deployment == "github":
+            playwright_service_name_prefix = os.getenv("PLAYWRIGHT_SERVICE_NAME_PREFIX")
+            instance_id = os.getenv("INSTANCE_ID")
+            playwright_endpoint = f"ws://{playwright_service_name_prefix}-{instance_id}-{self.playwright_server.get('playwright_port')}.app.github.dev{playwright_ws_path}"
+            novnc_endpoint = f"https://{playwright_service_name_prefix}-{instance_id}-{self.playwright_server.get('novnc_port')}.app.github.dev"
+            return {
+                "playwright_endpoint": playwright_endpoint,
+                "novnc_endpoint": novnc_endpoint,
+            }
         else:
             raise RuntimeError(f"Unsupported deployment type: {self.deployment}")
 
@@ -119,6 +128,11 @@ async def create_multi_playwright_server_from_env() -> MultiPlaywrightServer:
         #app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
         #multi_playwright_server_address = f"{playwright_service_name_prefix}-{instance_id}.{app_env_domain}"
         multi_playwright_server_address = f"{playwright_service_name_prefix}-{instance_id}.msrhub.com"
+        multi_playwright_server_port = 80
+    elif deployment == "github":
+        playwright_service_name_prefix = os.getenv("PLAYWRIGHT_SERVICE_NAME_PREFIX")
+        instance_id = os.getenv("INSTANCE_ID")
+        multi_playwright_server_address = f"{playwright_service_name_prefix}-{instance_id}.app.github.dev"
         multi_playwright_server_port = 80
     else:
         raise RuntimeError(f"Unsupported deployment type: {deployment}")
