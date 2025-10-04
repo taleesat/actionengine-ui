@@ -11,9 +11,9 @@ interface CrawlerViewProps {
 
 interface CrawlResult {
   key: string;
-  url: string;
+  state: string;
   actions: string;
-  status: string;
+  verbs: string[];
 }
 
 export default function CrawlerView(): JSX.Element {
@@ -103,9 +103,9 @@ export default function CrawlerView(): JSX.Element {
         if (data.action) {
           setCrawlResults(prev => [...prev, {
             key: Date.now().toString(),
-            url: urlInput,
+            state: urlInput,
             actions: data.action,
-            status: "Success"
+            verbs: ["Success"]
           }]);
           addLogMessage(`[SUCCESS] Action: ${data.action}`);
         }
@@ -202,7 +202,7 @@ export default function CrawlerView(): JSX.Element {
 
   const columns = [
     {
-      title: "URL",
+      title: "States",
       dataIndex: "url",
       key: "url",
       width: "50%",
@@ -220,19 +220,16 @@ export default function CrawlerView(): JSX.Element {
       ),
     },
     {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
+      title: "Verbs",
+      dataIndex: "verbs",
+      key: "verbs",
       width: "20%",
-      render: (status: string) => (
-        <Text 
-          style={{ 
-            fontSize: "12px",
-            color: status === "Success" ? "#52c41a" : "#ff4d4f"
-          }}
-        >
-          {status}
-        </Text>
+      render: (verbs: string[]) => (
+        <ul style={{ fontSize: "12px", margin: 0, paddingLeft: "16px" }}>
+          {verbs.map((verb, index) => (
+            <li key={index}>{verb}</li>
+          ))}
+        </ul>
       ),
     },
   ];
