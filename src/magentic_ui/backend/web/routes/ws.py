@@ -4,6 +4,10 @@ import json
 import os
 import subprocess
 import threading
+import tempfile
+import time
+import uuid
+import yaml
 from datetime import datetime
 from typing import Optional
 
@@ -14,8 +18,7 @@ from ...datamodel import Run
 from ..deps import get_db, get_websocket_manager
 from ..managers import WebSocketManager
 from ...utils.utils import construct_task
-
-import traceback
+from .appGraph import AppGraph
 
 router = APIRouter()
 
@@ -31,15 +34,107 @@ async def control_crawler(
     # Process and thread management variables
     crawler_process: Optional[subprocess.Popen] = None
     crawler_thread: Optional[threading.Thread] = None
+    file_monitor_thread: Optional[threading.Thread] = None
+    crawler_work_dir: Optional[str] = None
     output_file = "result.yaml"
+    stop_file_monitoring = threading.Event()
     
     # Get the current event loop to pass to the thread
     event_loop = asyncio.get_running_loop()
     
+    def monitor_result_file(loop: asyncio.AbstractEventLoop):
+        """Monitor result.yaml file and send updates via websocket"""
+        nonlocal crawler_work_dir, output_file
+        last_sent_content = None
+        
+        try:
+            logger.info("Starting file monitoring thread")
+            while not stop_file_monitoring.is_set():
+                if crawler_work_dir:
+                    result_file_path = os.path.join(crawler_work_dir, output_file)
+                    
+                    if os.path.exists(result_file_path):
+                        try:
+                            with open(result_file_path, 'r', encoding='utf-8') as f:
+                                file_content = f.read()
+                            
+                            # Only send if content has changed
+                            if file_content != last_sent_content:
+                                # Parse YAML and convert to AppGraph
+                                try:
+                                    yaml_data = yaml.safe_load(file_content)
+                                    if yaml_data:
+                                        # Convert to AppGraph object for JSON serialization
+                                        app_graph = AppGraph.model_validate(yaml_data)
+                                        
+                                        # Transform AppGraph to required schema format
+                                        result = []
+                                        for state in app_graph.states:
+                                            state_entry = {
+                                                "state": state.id or "Unknown State",
+                                                "atoms": []
+                                            }
+                                            
+                                            # Add atoms for this state
+                                            for atom in state.atoms:
+                                                atom_entry = {
+                                                    "id": atom.id,
+                                                    "description": atom.description
+                                                }
+                                                state_entry["atoms"].append(atom_entry)
+                                            
+                                            result.append(state_entry)
+                                        
+                                        # Send transformed data via websocket
+                                        asyncio.run_coroutine_threadsafe(
+                                            websocket.send_json({
+                                                "type": "update_result",
+                                                "result": result
+                                            }),
+                                            loop
+                                        )
+                                        last_sent_content = file_content
+                                        logger.info("Sent result.yaml update via websocket")
+                                except yaml.YAMLError as e:
+                                    logger.warning(f"Error parsing YAML from {result_file_path}: {str(e)}")
+                                except Exception as e:
+                                    logger.warning(f"Error processing AppGraph from {result_file_path}: {str(e)}")
+                                    
+                        except Exception as e:
+                            logger.error(f"Error reading {result_file_path}: {str(e)}")
+                
+                # Sleep for 1 second before checking again
+                if not stop_file_monitoring.wait(1.0):
+                    continue
+                else:
+                    break
+                    
+        except Exception as e:
+            logger.error(f"Error in file monitoring thread: {str(e)}")
+        finally:
+            logger.info("File monitoring thread stopped")
+    
     def run_crawler_process(url: str, loop: asyncio.AbstractEventLoop):
         """Run the crawler process and capture stdout"""
-        nonlocal crawler_process
+        nonlocal crawler_process, crawler_work_dir
         try:
+            # Create a unique directory for this crawler process
+            tmp_dir = os.environ.get("MAGENTIC_TMP_PATH", tempfile.gettempdir())
+            crawler_uuid = str(uuid.uuid4())
+            crawler_work_dir = os.path.join(tmp_dir, crawler_uuid)
+            
+            # Create the directory
+            os.makedirs(crawler_work_dir, exist_ok=True)
+            logger.info(f"Created crawler work directory: {crawler_work_dir}")
+            
+            # Create .auth directory with combined.json file
+            auth_dir = os.path.join(crawler_work_dir, ".auth")
+            os.makedirs(auth_dir, exist_ok=True)
+            combined_json_path = os.path.join(auth_dir, "combined.json")
+            with open(combined_json_path, 'w', encoding='utf-8') as f:
+                f.write("{}")
+            logger.info(f"Created .auth directory and combined.json file at: {auth_dir}")
+            
             # Command to run the crawler
             cmd = [
                 python_executable, app_path, 
@@ -48,14 +143,15 @@ async def control_crawler(
                 "--crawl_action"
             ]
             
-            logger.info(f"Starting crawler process with command: {' '.join(cmd)}")
+            logger.info(f"Starting crawler process with command: {' '.join(cmd)} in directory: {crawler_work_dir}")
             crawler_process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
-                universal_newlines=True
+                universal_newlines=True,
+                cwd=crawler_work_dir
             )
             
             # Read stdout line by line and send updates
@@ -102,7 +198,6 @@ async def control_crawler(
                 
         except Exception as e:
             logger.error(f"Error in crawler process: {str(e)}")
-            traceback.print_exc()
             asyncio.run_coroutine_threadsafe(
                 websocket.send_json({
                     "type": "status",
@@ -137,6 +232,9 @@ async def control_crawler(
                     })
                     continue
                 
+                # Reset the stop event
+                stop_file_monitoring.clear()
+                
                 # Start crawler process in a new thread
                 crawler_thread = threading.Thread(
                     target=run_crawler_process,
@@ -145,14 +243,29 @@ async def control_crawler(
                 )
                 crawler_thread.start()
                 
+                # Start file monitoring thread
+                file_monitor_thread = threading.Thread(
+                    target=monitor_result_file,
+                    args=(event_loop,),
+                    daemon=True
+                )
+                file_monitor_thread.start()
+                
                 # Send running status
                 await websocket.send_json({
                     "type": "status",
                     "status": "running"
                 })
-                logger.info(f"Started crawler for URL: {url}")
+                logger.info(f"Started crawler and file monitoring for URL: {url}")
             
             elif message_type == "stop":
+                # Stop file monitoring
+                stop_file_monitoring.set()
+                if file_monitor_thread is not None and file_monitor_thread.is_alive():
+                    file_monitor_thread.join(timeout=2.0)
+                    file_monitor_thread = None
+                    logger.info("File monitoring thread stopped")
+                
                 # Kill the process and thread
                 if crawler_process is not None:
                     try:
@@ -182,21 +295,24 @@ async def control_crawler(
             elif message_type == "download":
                 # Read the output file and send back the data
                 try:
-                    if os.path.exists(output_file):
-                        with open(output_file, 'r', encoding='utf-8') as f:
+                    # Use the full path to the output file in the crawler work directory
+                    output_file_path = os.path.join(crawler_work_dir, output_file) if crawler_work_dir else output_file
+                    
+                    if os.path.exists(output_file_path):
+                        with open(output_file_path, 'r', encoding='utf-8') as f:
                             file_content = f.read()
                         
                         await websocket.send_json({
                             "type": "save",
                             "data": file_content
                         })
-                        logger.info(f"Sent file content from {output_file}")
+                        logger.info(f"Sent file content from {output_file_path}")
                     else:
                         await websocket.send_json({
                             "type": "error",
-                            "message": f"Output file {output_file} not found"
+                            "message": f"Output file {output_file_path} not found"
                         })
-                        logger.warning(f"Output file {output_file} does not exist")
+                        logger.warning(f"Output file {output_file_path} does not exist")
                         
                 except Exception as e:
                     await websocket.send_json({
@@ -226,7 +342,14 @@ async def control_crawler(
     except Exception as e:
         logger.error(f"WebSocket error in crawler control: {str(e)}")
     finally:
-        # Ensure cleanup
+        # Stop file monitoring
+        stop_file_monitoring.set()
+        if file_monitor_thread is not None and file_monitor_thread.is_alive():
+            file_monitor_thread.join(timeout=2.0)
+            file_monitor_thread = None
+            logger.info("File monitoring thread stopped during cleanup")
+        
+        # Ensure crawler process cleanup
         if crawler_process is not None:
             try:
                 crawler_process.terminate()

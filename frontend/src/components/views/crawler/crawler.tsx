@@ -12,8 +12,10 @@ interface CrawlerViewProps {
 interface CrawlResult {
   key: string;
   state: string;
-  actions: string;
-  verbs: string[];
+  atoms: Array<{
+    id: string;
+    description: string;
+  }>;
 }
 
 export default function CrawlerView(): JSX.Element {
@@ -100,14 +102,14 @@ export default function CrawlerView(): JSX.Element {
         }
         break;
       case "update_result":
-        if (data.action) {
-          setCrawlResults(prev => [...prev, {
-            key: Date.now().toString(),
-            state: urlInput,
-            actions: data.action,
-            verbs: ["Success"]
-          }]);
-          addLogMessage(`[SUCCESS] Action: ${data.action}`);
+        if (data.result && Array.isArray(data.result)) {
+          const newResults = data.result.map((item: any, index: number) => ({
+            key: `${Date.now()}-${index}`,
+            state: item.state || "",
+            atoms: item.atoms || []
+          }));
+          setCrawlResults(prev => [...prev, ...newResults]);
+          addLogMessage(`[SUCCESS] Received ${data.result.length} result(s)`);
         }
         break;
       case "save":
@@ -202,32 +204,23 @@ export default function CrawlerView(): JSX.Element {
 
   const columns = [
     {
-      title: "States",
-      dataIndex: "url",
-      key: "url",
-      width: "50%",
+      title: "State",
+      dataIndex: "state",
+      key: "state",
+      width: "30%",
       render: (text: string) => (
         <Text style={{ fontSize: "12px", wordBreak: "break-all" }}>{text}</Text>
       ),
     },
     {
-      title: "Actions",
-      dataIndex: "actions",
-      key: "actions",
-      width: "30%",
-      render: (text: string) => (
-        <Text style={{ fontSize: "12px" }}>{text}</Text>
-      ),
-    },
-    {
-      title: "Verbs",
-      dataIndex: "verbs",
-      key: "verbs",
-      width: "20%",
-      render: (verbs: string[]) => (
+      title: "Atoms",
+      dataIndex: "atoms",
+      key: "atoms",
+      width: "70%",
+      render: (atoms: Array<{id: string, description: string}>) => (
         <ul style={{ fontSize: "12px", margin: 0, paddingLeft: "16px" }}>
-          {verbs.map((verb, index) => (
-            <li key={index}>{verb}</li>
+          {atoms.map((atom) => (
+            <li key={atom.id}>{atom.description}</li>
           ))}
         </ul>
       ),
