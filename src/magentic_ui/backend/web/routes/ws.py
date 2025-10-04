@@ -15,7 +15,12 @@ from ..deps import get_db, get_websocket_manager
 from ..managers import WebSocketManager
 from ...utils.utils import construct_task
 
+import traceback
+
 router = APIRouter()
+
+python_executable = "C:\\Users\\taleesat\\Workspace\\safe-agents\\crawler-ui\\.venv\\Scripts\\python.exe"
+app_path = "C:\\Users\\taleesat\\Workspace\\safe-agents\\crawler-ui\\src\\project24\\apps\\crawlerApp.py"
 
 @router.websocket("/crawler")
 async def control_crawler(
@@ -28,13 +33,16 @@ async def control_crawler(
     crawler_thread: Optional[threading.Thread] = None
     output_file = "result.yaml"
     
-    def run_crawler_process(url: str):
+    # Get the current event loop to pass to the thread
+    event_loop = asyncio.get_running_loop()
+    
+    def run_crawler_process(url: str, loop: asyncio.AbstractEventLoop):
         """Run the crawler process and capture stdout"""
         nonlocal crawler_process
         try:
             # Command to run the crawler
             cmd = [
-                "python", "./src/project24/apps/crawlerApp.py", 
+                python_executable, app_path, 
                 "--app_url", url,
                 "--action_index_path", output_file,
                 "--crawl_action"
@@ -64,11 +72,11 @@ async def control_crawler(
                             "type": "update_log",
                             "messages": [line]
                         }),
-                        asyncio.get_event_loop()
+                        loop
                     )
             
             # Wait for process to complete
-            return_code = crawler_process.wait()
+            return_code = crawler_process.wait() if crawler_process else 0
             crawler_process = None
             
             # Send completion status
@@ -78,7 +86,7 @@ async def control_crawler(
                         "type": "status",
                         "status": "done"
                     }),
-                    asyncio.get_event_loop()
+                    loop
                 )
                 logger.info("Crawler process completed successfully")
             else:
@@ -88,19 +96,20 @@ async def control_crawler(
                         "status": "error",
                         "message": f"Process exited with code {return_code}"
                     }),
-                    asyncio.get_event_loop()
+                    loop
                 )
                 logger.error(f"Crawler process failed with return code: {return_code}")
                 
         except Exception as e:
             logger.error(f"Error in crawler process: {str(e)}")
+            traceback.print_exc()
             asyncio.run_coroutine_threadsafe(
                 websocket.send_json({
                     "type": "status",
                     "status": "error", 
                     "message": str(e)
                 }),
-                asyncio.get_event_loop()
+                loop
             )
     
     try:
@@ -131,7 +140,7 @@ async def control_crawler(
                 # Start crawler process in a new thread
                 crawler_thread = threading.Thread(
                     target=run_crawler_process,
-                    args=(url,),
+                    args=(url, event_loop),
                     daemon=True
                 )
                 crawler_thread.start()
