@@ -38,13 +38,32 @@ export default function CrawlerView(): JSX.Element {
     }
   }, [logMessages]);
 
+  const getBaseUrl = (url: string): string => {
+    try {
+      let baseUrl = url.replace(/(^\w+:|^)\/\//, "");
+      if (baseUrl.startsWith("localhost")) {
+        baseUrl = baseUrl.replace("/api", "");
+      } else if (baseUrl === "/api") {
+        baseUrl = window.location.host;
+      } else {
+        baseUrl = baseUrl.replace("/api", "").replace(/\/$/, "");
+      }
+      return baseUrl;
+    } catch (error) {
+      console.error("Error processing server URL:", error);
+      throw new Error("Invalid server URL configuration");
+    }
+  };
+
   // Setup WebSocket connection
   const setupWebSocket = (): WebSocket | null => {
     try {
       const serverUrl = getServerUrl();
-      const baseUrl = serverUrl.replace(/(^\w+:|^)\/\//, "").replace("/api", "");
+      const baseUrl = getBaseUrl(serverUrl);
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = `${wsProtocol}//${baseUrl}/api/ws/crawler`;
+
+      console.log("Connecting to WebSocket at:", wsUrl);
 
       const newSocket = new WebSocket(wsUrl);
 

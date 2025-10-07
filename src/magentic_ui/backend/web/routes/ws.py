@@ -22,8 +22,8 @@ from .appGraph import AppGraph
 
 router = APIRouter()
 
-python_executable = "C:\\Users\\taleesat\\Workspace\\safe-agents\\crawler-ui\\.venv\\Scripts\\python.exe"
-app_path = "C:\\Users\\taleesat\\Workspace\\safe-agents\\crawler-ui\\src\\project24\\apps\\crawlerApp.py"
+python_executable = os.environ.get("PYTHON_EXECUTABLE")
+app_path = os.environ.get("CRAWLER_APP_PATH")
 
 @router.websocket("/crawler")
 async def control_crawler(
