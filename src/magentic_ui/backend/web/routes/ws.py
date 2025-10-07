@@ -224,6 +224,11 @@ async def control_crawler(
                     })
                     continue
                 
+                # Add http:// prefix if the URL doesn't have http or https
+                if not url.startswith(('http://', 'https://')):
+                    url = 'http://' + url
+                    logger.info(f"Prepended http:// to URL: {url}")
+
                 # Check if crawler is already running
                 if crawler_process is not None or (crawler_thread is not None and crawler_thread.is_alive()):
                     await websocket.send_json({

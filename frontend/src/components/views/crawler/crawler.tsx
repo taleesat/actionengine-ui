@@ -22,8 +22,7 @@ export default function CrawlerView(): JSX.Element {
   const [urlInput, setUrlInput] = React.useState("");
   const [isRunning, setIsRunning] = React.useState(false);
   const [logMessages, setLogMessages] = React.useState<string[]>([
-    "[INFO] Ready to start crawling...",
-    "[INFO] Waiting for URL input...",
+    "Ready to start crawling...",
   ]);
   const [crawlResults, setCrawlResults] = React.useState<CrawlResult[]>([]);
   const [messageApi, contextHolder] = message.useMessage();
@@ -68,7 +67,7 @@ export default function CrawlerView(): JSX.Element {
       const newSocket = new WebSocket(wsUrl);
 
       newSocket.onopen = () => {
-        addLogMessage("[INFO] WebSocket connected");
+        addLogMessage("WebSocket connected");
       };
 
       newSocket.onmessage = (event) => {
@@ -81,20 +80,20 @@ export default function CrawlerView(): JSX.Element {
       };
 
       newSocket.onclose = () => {
-        addLogMessage("[INFO] WebSocket disconnected");
+        addLogMessage("WebSocket disconnected");
         setSocket(null);
       };
 
       newSocket.onerror = (error) => {
         console.error("WebSocket error:", error);
-        addLogMessage("[ERROR] WebSocket connection error");
+        addLogMessage("WebSocket connection error");
       };
 
       setSocket(newSocket);
       return newSocket;
     } catch (error) {
       console.error("Error setting up WebSocket:", error);
-      addLogMessage("[ERROR] Failed to setup WebSocket connection");
+      addLogMessage("Failed to setup WebSocket connection");
       return null;
     }
   };
@@ -104,19 +103,19 @@ export default function CrawlerView(): JSX.Element {
       case "status":
         if (data.status === "running") {
           setIsRunning(true);
-          addLogMessage("[INFO] Crawling started");
+          addLogMessage("Crawling started");
         } else if (data.status === "stopped") {
           setIsRunning(false);
-          addLogMessage("[INFO] Crawling stopped");
+          addLogMessage("Crawling stopped");
         } else if (data.status === "done") {
           setIsRunning(false);
-          addLogMessage("[INFO] Crawling completed");
+          addLogMessage("Crawling completed");
         }
         break;
       case "update_log":
         if (data.messages && Array.isArray(data.messages)) {
           data.messages.forEach((message: string) => {
-            addLogMessage(`[INFO] ${message}`);
+            addLogMessage(`[CONSOLE] ${message}`);
           });
         }
         break;
@@ -128,7 +127,7 @@ export default function CrawlerView(): JSX.Element {
             atoms: item.atoms || []
           }));
           setCrawlResults(prev => [...prev, ...newResults]);
-          addLogMessage(`[SUCCESS] Received ${data.result.length} result(s)`);
+          addLogMessage(`[RESULT] Received ${data.result.length} result(s)`);
         }
         break;
       case "save":
@@ -145,7 +144,7 @@ export default function CrawlerView(): JSX.Element {
           URL.revokeObjectURL(url);
           
           messageApi.success("Results saved successfully");
-          addLogMessage("[INFO] Results saved to YAML file");
+          addLogMessage("Results saved to YAML file");
         }
         break;
       default:
@@ -184,7 +183,7 @@ export default function CrawlerView(): JSX.Element {
           type: "start",
           url: urlInput.trim()
         }));
-        addLogMessage(`[INFO] ${urlInput} crawl started...`);
+        addLogMessage(`${urlInput} crawl started...`);
       } else {
         setTimeout(sendCrawlCommand, 100); // Retry after 100ms
       }
@@ -200,7 +199,7 @@ export default function CrawlerView(): JSX.Element {
       }));
     }
     setIsRunning(false);
-    addLogMessage("[INFO] Crawling stopped by user");
+    addLogMessage("Crawling stopped by user");
   };
 
   const handleExportResults = () => {
@@ -209,7 +208,7 @@ export default function CrawlerView(): JSX.Element {
         type: "download"
       }));
     }
-    addLogMessage("[INFO] Export request sent");
+    addLogMessage("Export request sent");
   };
 
   // Cleanup WebSocket on component unmount
