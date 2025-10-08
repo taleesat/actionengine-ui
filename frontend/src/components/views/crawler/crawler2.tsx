@@ -52,9 +52,22 @@ interface CrawlResult {
   }>;
 }
 
+interface TrajectoryResult {
+  key: string;
+  id: string;
+  description: string;
+  actions: Array<{
+    type: string;
+    description?: string;
+    input?: string[];
+    output?: string;
+  }>;
+}
+
 interface CrawlStats {
   totalStates: number;
   totalAtoms: number;
+  totalTrajectories: number;
   pagesVisited: number;
 }
 
@@ -68,7 +81,6 @@ interface LogEntry {
 export default function CrawlerView(): JSX.Element {
   const [urlInput, setUrlInput] = React.useState("");
   const [isRunning, setIsRunning] = React.useState(false);
-  const [crawlProgress, setCrawlProgress] = React.useState(0);
   const [logEntries, setLogEntries] = React.useState<LogEntry[]>([
     {
       id: '1',
@@ -78,9 +90,11 @@ export default function CrawlerView(): JSX.Element {
     }
   ]);
   const [crawlResults, setCrawlResults] = React.useState<CrawlResult[]>([]);
+  const [trajectoryResults, setTrajectoryResults] = React.useState<TrajectoryResult[]>([]);
   const [crawlStats, setCrawlStats] = React.useState<CrawlStats>({
     totalStates: 0,
     totalAtoms: 0,
+    totalTrajectories: 0,
     pagesVisited: 0
   });
   const [messageApi, contextHolder] = message.useMessage();
@@ -164,19 +178,15 @@ export default function CrawlerView(): JSX.Element {
       case "status":
         if (data.status === "running") {
           setIsRunning(true);
-          setCrawlProgress(10);
           addLogEntry("info", "Crawling started successfully");
         } else if (data.status === "stopped") {
           setIsRunning(false);
-          setCrawlProgress(0);
           addLogEntry("warning", "Crawling stopped");
         } else if (data.status === "done") {
           setIsRunning(false);
-          setCrawlProgress(100);
           addLogEntry("success", "Crawling completed successfully");
         } else if (data.status === "error") {
           setIsRunning(false);
-          setCrawlProgress(0);
           addLogEntry("error", `Crawling failed: ${data.message || 'Unknown error'}`);
         }
         break;
@@ -194,11 +204,6 @@ export default function CrawlerView(): JSX.Element {
             }
             addLogEntry(level, message);
           });
-          
-          // Update progress based on log messages
-          if (isRunning && crawlProgress < 90) {
-            setCrawlProgress(prev => Math.min(prev + 2, 90));
-          }
         }
         break;
       case "update_result":
@@ -212,14 +217,34 @@ export default function CrawlerView(): JSX.Element {
           
           // Update stats
           const totalAtoms = newResults.reduce((sum: number, result: CrawlResult) => sum + result.atoms.length, 0);
+          
+          // Count trajectories from the full data if available
+          let trajectoryCount = 0;
+          if (data.trajectories && Array.isArray(data.trajectories)) {
+            trajectoryCount = data.trajectories.length;
+            
+            // Process and add trajectory results
+            const newTrajectories = data.trajectories.map((trajectory: any, index: number) => ({
+              key: `traj-${Date.now()}-${index}`,
+              id: trajectory.id || `trajectory_${index}`,
+              description: trajectory.description || "No description available",
+              actions: trajectory.actions || []
+            }));
+            setTrajectoryResults(prev => [...prev, ...newTrajectories]);
+          }
+          
           setCrawlStats(prev => ({
             ...prev,
             totalStates: prev.totalStates + newResults.length,
             totalAtoms: prev.totalAtoms + totalAtoms,
+            totalTrajectories: trajectoryCount > 0 ? trajectoryCount : prev.totalTrajectories,
             pagesVisited: prev.pagesVisited + 1
           }));
           
-          addLogEntry("success", `Discovered ${newResults.length} new state(s) with ${totalAtoms} atoms`);
+          const statusMessage = trajectoryCount > 0 
+            ? `Discovered ${newResults.length} new state(s) with ${totalAtoms} atoms and ${trajectoryCount} trajectories`
+            : `Discovered ${newResults.length} new state(s) with ${totalAtoms} atoms`;
+          addLogEntry("success", statusMessage);
         }
         break;
       case "save":
@@ -272,8 +297,8 @@ export default function CrawlerView(): JSX.Element {
 
     setIsRunning(true);
     setCrawlResults([]); // Clear previous results
-    setCrawlStats({ totalStates: 0, totalAtoms: 0, pagesVisited: 0 });
-    setCrawlProgress(0);
+    setTrajectoryResults([]); // Clear previous trajectory results
+    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0, pagesVisited: 0 });
     
     // Wait for socket to be ready, then send crawl command
     const sendCrawlCommand = () => {
@@ -298,7 +323,6 @@ export default function CrawlerView(): JSX.Element {
       }));
     }
     setIsRunning(false);
-    setCrawlProgress(0);
     addLogEntry("warning", "Crawling stopped by user");
   };
 
@@ -427,6 +451,99 @@ export default function CrawlerView(): JSX.Element {
     },
   ];
 
+  const trajectoryColumns = [
+    {
+      title: "Description",
+      dataIndex: "description",
+      key: "description",
+      width: "40%",
+      render: (text: string) => (
+        <Tooltip title={text}>
+          <Text style={{ fontSize: "12px", wordBreak: "break-all" }} ellipsis>
+            {text}
+          </Text>
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Actions",
+      dataIndex: "actions",
+      key: "actions",
+      width: "50%",
+      render: (actions: Array<{type: string, description?: string, input?: string[], output?: string}>) => (
+        <div>
+          {actions.length > 0 ? (
+            <Collapse size="small" ghost>
+              <Panel 
+                header={
+                  <Badge 
+                    count={actions.length} 
+                    style={{ backgroundColor: '#fa8c16' }}
+                    showZero
+                  >
+                    <Text style={{ fontSize: "12px" }}>
+                      {actions.length} action{actions.length !== 1 ? 's' : ''} in sequence
+                    </Text>
+                  </Badge>
+                } 
+                key="1"
+              >
+                <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                  {actions.map((action, index) => (
+                    <div key={index} style={{ marginBottom: '8px', padding: '4px', border: '1px solid #f0f0f0', borderRadius: '4px' }}>
+                      <div style={{ marginBottom: '2px' }}>
+                        <Tag color="orange" style={{ fontSize: '10px' }}>
+                          {action.type}
+                        </Tag>
+                      </div>
+                      {action.description && (
+                        <Text style={{ fontSize: '10px', display: 'block', marginBottom: '2px' }}>
+                          {action.description}
+                        </Text>
+                      )}
+                      {action.input && action.input.length > 0 && (
+                        <Text style={{ fontSize: '9px', color: '#666', display: 'block' }}>
+                          Input: {action.input.join(', ')}
+                        </Text>
+                      )}
+                      {action.output && (
+                        <Text style={{ fontSize: '9px', color: '#666', display: 'block' }}>
+                          Output: {action.output}
+                        </Text>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+            </Collapse>
+          ) : (
+            <Text type="secondary" style={{ fontSize: "12px" }}>
+              No actions found
+            </Text>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: "View",
+      key: "view",
+      width: "10%",
+      render: (_: any, record: TrajectoryResult) => (
+        <Tooltip title="View trajectory details">
+          <Button 
+            type="text" 
+            icon={<EyeOutlined />} 
+            size="small"
+            onClick={() => {
+              // Could open a modal with detailed trajectory information
+              console.log('View trajectory:', record);
+            }}
+          />
+        </Tooltip>
+      ),
+    },
+  ];
+
   return (
     <div className="text-primary h-[calc(100vh-100px)] bg-primary relative rounded flex-1 w-full">
       {contextHolder}
@@ -504,24 +621,12 @@ export default function CrawlerView(): JSX.Element {
               title="Refresh Dashboard"
             />
           </div>
-          
-          {/* Progress Bar */}
-          {isRunning && (
-            <div style={{ marginTop: '16px' }}>
-              <Progress 
-                percent={crawlProgress} 
-                status={crawlProgress === 100 ? "success" : "active"}
-                showInfo={true}
-                format={(percent) => `${percent}% Complete`}
-              />
-            </div>
-          )}
         </div>
 
         {/* Statistics Section */}
         <div className="p-6 border-b border-gray-200 bg-gray-50">
           <Row gutter={16}>
-            <Col span={8}>
+            <Col span={6}>
               <Card size="small">
                 <Statistic
                   title="States Discovered"
@@ -530,7 +635,7 @@ export default function CrawlerView(): JSX.Element {
                 />
               </Card>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
               <Card size="small">
                 <Statistic
                   title="Atoms Found"
@@ -539,7 +644,16 @@ export default function CrawlerView(): JSX.Element {
                 />
               </Card>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
+              <Card size="small">
+                <Statistic
+                  title="Trajectories Found"
+                  value={crawlStats.totalTrajectories}
+                  prefix={<PlayCircleOutlined style={{ color: '#fa8c16' }} />}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
               <Card size="small">
                 <Statistic
                   title="Pages Visited"
@@ -568,15 +682,6 @@ export default function CrawlerView(): JSX.Element {
               </Space>
             </div>
             
-            {crawlResults.length === 0 && !isRunning ? (
-              <Alert
-                message="No Results Yet"
-                description="Start a crawl to see discovered states and atoms appear here in real-time."
-                type="info"
-                showIcon
-                style={{ marginBottom: '16px' }}
-              />
-            ) : null}
             
             <Table
               columns={columns}
@@ -587,11 +692,41 @@ export default function CrawlerView(): JSX.Element {
                 showQuickJumper: true,
                 showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} states`
               } : false}
-              scroll={{ y: expandedResults ? "calc(70vh - 200px)" : "calc(50vh - 120px)" }}
+              scroll={{ y: expandedResults ? "calc(35vh - 100px)" : "calc(25vh - 60px)" }}
               size="small"
-              style={{ height: "100%" }}
               loading={isRunning && crawlResults.length === 0}
             />
+            
+            {/* Trajectory Results Table */}
+            <div style={{ marginTop: '24px' }}>
+              <Title level={5} style={{ margin: '0 0 16px 0', color: "#374151" }}>
+                Discovered Trajectories
+              </Title>
+              
+              {trajectoryResults.length === 0 && !isRunning ? (
+                <Alert
+                  message="No Trajectories Yet"
+                  description="Trajectories will appear here as they are discovered during crawling."
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: '16px' }}
+                />
+              ) : null}
+              
+              <Table
+                columns={trajectoryColumns}
+                dataSource={trajectoryResults}
+                pagination={trajectoryResults.length > 5 ? { 
+                  pageSize: 5, 
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} trajectories`
+                } : false}
+                scroll={{ y: expandedResults ? "calc(35vh - 100px)" : "calc(25vh - 60px)" }}
+                size="small"
+                loading={isRunning && trajectoryResults.length === 0}
+              />
+            </div>
           </div>
 
           {/* Live Log */}
