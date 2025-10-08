@@ -68,7 +68,6 @@ interface CrawlStats {
   totalStates: number;
   totalAtoms: number;
   totalTrajectories: number;
-  pagesVisited: number;
 }
 
 interface LogEntry {
@@ -94,8 +93,7 @@ export default function CrawlerView(): JSX.Element {
   const [crawlStats, setCrawlStats] = React.useState<CrawlStats>({
     totalStates: 0,
     totalAtoms: 0,
-    totalTrajectories: 0,
-    pagesVisited: 0
+    totalTrajectories: 0
   });
   const [messageApi, contextHolder] = message.useMessage();
   const [socket, setSocket] = React.useState<WebSocket | null>(null);
@@ -237,8 +235,7 @@ export default function CrawlerView(): JSX.Element {
             ...prev,
             totalStates: prev.totalStates + newResults.length,
             totalAtoms: prev.totalAtoms + totalAtoms,
-            totalTrajectories: trajectoryCount > 0 ? trajectoryCount : prev.totalTrajectories,
-            pagesVisited: prev.pagesVisited + 1
+            totalTrajectories: trajectoryCount > 0 ? trajectoryCount : prev.totalTrajectories
           }));
           
           const statusMessage = trajectoryCount > 0 
@@ -298,7 +295,7 @@ export default function CrawlerView(): JSX.Element {
     setIsRunning(true);
     setCrawlResults([]); // Clear previous results
     setTrajectoryResults([]); // Clear previous trajectory results
-    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0, pagesVisited: 0 });
+    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0 });
     
     // Wait for socket to be ready, then send crawl command
     const sendCrawlCommand = () => {
@@ -377,7 +374,7 @@ export default function CrawlerView(): JSX.Element {
       title: "State",
       dataIndex: "state",
       key: "state",
-      width: "30%",
+      width: "40%",
       render: (text: string) => (
         <Tooltip title={text}>
           <Text style={{ fontSize: "12px", wordBreak: "break-all" }} ellipsis>
@@ -431,24 +428,6 @@ export default function CrawlerView(): JSX.Element {
         </div>
       ),
     },
-    {
-      title: "Actions",
-      key: "actions",
-      width: "10%",
-      render: (_: any, record: CrawlResult) => (
-        <Tooltip title="View state details">
-          <Button 
-            type="text" 
-            icon={<EyeOutlined />} 
-            size="small"
-            onClick={() => {
-              // Could open a modal with detailed state information
-              console.log('View state:', record);
-            }}
-          />
-        </Tooltip>
-      ),
-    },
   ];
 
   const trajectoryColumns = [
@@ -469,7 +448,7 @@ export default function CrawlerView(): JSX.Element {
       title: "Actions",
       dataIndex: "actions",
       key: "actions",
-      width: "50%",
+      width: "60%",
       render: (actions: Array<{type: string, description?: string, input?: string[], output?: string}>) => (
         <div>
           {actions.length > 0 ? (
@@ -522,24 +501,6 @@ export default function CrawlerView(): JSX.Element {
             </Text>
           )}
         </div>
-      ),
-    },
-    {
-      title: "View",
-      key: "view",
-      width: "10%",
-      render: (_: any, record: TrajectoryResult) => (
-        <Tooltip title="View trajectory details">
-          <Button 
-            type="text" 
-            icon={<EyeOutlined />} 
-            size="small"
-            onClick={() => {
-              // Could open a modal with detailed trajectory information
-              console.log('View trajectory:', record);
-            }}
-          />
-        </Tooltip>
       ),
     },
   ];
@@ -626,39 +587,30 @@ export default function CrawlerView(): JSX.Element {
         {/* Statistics Section */}
         <div className="p-6 border-b border-gray-200 bg-gray-50">
           <Row gutter={16}>
-            <Col span={6}>
-              <Card size="small">
+            <Col span={8}>
+              <Card>
                 <Statistic
                   title="States Discovered"
                   value={crawlStats.totalStates}
-                  prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+                  valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
                 />
               </Card>
             </Col>
-            <Col span={6}>
-              <Card size="small">
+            <Col span={8}>
+              <Card>
                 <Statistic
                   title="Atoms Found"
                   value={crawlStats.totalAtoms}
-                  prefix={<BugOutlined style={{ color: '#1890ff' }} />}
+                  valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
                 />
               </Card>
             </Col>
-            <Col span={6}>
-              <Card size="small">
+            <Col span={8}>
+              <Card>
                 <Statistic
                   title="Trajectories Found"
                   value={crawlStats.totalTrajectories}
-                  prefix={<PlayCircleOutlined style={{ color: '#fa8c16' }} />}
-                />
-              </Card>
-            </Col>
-            <Col span={6}>
-              <Card size="small">
-                <Statistic
-                  title="Pages Visited"
-                  value={crawlStats.pagesVisited}
-                  prefix={<GlobalOutlined style={{ color: '#722ed1' }} />}
+                  valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
                 />
               </Card>
             </Col>
@@ -670,7 +622,7 @@ export default function CrawlerView(): JSX.Element {
           <div className="flex-1 p-6 overflow-hidden">
             <div className="flex items-center justify-between mb-4">
               <Title level={4} style={{ margin: 0, color: "#374151" }}>
-                Discovery Results
+                Atoms
               </Title>
               <Space>
                 <Button 
@@ -700,18 +652,8 @@ export default function CrawlerView(): JSX.Element {
             {/* Trajectory Results Table */}
             <div style={{ marginTop: '24px' }}>
               <Title level={5} style={{ margin: '0 0 16px 0', color: "#374151" }}>
-                Discovered Trajectories
+                Trajectories
               </Title>
-              
-              {trajectoryResults.length === 0 && !isRunning ? (
-                <Alert
-                  message="No Trajectories Yet"
-                  description="Trajectories will appear here as they are discovered during crawling."
-                  type="info"
-                  showIcon
-                  style={{ marginBottom: '16px' }}
-                />
-              ) : null}
               
               <Table
                 columns={trajectoryColumns}
