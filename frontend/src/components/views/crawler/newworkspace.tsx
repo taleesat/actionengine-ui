@@ -16,12 +16,10 @@ type Props = {
 const NewWorkspaceForm: React.FC<Props> = ({ onStartNewSession, onLoadPreviousSession }) => {
 
   const [urlInput, setUrlInput] = React.useState("");
-  const [isRunning, setIsRunning] = React.useState(false);
   const [sessionIdInput, setSessionIdInput] = React.useState("");
 
   const handleStartCrawl = () => {
     if (!urlInput) return;
-    setIsRunning(true);
     onStartNewSession(urlInput);
   };
 
@@ -54,7 +52,6 @@ const NewWorkspaceForm: React.FC<Props> = ({ onStartNewSession, onLoadPreviousSe
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               onPressEnter={handleStartCrawl}
-              disabled={isRunning}
               size="large"
               prefix={<GlobalOutlined style={{ color: '#bfbfbf' }} />}
             />
@@ -64,7 +61,7 @@ const NewWorkspaceForm: React.FC<Props> = ({ onStartNewSession, onLoadPreviousSe
               type="primary"
               icon={<PlayCircleOutlined />}
               onClick={handleStartCrawl}
-              disabled={!urlInput.trim() || isRunning}
+              disabled={!urlInput.trim()}
               size="large"
               style={{ width: '100%' }}
             >

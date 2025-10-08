@@ -32,9 +32,11 @@ import {
   DownloadOutlined,
   EyeOutlined,
   ExpandOutlined,
-  CompressOutlined
+  CompressOutlined,
+  SearchOutlined
 } from "@ant-design/icons";
 import { getServerUrl } from "../../utils";
+import NewWorkspaceForm from "./newworkspace";
 
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
@@ -56,11 +58,22 @@ interface TrajectoryResult {
   key: string;
   id: string;
   description: string;
-  actions: Array<{
-    type: string;
-    description?: string;
-    input?: string[];
-    output?: string;
+  actions: string[];
+}
+
+// New message schema interface
+interface UpdateResultMessage {
+  type: "update_result";
+  atoms: Array<{
+    state: string;
+    atoms: Array<{
+      id: string;
+      description: string;
+    }>;
+  }>;
+  trajectories: Array<{
+    description: string;
+    actions: string[];
   }>;
 }
 
@@ -85,6 +98,8 @@ interface ScreenshotData {
 
 export default function CrawlerView(): JSX.Element {
   const [urlInput, setUrlInput] = React.useState("");
+  const [sessionIdInput, setSessionIdInput] = React.useState("");
+  const [currentSessionId, setCurrentSessionId] = React.useState<string | null>(null);
   const [isRunning, setIsRunning] = React.useState(false);
   const [logEntries, setLogEntries] = React.useState<LogEntry[]>([
     {
@@ -180,9 +195,18 @@ export default function CrawlerView(): JSX.Element {
   const handleWebSocketMessage = (data: any) => {
     switch (data.type) {
       case "status":
+        // Handle new schema with session field
+        if (data.session) {
+          setCurrentSessionId(data.session);
+          addLogEntry("info", `Session ID: ${data.session}`);
+        }
+        
         if (data.status === "running") {
           setIsRunning(true);
-          addLogEntry("info", "Crawling started successfully");
+          const message = data.session 
+            ? `Crawling started successfully (Session: ${data.session})`
+            : "Crawling started successfully";
+          addLogEntry("info", message);
         } else if (data.status === "stopped") {
           setIsRunning(false);
           addLogEntry("warning", "Crawling stopped");
@@ -211,26 +235,27 @@ export default function CrawlerView(): JSX.Element {
         }
         break;
       case "update_result":
-        if (data.result && Array.isArray(data.result)) {
-          const newResults = data.result.map((item: any, index: number) => ({
+        // Handle new schema: { type: "update_result", atoms: [...], trajectories: [...] }
+        if (data.atoms && Array.isArray(data.atoms)) {
+          const newResults = data.atoms.map((atomGroup: any, index: number) => ({
             key: `${Date.now()}-${index}`,
-            state: item.state || "",
-            atoms: item.atoms || []
+            state: atomGroup.state || "",
+            atoms: atomGroup.atoms || []
           }));
           setCrawlResults(prev => [...prev, ...newResults]);
           
           // Update stats
           const totalAtoms = newResults.reduce((sum: number, result: CrawlResult) => sum + result.atoms.length, 0);
           
-          // Count trajectories from the full data if available
+          // Handle trajectories from the new schema
           let trajectoryCount = 0;
           if (data.trajectories && Array.isArray(data.trajectories)) {
             trajectoryCount = data.trajectories.length;
             
-            // Process and add trajectory results
+            // Process and add trajectory results with simplified actions (now just strings)
             const newTrajectories = data.trajectories.map((trajectory: any, index: number) => ({
               key: `traj-${Date.now()}-${index}`,
-              id: trajectory.id || `trajectory_${index}`,
+              id: `trajectory_${index}`,
               description: trajectory.description || "No description available",
               actions: trajectory.actions || []
             }));
@@ -241,7 +266,7 @@ export default function CrawlerView(): JSX.Element {
             ...prev,
             totalStates: prev.totalStates + newResults.length,
             totalAtoms: prev.totalAtoms + totalAtoms,
-            totalTrajectories: trajectoryCount > 0 ? trajectoryCount : prev.totalTrajectories
+            totalTrajectories: prev.totalTrajectories + trajectoryCount
           }));
           
           const statusMessage = trajectoryCount > 0 
@@ -314,6 +339,7 @@ export default function CrawlerView(): JSX.Element {
     setTrajectoryResults([]); // Clear previous trajectory results
     setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0 });
     setCurrentScreenshot(null); // Clear previous screenshot
+    setCurrentSessionId(null); // Clear previous session ID
     
     // Wait for socket to be ready, then send crawl command
     const sendCrawlCommand = () => {
@@ -350,6 +376,44 @@ export default function CrawlerView(): JSX.Element {
     addLogEntry("info", "Export request sent");
   };
 
+  const handleRetrieveSession = () => {
+    if (!sessionIdInput.trim()) {
+      messageApi.error("Please enter a valid session ID");
+      return;
+    }
+
+    // Setup WebSocket if not connected
+    let currentSocket = socket;
+    if (!currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
+      currentSocket = setupWebSocket();
+      if (!currentSocket) {
+        messageApi.error("Failed to establish WebSocket connection");
+        return;
+      }
+    }
+
+    // Clear previous results
+    setCrawlResults([]);
+    setTrajectoryResults([]);
+    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0 });
+    setCurrentScreenshot(null);
+    
+    // Wait for socket to be ready, then send retrieve command
+    const sendRetrieveCommand = () => {
+      if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+        currentSocket.send(JSON.stringify({
+          type: "retrieve_session",
+          sessionId: sessionIdInput.trim()
+        }));
+        addLogEntry("info", `Retrieving session: ${sessionIdInput}`);
+      } else {
+        setTimeout(sendRetrieveCommand, 100); // Retry after 100ms
+      }
+    };
+
+    sendRetrieveCommand();
+  };
+
   const handleClearLogs = () => {
     setLogEntries([{
       id: '1',
@@ -357,6 +421,79 @@ export default function CrawlerView(): JSX.Element {
       level: 'info',
       message: 'Logs cleared'
     }]);
+  };
+
+  // Callback functions for NewWorkspaceForm
+  const handleNewSessionFromForm = (url: string) => {
+    setUrlInput(url);
+    
+    // Setup WebSocket if not connected
+    let currentSocket = socket;
+    if (!currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
+      currentSocket = setupWebSocket();
+      if (!currentSocket) {
+        messageApi.error("Failed to establish WebSocket connection");
+        return;
+      }
+    }
+
+    setIsRunning(true);
+    setCrawlResults([]); // Clear previous results
+    setTrajectoryResults([]); // Clear previous trajectory results
+    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0 });
+    setCurrentScreenshot(null); // Clear previous screenshot
+    setCurrentSessionId(null); // Clear previous session ID
+    
+    // Wait for socket to be ready, then send crawl command
+    const sendCrawlCommand = () => {
+      if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+        currentSocket.send(JSON.stringify({
+          type: "start",
+          url: url.trim()
+        }));
+        addLogEntry("info", `Starting crawl for: ${url}`);
+      } else {
+        setTimeout(sendCrawlCommand, 100); // Retry after 100ms
+      }
+    };
+
+    sendCrawlCommand();
+  };
+
+  const handleLoadSessionFromForm = (sessionId: string) => {
+    setSessionIdInput(sessionId);
+    
+    // Setup WebSocket if not connected
+    let currentSocket = socket;
+    if (!currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
+      currentSocket = setupWebSocket();
+      if (!currentSocket) {
+        messageApi.error("Failed to establish WebSocket connection");
+        return;
+      }
+    }
+
+    // Clear previous results
+    setCrawlResults([]);
+    setTrajectoryResults([]);
+    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0 });
+    setCurrentScreenshot(null);
+    
+    // Wait for socket to be ready, then send retrieve command
+    const sendRetrieveCommand = () => {
+      if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+        currentSocket.send(JSON.stringify({
+          type: "retrieve_session",
+          sessionId: sessionId.trim()
+        }));
+        addLogEntry("info", `Retrieving session: ${sessionId}`);
+        setIsRunning(true); // Set running state to show main UI
+      } else {
+        setTimeout(sendRetrieveCommand, 100); // Retry after 100ms
+      }
+    };
+
+    sendRetrieveCommand();
   };
 
   // Cleanup WebSocket on component unmount
@@ -467,7 +604,7 @@ export default function CrawlerView(): JSX.Element {
       dataIndex: "actions",
       key: "actions",
       width: "60%",
-      render: (actions: Array<{type: string, description?: string, input?: string[], output?: string}>) => (
+      render: (actions: string[]) => (
         <div>
           {actions.length > 0 ? (
             <Collapse size="small" ghost>
@@ -487,27 +624,13 @@ export default function CrawlerView(): JSX.Element {
               >
                 <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                   {actions.map((action, index) => (
-                    <div key={index} style={{ marginBottom: '8px', padding: '4px', border: '1px solid #f0f0f0', borderRadius: '4px' }}>
-                      <div style={{ marginBottom: '2px' }}>
-                        <Tag color="orange" style={{ fontSize: '10px' }}>
-                          {action.type}
-                        </Tag>
-                      </div>
-                      {action.description && (
-                        <Text style={{ fontSize: '10px', display: 'block', marginBottom: '2px' }}>
-                          {action.description}
-                        </Text>
-                      )}
-                      {action.input && action.input.length > 0 && (
-                        <Text style={{ fontSize: '9px', color: '#666', display: 'block' }}>
-                          Input: {action.input.join(', ')}
-                        </Text>
-                      )}
-                      {action.output && (
-                        <Text style={{ fontSize: '9px', color: '#666', display: 'block' }}>
-                          Output: {action.output}
-                        </Text>
-                      )}
+                    <div key={index} style={{ marginBottom: '4px', padding: '8px', border: '1px solid #f0f0f0', borderRadius: '4px' }}>
+                      <Tag color="orange" style={{ fontSize: '10px', marginBottom: '4px' }}>
+                        Action {index + 1}
+                      </Tag>
+                      <Text style={{ fontSize: '11px', display: 'block', wordBreak: 'break-word' }}>
+                        {action}
+                      </Text>
                     </div>
                   ))}
                 </div>
@@ -523,6 +646,23 @@ export default function CrawlerView(): JSX.Element {
     },
   ];
 
+  // Conditional rendering: Show NewWorkspaceForm when not running, otherwise show main UI
+  if (!isRunning && crawlResults.length === 0 && trajectoryResults.length === 0) {
+    return (
+      <div className="text-primary h-[calc(100vh-100px)] bg-primary relative rounded flex-1 w-full">
+        {contextHolder}
+        <div className="flex flex-col h-full w-full justify-center items-center">
+          <div className="w-full max-w-2xl mx-auto p-8">
+            <NewWorkspaceForm
+              onStartNewSession={handleNewSessionFromForm}
+              onLoadPreviousSession={handleLoadSessionFromForm}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="text-primary h-[calc(100vh-100px)] bg-primary relative rounded flex-1 w-full">
       {contextHolder}
@@ -532,12 +672,8 @@ export default function CrawlerView(): JSX.Element {
           <div className="flex items-center justify-between">
             <div>
               <Title level={2} style={{ margin: 0, color: "#1f2937" }}>
-                <GlobalOutlined style={{ marginRight: '12px', color: '#1890ff' }} />
-                Advanced Web Crawler
+                Index Crawler {(currentSessionId && `- Session: ${currentSessionId}`) || ''}
               </Title>
-              <Paragraph style={{ margin: 0, color: "#6b7280" }}>
-                Intelligent website analysis and action index generation
-              </Paragraph>
             </div>
             <div className="flex items-center gap-4">
               <Badge 
@@ -553,53 +689,137 @@ export default function CrawlerView(): JSX.Element {
           <Title level={4} style={{ marginBottom: "16px", color: "#374151" }}>
             Crawler Controls
           </Title>
-          <div className="flex gap-4 items-end">
-            <div className="flex-1">
-              <Input
-                type="url"
-                placeholder="Enter website URL (e.g., https://example.com)"
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                onPressEnter={handleStartCrawl}
-                disabled={isRunning}
-                size="large"
-                prefix={<GlobalOutlined style={{ color: '#bfbfbf' }} />}
-              />
-            </div>
-            <Button
-              type="primary"
-              icon={<PlayCircleOutlined />}
-              onClick={handleStartCrawl}
-              disabled={isRunning || !urlInput.trim()}
-              size="large"
-              loading={isRunning}
-            >
-              Start Crawl
-            </Button>
-            <Button
-              danger
-              icon={<StopOutlined />}
-              onClick={handleStopCrawl}
-              disabled={!isRunning}
-              size="large"
-            >
-              Stop
-            </Button>
-            <Button
-              icon={<DownloadOutlined />}
-              onClick={handleExportResults}
-              disabled={crawlResults.length === 0}
-              size="large"
-            >
-              Export Results
-            </Button>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => window.location.reload()}
-              size="large"
-              title="Refresh Dashboard"
-            />
-          </div>
+          <Row gutter={16}>
+            {/* Left Panel - New Session */}
+            <Col span={8}>
+              <Card 
+                title={
+                  <Space>
+                    <PlayCircleOutlined style={{ color: '#1890ff' }} />
+                    <Text strong>Start New Session</Text>
+                  </Space>
+                }
+                size="small"
+                style={{ height: '100%' }}
+              >
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+                      Enter a website URL to start crawling
+                    </Text>
+                    <Input
+                      type="url"
+                      placeholder="Enter website URL (e.g., https://example.com)"
+                      value={urlInput}
+                      onChange={(e) => setUrlInput(e.target.value)}
+                      onPressEnter={handleStartCrawl}
+                      disabled={isRunning}
+                      size="large"
+                      prefix={<GlobalOutlined style={{ color: '#bfbfbf' }} />}
+                    />
+                  </div>
+                  <div>
+                    <Button
+                      type="primary"
+                      icon={<PlayCircleOutlined />}
+                      onClick={handleStartCrawl}
+                      disabled={isRunning || !urlInput.trim()}
+                      size="large"
+                      loading={isRunning}
+                      style={{ width: '100%' }}
+                    >
+                      Start Crawl
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </Col>
+            
+            {/* Middle Panel - Retrieve Session */}
+            <Col span={8}>
+              <Card 
+                title={
+                  <Space>
+                    <SearchOutlined style={{ color: '#52c41a' }} />
+                    <Text strong>Retrieve Previous Session</Text>
+                  </Space>
+                }
+                size="small"
+                style={{ height: '100%' }}
+              >
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+                      Enter a session ID to retrieve previous crawl results
+                    </Text>
+                    <Input
+                      placeholder="Enter session ID (e.g., session_12345)"
+                      value={sessionIdInput}
+                      onChange={(e) => setSessionIdInput(e.target.value)}
+                      onPressEnter={handleRetrieveSession}
+                      size="large"
+                      prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                    />
+                  </div>
+                  <div>
+                    <Button
+                      type="primary"
+                      icon={<SearchOutlined />}
+                      onClick={handleRetrieveSession}
+                      disabled={!sessionIdInput.trim()}
+                      size="large"
+                      style={{ width: '100%', backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                    >
+                      Retrieve Session
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </Col>
+
+            {/* Right Panel - Session Control */}
+            <Col span={8}>
+              <Card 
+                title={
+                  <Space>
+                    <StopOutlined style={{ color: '#fa8c16' }} />
+                    <Text strong>Session Control</Text>
+                  </Space>
+                }
+                size="small"
+                style={{ height: '100%' }}
+              >
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+                      Control and export session results
+                    </Text>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      danger
+                      icon={<StopOutlined />}
+                      onClick={handleStopCrawl}
+                      disabled={!isRunning}
+                      size="large"
+                      style={{ width: '100%' }}
+                    >
+                      Stop Session
+                    </Button>
+                    <Button
+                      icon={<DownloadOutlined />}
+                      onClick={handleExportResults}
+                      disabled={crawlResults.length === 0}
+                      size="large"
+                      style={{ width: '100%' }}
+                    >
+                      Export Results
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </Col>
+          </Row>
         </div>
 
         {/* Statistics Section */}
@@ -679,12 +899,11 @@ export default function CrawlerView(): JSX.Element {
                 loading={isRunning && trajectoryResults.length === 0}
               />
             </div>
-            <div className="flex items-center justify-between mb-4">
+            <div style={{ marginTop: '24px' }} className="flex items-center justify-between mb-4">
               <Title level={4} style={{ margin: 0, color: "#374151" }}>
                 Live Activity Log
               </Title>
               <Space>
-                <Badge count={logEntries.length} style={{ backgroundColor: '#1890ff' }} />
                 <Button 
                   type="text" 
                   icon={<ReloadOutlined />} 
@@ -699,7 +918,7 @@ export default function CrawlerView(): JSX.Element {
               ref={logContainerRef}
               className="bg-gray-900 text-white p-4 rounded-lg font-mono text-sm overflow-y-auto h-full border border-gray-700"
               style={{ 
-                height: "calc(100vh - 400px)",
+                height: "400px",
                 fontFamily: "Consolas, 'Courier New', monospace"
               }}
             >

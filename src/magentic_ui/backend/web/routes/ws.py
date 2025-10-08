@@ -9,7 +9,7 @@ import time
 import uuid
 import yaml
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from loguru import logger
@@ -24,6 +24,9 @@ router = APIRouter()
 
 python_executable = os.environ.get("PYTHON_EXECUTABLE")
 app_path = os.environ.get("CRAWLER_APP_PATH")
+
+# Global session storage - in production, this should be replaced with persistent storage
+crawler_sessions: Dict[str, Dict[str, Any]] = {}
 
 @router.websocket("/crawler")
 async def control_crawler(
@@ -114,18 +117,22 @@ async def control_crawler(
         finally:
             logger.info("File monitoring thread stopped")
     
-    def run_crawler_process(url: str, loop: asyncio.AbstractEventLoop):
+    def run_crawler_process(url: str, session_id: str, loop: asyncio.AbstractEventLoop):
         """Run the crawler process and capture stdout"""
         nonlocal crawler_process, crawler_work_dir
         try:
             # Create a unique directory for this crawler process
             tmp_dir = os.environ.get("MAGENTIC_TMP_PATH", tempfile.gettempdir())
-            crawler_uuid = str(uuid.uuid4())
-            crawler_work_dir = os.path.join(tmp_dir, crawler_uuid)
+            crawler_work_dir = os.path.join(tmp_dir, session_id)
             
             # Create the directory
             os.makedirs(crawler_work_dir, exist_ok=True)
             logger.info(f"Created crawler work directory: {crawler_work_dir}")
+            
+            # Update session data with work directory
+            if session_id in crawler_sessions:
+                crawler_sessions[session_id]["work_dir"] = crawler_work_dir
+                crawler_sessions[session_id]["status"] = "running"
             
             # Create .auth directory with combined.json file
             auth_dir = os.path.join(crawler_work_dir, ".auth")
@@ -174,6 +181,14 @@ async def control_crawler(
             # Wait for process to complete
             return_code = crawler_process.wait() if crawler_process else 0
             crawler_process = None
+            
+            # Update session status
+            if session_id in crawler_sessions:
+                if return_code == 0:
+                    crawler_sessions[session_id]["status"] = "done"
+                else:
+                    crawler_sessions[session_id]["status"] = "error"
+                    crawler_sessions[session_id]["error_message"] = f"Process exited with code {return_code}"
             
             # Send completion status
             if return_code == 0:
@@ -237,13 +252,25 @@ async def control_crawler(
                     })
                     continue
                 
+                # Generate session ID
+                session_id = str(uuid.uuid4())
+                
+                # Store session data
+                crawler_sessions[session_id] = {
+                    "url": url,
+                    "status": "starting",
+                    "created_at": datetime.utcnow().isoformat(),
+                    "work_dir": None,
+                    "process": None
+                }
+                
                 # Reset the stop event
                 stop_file_monitoring.clear()
                 
                 # Start crawler process in a new thread
                 crawler_thread = threading.Thread(
                     target=run_crawler_process,
-                    args=(url, event_loop),
+                    args=(url, session_id, event_loop),
                     daemon=True
                 )
                 crawler_thread.start()
@@ -256,12 +283,13 @@ async def control_crawler(
                 )
                 file_monitor_thread.start()
                 
-                # Send running status
+                # Send running status with session ID
                 await websocket.send_json({
                     "type": "status",
-                    "status": "running"
+                    "status": "running",
+                    "session": session_id
                 })
-                logger.info(f"Started crawler and file monitoring for URL: {url}")
+                logger.info(f"Started crawler with session {session_id} for URL: {url}")
             
             elif message_type == "stop":
                 # Stop file monitoring
@@ -296,6 +324,72 @@ async def control_crawler(
                     "status": "stopped"
                 })
                 logger.info("Crawler stopped")
+            
+            elif message_type == "load":
+                session_id = message.get("session")
+                if not session_id:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Session ID is required for load message"
+                    })
+                    continue
+                
+                # Check if session exists
+                if session_id not in crawler_sessions:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"Session {session_id} not found"
+                    })
+                    continue
+                
+                session_data = crawler_sessions[session_id]
+                response = {
+                    "type": "status",
+                    "status": session_data["status"],
+                    "session": session_id,
+                    "url": session_data["url"],
+                    "created_at": session_data["created_at"]
+                }
+                
+                # Include error message if status is error
+                if session_data["status"] == "error" and "error_message" in session_data:
+                    response["message"] = session_data["error_message"]
+                
+                # If session is done, try to load the result
+                if session_data["status"] == "done" and session_data.get("work_dir"):
+                    result_file_path = os.path.join(session_data["work_dir"], output_file)
+                    if os.path.exists(result_file_path):
+                        try:
+                            with open(result_file_path, 'r', encoding='utf-8') as f:
+                                file_content = f.read()
+                            
+                            # Parse YAML and convert to AppGraph format
+                            try:
+                                yaml_data = yaml.safe_load(file_content)
+                                if yaml_data:
+                                    app_graph = AppGraph.model_validate(yaml_data)
+                                    result = []
+                                    for state in app_graph.states:
+                                        state_entry = {
+                                            "state": state.id or "Unknown State",
+                                            "atoms": []
+                                        }
+                                        for atom in state.atoms:
+                                            atom_entry = {
+                                                "id": atom.id,
+                                                "description": atom.description
+                                            }
+                                            state_entry["atoms"].append(atom_entry)
+                                        result.append(state_entry)
+                                    response["result"] = result
+                            except (yaml.YAMLError, Exception) as e:
+                                logger.warning(f"Error parsing result file for session {session_id}: {str(e)}")
+                                response["raw_result"] = file_content
+                        except Exception as e:
+                            logger.error(f"Error reading result file for session {session_id}: {str(e)}")
+                
+                await websocket.send_json(response)
+                logger.info(f"Sent session status for {session_id}: {session_data['status']}")
             
             elif message_type == "download":
                 # Read the output file and send back the data
@@ -335,34 +429,21 @@ async def control_crawler(
                 
     except WebSocketDisconnect:
         logger.info("Crawler WebSocket disconnected")
-        # Clean up on disconnect
-        if crawler_process is not None:
-            try:
-                crawler_process.terminate()
-                crawler_process.wait(timeout=5)
-            except:
-                crawler_process.kill()
-            finally:
-                crawler_process = None
+        # DO NOT clean up crawler process on disconnect - let it continue running
+        # The process will persist and can be retrieved later via load message
+        logger.info("Crawler process will continue running in background")
     except Exception as e:
         logger.error(f"WebSocket error in crawler control: {str(e)}")
     finally:
-        # Stop file monitoring
+        # Stop file monitoring only (let crawler process continue)
         stop_file_monitoring.set()
         if file_monitor_thread is not None and file_monitor_thread.is_alive():
             file_monitor_thread.join(timeout=2.0)
             file_monitor_thread = None
             logger.info("File monitoring thread stopped during cleanup")
         
-        # Ensure crawler process cleanup
-        if crawler_process is not None:
-            try:
-                crawler_process.terminate()
-                crawler_process.wait(timeout=5)
-            except:
-                crawler_process.kill()
-            finally:
-                crawler_process = None
+        # DO NOT terminate crawler process - it should persist for session management
+        logger.info("WebSocket cleanup complete, crawler process preserved for session persistence")
 
 @router.websocket("/runs/{run_id}")
 async def run_websocket(
