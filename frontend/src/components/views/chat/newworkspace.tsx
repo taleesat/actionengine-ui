@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card, Form, Input, Button, Typography, Divider, Alert } from "antd";
 const { Title } = Typography;
 
@@ -9,6 +9,21 @@ type Props = {
 
 const NewWorkspaceForm: React.FC<Props> = ({ onNewWorkspace, onLoadWorkspace }) => {
   const [form] = Form.useForm();
+  const [initialWebsiteUrl, setInitialWebsiteUrl] = useState("https://microsoft.com");
+
+  // Parse URL parameters on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const siteParam = urlParams.get('site');
+    
+    if (siteParam) {
+      // Ensure the URL has a protocol
+      const websiteUrl = siteParam.startsWith('http://') || siteParam.startsWith('https://') 
+        ? siteParam 
+        : `https://${siteParam}`;
+      setInitialWebsiteUrl(websiteUrl);
+    }
+  }, []);
 
   const handleFinish = (workspaceName: string, websiteUrl: string) => {
     onNewWorkspace(workspaceName, websiteUrl);
@@ -30,19 +45,6 @@ const NewWorkspaceForm: React.FC<Props> = ({ onNewWorkspace, onLoadWorkspace }) 
 
   return (
     <div className="mt-4">
-      <Alert
-        message="Security Policy Notice"
-        description="This deployment is allowed to work with *.microsoft.com domain only due to the security policy. We are working on enabling more domains."
-        type="warning"
-        showIcon
-        style={{
-          marginBottom: 24,
-          background: "#2d1b14",
-          border: "1px solid #d4601f",
-          borderRadius: 8,
-        }}
-        className="security-notice"
-      />
       <Title level={3} style={{ color: "#cbd5e1", marginBottom: 24 }}>
         Please provide your workspace name and the website URL to get started.
       </Title>
@@ -64,7 +66,7 @@ const NewWorkspaceForm: React.FC<Props> = ({ onNewWorkspace, onLoadWorkspace }) 
             },
             {
               name: "websiteUrl",
-              value: "https://microsoft.com",
+              value: initialWebsiteUrl,
             }
           ]}
           onFinish={() => {

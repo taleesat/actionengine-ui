@@ -180,36 +180,6 @@ export const SessionManager: React.FC = () => {
     setIsLoading(false);
   };
 
-  const handleDeleteSession = async (sessionId: number) => {
-    if (!user?.email) return;
-
-    try {
-      setIsLoading(true);
-      // Close and remove socket if it exists
-      if (sessionSockets[sessionId]) {
-        sessionSockets[sessionId].socket.close();
-        setSessionSockets((prev) => {
-          const updated = { ...prev };
-          delete updated[sessionId];
-          return updated;
-        });
-      }
-
-      const response = await sessionAPI.deleteSession(sessionId, user.email);
-      setSessions(sessions.filter((s) => s.id !== sessionId));
-      if (session?.id === sessionId || sessions.length === 0) {
-        setSession(sessions[0] || null);
-        window.history.pushState({}, "", window.location.pathname); // Clear URL params
-      }
-      messageApi.success("Session deleted");
-    } catch (error) {
-      console.error("Error deleting session:", error);
-      messageApi.error("Error deleting session");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSelectSession = async (selectedSession: Session) => {
     if (!user?.email || !selectedSession.id) return;
 
@@ -220,7 +190,10 @@ export const SessionManager: React.FC = () => {
       if (!data) {
         // Session not found
         messageApi.error("Session not found");
-        window.history.pushState({}, "", window.location.pathname); // Clear URL
+        const params = new URLSearchParams(window.location.search);
+        params.delete("sessionId");
+        const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+        window.history.pushState({}, "", newUrl);
         if (sessions.length > 0) {
           setSession(sessions[0]); // Fall back to first session
         } else {
@@ -229,11 +202,16 @@ export const SessionManager: React.FC = () => {
         return;
       }
       setSession(data);
-      window.history.pushState({}, "", `?sessionId=${selectedSession.id}`);
+      const params = new URLSearchParams(window.location.search);
+      params.set("sessionId", selectedSession.id.toString());
+      window.history.pushState({}, "", `?${params.toString()}`);
     } catch (error) {
       console.error("Error loading session:", error);
       messageApi.error("Error loading session");
-      window.history.pushState({}, "", window.location.pathname); // Clear invalid URL
+      const params = new URLSearchParams(window.location.search);
+      params.delete("sessionId");
+      const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+      window.history.pushState({}, "", newUrl);
       if (sessions.length > 0) {
         setSession(sessions[0]); // Fall back to first session
       } else {
@@ -369,7 +347,11 @@ export const SessionManager: React.FC = () => {
 
       setSessions([created, ...sessions]);
       setSession(created);
-      window.history.pushState({}, "", `?sessionId=${created.id}`);
+      if (created.id) {
+        const params = new URLSearchParams(window.location.search);
+        params.set("sessionId", created.id.toString());
+        window.history.pushState({}, "", `?${params.toString()}`);
+      }
     } catch (error) {
       console.error("Error creating default session:", error);
       messageApi.error("Error creating default session");
@@ -380,13 +362,13 @@ export const SessionManager: React.FC = () => {
 
   const chatViews = useMemo(() => {
     return sessions.map((s: Session) => {
-      const status = sessionRunStatuses[s.id] as RunStatus;
-      const isSessionPotentiallyActive = [
+      const status = s.id ? sessionRunStatuses[s.id] as RunStatus : undefined;
+      const isSessionPotentiallyActive = status ? [
         "active",
         "awaiting_input",
         "pausing",
         "paused",
-      ].includes(status);
+      ].includes(status) : false;
 
       if (!isSessionPotentiallyActive && session?.id !== s.id) return null;
 
