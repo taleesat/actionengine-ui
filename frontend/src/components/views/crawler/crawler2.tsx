@@ -77,6 +77,12 @@ interface LogEntry {
   message: string;
 }
 
+interface ScreenshotData {
+  imageUrl: string;
+  description?: string;
+  timestamp: string;
+}
+
 export default function CrawlerView(): JSX.Element {
   const [urlInput, setUrlInput] = React.useState("");
   const [isRunning, setIsRunning] = React.useState(false);
@@ -97,6 +103,7 @@ export default function CrawlerView(): JSX.Element {
   });
   const [messageApi, contextHolder] = message.useMessage();
   const [socket, setSocket] = React.useState<WebSocket | null>(null);
+  const [currentScreenshot, setCurrentScreenshot] = React.useState<ScreenshotData | null>(null);
 
   const logContainerRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -260,6 +267,17 @@ export default function CrawlerView(): JSX.Element {
           addLogEntry("success", "Results exported to YAML file");
         }
         break;
+      case "screenshot":
+        if (data.imageUrl) {
+          const screenshotData: ScreenshotData = {
+            imageUrl: data.imageUrl,
+            description: data.description || "Screenshot captured",
+            timestamp: new Date().toLocaleTimeString()
+          };
+          setCurrentScreenshot(screenshotData);
+          addLogEntry("info", `Screenshot received: ${screenshotData.description}`);
+        }
+        break;
       default:
         console.log("Unknown message type:", data.type);
     }
@@ -295,6 +313,7 @@ export default function CrawlerView(): JSX.Element {
     setCrawlResults([]); // Clear previous results
     setTrajectoryResults([]); // Clear previous trajectory results
     setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0 });
+    setCurrentScreenshot(null); // Clear previous screenshot
     
     // Wait for socket to be ready, then send crawl command
     const sendCrawlCommand = () => {
@@ -616,7 +635,7 @@ export default function CrawlerView(): JSX.Element {
           </Row>
         </div>
 
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex">
           {/* Results Table */}
           <div className="flex-1 p-6 overflow-hidden">
             <div className="flex items-center justify-between mb-4">
@@ -642,7 +661,7 @@ export default function CrawlerView(): JSX.Element {
             
             {/* Trajectory Results Table */}
             <div style={{ marginTop: '24px' }}>
-              <Title level={5} style={{ margin: '0 0 16px 0', color: "#374151" }}>
+              <Title level={4} style={{ margin: '0 0 16px 0', color: "#374151" }}>
                 Trajectories
               </Title>
               
@@ -660,10 +679,6 @@ export default function CrawlerView(): JSX.Element {
                 loading={isRunning && trajectoryResults.length === 0}
               />
             </div>
-          </div>
-
-          {/* Live Log */}
-          <div className="flex-1 p-6 border-l border-gray-200 overflow-hidden">
             <div className="flex items-center justify-between mb-4">
               <Title level={4} style={{ margin: 0, color: "#374151" }}>
                 Live Activity Log
@@ -714,6 +729,102 @@ export default function CrawlerView(): JSX.Element {
                     Crawling in progress...
                   </span>
                 </div>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 p-6 border-l border-gray-200 overflow-hidden">
+            {/* Screenshot Display Section */}
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <Title level={4} style={{ margin: 0, color: "#374151" }}>
+                  <EyeOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
+                  Live Screenshot
+                </Title>
+                {currentScreenshot && (
+                  <Badge 
+                    status="success" 
+                    text={`Updated at ${currentScreenshot.timestamp}`}
+                  />
+                )}
+              </div>
+              
+              {currentScreenshot ? (
+                <Card className="flex-1 flex flex-col" bodyStyle={{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  {currentScreenshot.description && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        {currentScreenshot.description}
+                      </Text>
+                    </div>
+                  )}
+                  
+                  <div className="flex-1 flex items-center justify-center" style={{ minHeight: '400px' }}>
+                    <img
+                      src={currentScreenshot.imageUrl}
+                      alt={currentScreenshot.description || "Screenshot"}
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '100%',
+                        objectFit: 'contain',
+                        border: '1px solid #d9d9d9',
+                        borderRadius: '6px',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                      }}
+                      onError={(e) => {
+                        console.error('Error loading screenshot:', e);
+                        addLogEntry('error', 'Failed to load screenshot image');
+                      }}
+                      onLoad={() => {
+                        addLogEntry('success', 'Screenshot image loaded successfully');
+                      }}
+                    />
+                  </div>
+                  
+                  <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                    <Space>
+                      <Button
+                        size="small"
+                        icon={<DownloadOutlined />}
+                        onClick={() => {
+                          if (currentScreenshot) {
+                            const link = document.createElement('a');
+                            link.href = currentScreenshot.imageUrl;
+                            link.download = `screenshot_${Date.now()}.png`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            addLogEntry('info', 'Screenshot downloaded');
+                          }
+                        }}
+                      >
+                        Download
+                      </Button>
+                      <Button
+                        size="small"
+                        icon={<ExpandOutlined />}
+                        onClick={() => {
+                          if (currentScreenshot) {
+                            window.open(currentScreenshot.imageUrl, '_blank');
+                          }
+                        }}
+                      >
+                        View Full Size
+                      </Button>
+                    </Space>
+                  </div>
+                </Card>
+              ) : (
+                <Card className="flex-1 flex items-center justify-center" bodyStyle={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div className="text-center">
+                    <EyeOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+                    <Title level={5} type="secondary">
+                      No Screenshot Available
+                    </Title>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      Screenshots will appear here when received from the crawler
+                    </Text>
+                  </div>
+                </Card>
               )}
             </div>
           </div>
