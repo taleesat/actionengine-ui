@@ -97,7 +97,6 @@ export default function CrawlerView(): JSX.Element {
   });
   const [messageApi, contextHolder] = message.useMessage();
   const [socket, setSocket] = React.useState<WebSocket | null>(null);
-  const [expandedResults, setExpandedResults] = React.useState(false);
 
   const logContainerRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -624,14 +623,6 @@ export default function CrawlerView(): JSX.Element {
               <Title level={4} style={{ margin: 0, color: "#374151" }}>
                 Atoms
               </Title>
-              <Space>
-                <Button 
-                  type="text" 
-                  icon={expandedResults ? <CompressOutlined /> : <ExpandOutlined />}
-                  onClick={() => setExpandedResults(!expandedResults)}
-                  title={expandedResults ? "Collapse results" : "Expand results"}
-                />
-              </Space>
             </div>
             
             
@@ -644,7 +635,7 @@ export default function CrawlerView(): JSX.Element {
                 showQuickJumper: true,
                 showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} states`
               } : false}
-              scroll={{ y: expandedResults ? "calc(35vh - 100px)" : "calc(25vh - 60px)" }}
+              scroll={{ y: "calc(25vh - 60px)" }}
               size="small"
               loading={isRunning && crawlResults.length === 0}
             />
@@ -664,7 +655,7 @@ export default function CrawlerView(): JSX.Element {
                   showQuickJumper: true,
                   showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} trajectories`
                 } : false}
-                scroll={{ y: expandedResults ? "calc(35vh - 100px)" : "calc(25vh - 60px)" }}
+                scroll={{ y: "calc(25vh - 60px)" }}
                 size="small"
                 loading={isRunning && trajectoryResults.length === 0}
               />
@@ -693,7 +684,7 @@ export default function CrawlerView(): JSX.Element {
               ref={logContainerRef}
               className="bg-gray-900 text-white p-4 rounded-lg font-mono text-sm overflow-y-auto h-full border border-gray-700"
               style={{ 
-                height: expandedResults ? "calc(70vh - 200px)" : "calc(100vh - 400px)",
+                height: "calc(100vh - 400px)",
                 fontFamily: "Consolas, 'Courier New', monospace"
               }}
             >
