@@ -101,6 +101,7 @@ export default function CrawlerView(): JSX.Element {
   const [sessionIdInput, setSessionIdInput] = React.useState("");
   const [currentSessionId, setCurrentSessionId] = React.useState<string | null>(null);
   const [isRunning, setIsRunning] = React.useState(false);
+  const [isStarted, setIsStarted] = React.useState(false);
   const [logEntries, setLogEntries] = React.useState<LogEntry[]>([
     {
       id: '1',
@@ -318,45 +319,6 @@ export default function CrawlerView(): JSX.Element {
     setLogEntries(prev => [...prev, newEntry]);
   };
 
-  const handleStartCrawl = () => {
-    if (!urlInput.trim()) {
-      messageApi.error("Please enter a valid URL");
-      return;
-    }
-
-    // Setup WebSocket if not connected
-    let currentSocket = socket;
-    if (!currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
-      currentSocket = setupWebSocket();
-      if (!currentSocket) {
-        messageApi.error("Failed to establish WebSocket connection");
-        return;
-      }
-    }
-
-    setIsRunning(true);
-    setCrawlResults([]); // Clear previous results
-    setTrajectoryResults([]); // Clear previous trajectory results
-    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0 });
-    setCurrentScreenshot(null); // Clear previous screenshot
-    setCurrentSessionId(null); // Clear previous session ID
-    
-    // Wait for socket to be ready, then send crawl command
-    const sendCrawlCommand = () => {
-      if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
-        currentSocket.send(JSON.stringify({
-          type: "start",
-          url: urlInput.trim()
-        }));
-        addLogEntry("info", `Starting crawl for: ${urlInput}`);
-      } else {
-        setTimeout(sendCrawlCommand, 100); // Retry after 100ms
-      }
-    };
-
-    sendCrawlCommand();
-  };
-
   const handleStopCrawl = () => {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({
@@ -374,44 +336,6 @@ export default function CrawlerView(): JSX.Element {
       }));
     }
     addLogEntry("info", "Export request sent");
-  };
-
-  const handleRetrieveSession = () => {
-    if (!sessionIdInput.trim()) {
-      messageApi.error("Please enter a valid session ID");
-      return;
-    }
-
-    // Setup WebSocket if not connected
-    let currentSocket = socket;
-    if (!currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
-      currentSocket = setupWebSocket();
-      if (!currentSocket) {
-        messageApi.error("Failed to establish WebSocket connection");
-        return;
-      }
-    }
-
-    // Clear previous results
-    setCrawlResults([]);
-    setTrajectoryResults([]);
-    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0 });
-    setCurrentScreenshot(null);
-    
-    // Wait for socket to be ready, then send retrieve command
-    const sendRetrieveCommand = () => {
-      if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
-        currentSocket.send(JSON.stringify({
-          type: "retrieve_session",
-          sessionId: sessionIdInput.trim()
-        }));
-        addLogEntry("info", `Retrieving session: ${sessionIdInput}`);
-      } else {
-        setTimeout(sendRetrieveCommand, 100); // Retry after 100ms
-      }
-    };
-
-    sendRetrieveCommand();
   };
 
   const handleClearLogs = () => {
@@ -437,7 +361,7 @@ export default function CrawlerView(): JSX.Element {
       }
     }
 
-    setIsRunning(true);
+    setIsStarted(true);
     setCrawlResults([]); // Clear previous results
     setTrajectoryResults([]); // Clear previous trajectory results
     setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0 });
@@ -647,7 +571,7 @@ export default function CrawlerView(): JSX.Element {
   ];
 
   // Conditional rendering: Show NewWorkspaceForm when not running, otherwise show main UI
-  if (!isRunning && crawlResults.length === 0 && trajectoryResults.length === 0) {
+  if (!isStarted) {
     return (
       <div className="text-primary h-[calc(100vh-100px)] bg-primary relative rounded flex-1 w-full">
         {contextHolder}
@@ -676,154 +600,34 @@ export default function CrawlerView(): JSX.Element {
               </Title>
             </div>
             <div className="flex items-center gap-4">
-              <Badge 
-                status={isRunning ? "processing" : socket ? "success" : "error"} 
-                text={isRunning ? "Crawling" : socket ? "Connected" : "Disconnected"}
-              />
+              <Button
+                danger
+                icon={<StopOutlined />}
+                onClick={handleStopCrawl}
+                disabled={!isRunning}
+                size="large"
+                style={{ width: '100%' }}
+              >
+                Stop Session
+              </Button>
+              <Button
+                icon={<DownloadOutlined />}
+                onClick={handleExportResults}
+                disabled={crawlResults.length === 0}
+                size="large"
+                style={{ width: '100%' }}
+              >
+                Export Results
+              </Button>
             </div>
           </div>
         </div>
 
-        {/* Controls Section */}
-        <div className="p-6 border-b border-gray-200 bg-white">
+        {/* Statistics Section */}
+        <div className="p-6 border-b border-gray-200 bg-gray-50">
           <Title level={4} style={{ marginBottom: "16px", color: "#374151" }}>
             Crawler Controls
           </Title>
-          <Row gutter={16}>
-            {/* Left Panel - New Session */}
-            <Col span={8}>
-              <Card 
-                title={
-                  <Space>
-                    <PlayCircleOutlined style={{ color: '#1890ff' }} />
-                    <Text strong>Start New Session</Text>
-                  </Space>
-                }
-                size="small"
-                style={{ height: '100%' }}
-              >
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
-                      Enter a website URL to start crawling
-                    </Text>
-                    <Input
-                      type="url"
-                      placeholder="Enter website URL (e.g., https://example.com)"
-                      value={urlInput}
-                      onChange={(e) => setUrlInput(e.target.value)}
-                      onPressEnter={handleStartCrawl}
-                      disabled={isRunning}
-                      size="large"
-                      prefix={<GlobalOutlined style={{ color: '#bfbfbf' }} />}
-                    />
-                  </div>
-                  <div>
-                    <Button
-                      type="primary"
-                      icon={<PlayCircleOutlined />}
-                      onClick={handleStartCrawl}
-                      disabled={isRunning || !urlInput.trim()}
-                      size="large"
-                      loading={isRunning}
-                      style={{ width: '100%' }}
-                    >
-                      Start Crawl
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-            
-            {/* Middle Panel - Retrieve Session */}
-            <Col span={8}>
-              <Card 
-                title={
-                  <Space>
-                    <SearchOutlined style={{ color: '#52c41a' }} />
-                    <Text strong>Retrieve Previous Session</Text>
-                  </Space>
-                }
-                size="small"
-                style={{ height: '100%' }}
-              >
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
-                      Enter a session ID to retrieve previous crawl results
-                    </Text>
-                    <Input
-                      placeholder="Enter session ID (e.g., session_12345)"
-                      value={sessionIdInput}
-                      onChange={(e) => setSessionIdInput(e.target.value)}
-                      onPressEnter={handleRetrieveSession}
-                      size="large"
-                      prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                    />
-                  </div>
-                  <div>
-                    <Button
-                      type="primary"
-                      icon={<SearchOutlined />}
-                      onClick={handleRetrieveSession}
-                      disabled={!sessionIdInput.trim()}
-                      size="large"
-                      style={{ width: '100%', backgroundColor: '#52c41a', borderColor: '#52c41a' }}
-                    >
-                      Retrieve Session
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-
-            {/* Right Panel - Session Control */}
-            <Col span={8}>
-              <Card 
-                title={
-                  <Space>
-                    <StopOutlined style={{ color: '#fa8c16' }} />
-                    <Text strong>Session Control</Text>
-                  </Space>
-                }
-                size="small"
-                style={{ height: '100%' }}
-              >
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '8px' }}>
-                      Control and export session results
-                    </Text>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      danger
-                      icon={<StopOutlined />}
-                      onClick={handleStopCrawl}
-                      disabled={!isRunning}
-                      size="large"
-                      style={{ width: '100%' }}
-                    >
-                      Stop Session
-                    </Button>
-                    <Button
-                      icon={<DownloadOutlined />}
-                      onClick={handleExportResults}
-                      disabled={crawlResults.length === 0}
-                      size="large"
-                      style={{ width: '100%' }}
-                    >
-                      Export Results
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-          </Row>
-        </div>
-
-        {/* Statistics Section */}
-        <div className="p-6 border-b border-gray-200 bg-gray-50">
           <Row gutter={16}>
             <Col span={8}>
               <Card>
