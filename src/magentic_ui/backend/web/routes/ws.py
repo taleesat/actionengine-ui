@@ -259,6 +259,8 @@ async def control_crawler(websocket: WebSocket):
                     await send_message(websocket, message)
                     continue
                 
+                if not url.startswith("http://") and not url.startswith("https://"):
+                    url = "http://" + url  # Default to http if no scheme provided
                 # Generate session and create temp directory
                 session_id = generate_session_id()
                 temp_dir = create_temp_directory(session_id)
@@ -270,11 +272,17 @@ async def control_crawler(websocket: WebSocket):
                 
                 try:
                     # Start the crawler process
+                    env = os.environ.copy()
+                    screenshot_dir_path = os.path.join(temp_dir, "screenshot")
+                    os.makedirs(screenshot_dir_path, exist_ok=True)
+                    env["SCREENSHOT_DIR_PATH"] = screenshot_dir_path
                     process = subprocess.Popen(
                         crawler_command,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
-                        text=True
+                        text=True,
+                        cwd=temp_dir,
+                        env=env
                     )
                     
                     # Store session data
@@ -283,6 +291,7 @@ async def control_crawler(websocket: WebSocket):
                         "status": "running",
                         "url": url,
                         "temp_dir": temp_dir,
+                        "screenshot_dir": screenshot_dir_path,
                         "output_file": output_file,
                         "command": crawler_command
                     }
@@ -504,7 +513,6 @@ async def run_websocket(
                     #settings_config = message.get("settings_config")
                     if task and team_config:
                         # await ws_manager.start_stream(run_id, task, team_config)
-                        #asyncio.create_task(ws_manager.start_stream(run_id, task, team_config, settings_config))
                         asyncio.create_task(ws_manager.call_action_engine(run_id, task))
                     else:
                         logger.warning(f"Invalid start message format for run {run_id}")

@@ -31,7 +31,7 @@ const NewWorkspaceForm: React.FC<Props> = ({ onStartNewSession, onLoadPreviousSe
   return (
     <div className="mt-4">
       <Title level={3} style={{ color: "#cbd5e1", marginBottom: 24 }}>
-        Please provide your workspace name and the website URL to get started.
+        Start a new crawl session.
       </Title>
       <Card
         style={{
@@ -74,7 +74,7 @@ const NewWorkspaceForm: React.FC<Props> = ({ onStartNewSession, onLoadPreviousSe
       <Divider style={{ borderColor: "#334155" }}>OR</Divider>
 
       <Title level={3} style={{ color: "#cbd5e1", marginBottom: 24 }}>
-        Load your existing workspace.
+        Retrieve a previous crawl session.
       </Title>
       <Card
         style={{

@@ -278,8 +278,8 @@ export default function CrawlerView(): JSX.Element {
         }
         break;
       case "save":
-        if (data.data) {
-          const yamlContent = data.data;
+        if (data.content) {
+          const yamlContent = data.content;
           const blob = new Blob([yamlContent], { type: 'text/yaml' });
           const url = URL.createObjectURL(blob);
           const link = document.createElement("a");
