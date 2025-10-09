@@ -1074,26 +1074,6 @@ export default function ChatView({
       {contextHolder}
       <div className="flex flex-col h-full w-full">
         {/* Progress Bar - Sticky at top */}
-        <div className="progress-container" style={{ height: "3.5rem" }}>
-          <div
-            className="transition-opacity duration-300"
-            style={{
-              opacity:
-                currentRun?.status === "active" ||
-                  currentRun?.status === "awaiting_input" ||
-                  currentRun?.status === "paused" ||
-                  currentRun?.status === "pausing"
-                  ? 1
-                  : 0,
-            }}
-          >
-            <ProgressBar
-              isPlanning={isPlanning}
-              progress={progress}
-              hasFinalAnswer={hasFinalAnswer}
-            />
-          </div>
-        </div>
 
         <div
           ref={chatContainerRef}

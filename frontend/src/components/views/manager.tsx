@@ -459,9 +459,7 @@ export const SessionManager: React.FC = () => {
 
       <div className="flex flex-1 relative">
         <div
-          className={`flex-1 transition-all -mr-4 duration-200 w-[200px] ${
-            isSidebarOpen ? "ml-64" : "ml-0"
-          }`}
+          className={`flex-1 transition-all -mr-4 duration-200 w-[200px] ml-0`}
         >
           {activeSubMenuItem === "current_session" ? (
             session && sessions.length > 0 ? (
