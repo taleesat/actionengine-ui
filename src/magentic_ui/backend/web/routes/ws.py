@@ -1,5 +1,6 @@
 # api/ws.py
 import asyncio
+import base64
 import json
 import os
 import subprocess
@@ -105,61 +106,37 @@ def format_update_result(app_graph_data: Dict[str, Any]) -> Dict[str, Any]:
             "trajectories": []
         }
 
-async def monitor_process_logs(session_id: str, websocket: WebSocket, process: subprocess.Popen):
-    """Monitor the crawler process stdout and stderr and send log updates"""
-    logger.info(f"Starting log monitoring for session {session_id}")
-    
+async def read_latest_screenshot_data(screenshot_dir: str) -> Optional[str]:
+    """
+    Read the latest screenshot from the screenshot directory.
+    Files are in format {timestamp}.jpg and {timestamp}_annotated.jpg
+    We ignore annotated ones and return the latest non-annotated screenshot.
+    """
     try:
-        while session_id in crawler_sessions:
-            session_data = crawler_sessions[session_id]
+        if not os.path.exists(screenshot_dir):
+            return None
             
-            if not process or process.poll() is not None:
-                # Process has finished or doesn't exist
-                break
+        # List all jpg files in the directory
+        screenshot_files = []
+        for filename in os.listdir(screenshot_dir):
+            if filename.endswith('.jpg') and not filename.endswith('_annotated.jpg'):
+                screenshot_files.append(filename)
+        
+        if not screenshot_files:
+            return None
             
-            # Read stdout
-            try:
-                if process.stdout and process.stdout.readable():
-                    line = process.stdout.readline()
-                    if line:
-                        log_message = line.strip()
-                        if log_message:
-                            message = {
-                                "type": "update_log",
-                                "session": session_id,
-                                "messages": [f"[STDOUT] {log_message}"]
-                            }
-                            await send_message(websocket, message)
-                            logger.info(f"{session_id}: {log_message}")
-            except Exception as e:
-                logger.error(f"Error reading stdout for session {session_id}: {str(e)}")
-            
-            # Read stderr
-            try:
-                if process.stderr and process.stderr.readable():
-                    line = process.stderr.readline()
-                    if line:
-                        log_message = line.strip()
-                        if log_message:
-                            message = {
-                                "type": "update_log",
-                                "session": session_id,
-                                "messages": [f"[STDERR] {log_message}"]
-                            }
-                            await send_message(websocket, message)
-                            logger.info(f"{session_id}: {log_message}")
-            except Exception as e:
-                logger.error(f"Error reading stderr for session {session_id}: {str(e)}")
-            
-            # Small delay to prevent busy waiting
-            await asyncio.sleep(0.1)
-            
+        # Sort by timestamp (filename without extension)
+        screenshot_files.sort(key=lambda x: x.replace('.jpg', ''), reverse=True)
+        
+        # Return the latest screenshot file path
+        latest_file = screenshot_files[0]
+        return os.path.join(screenshot_dir, latest_file)
+        
     except Exception as e:
-        logger.error(f"Error in log monitoring for session {session_id}: {str(e)}")
-    finally:
-        logger.info(f"Log monitoring ended for session {session_id}")
+        logger.error(f"Error reading latest screenshot from {screenshot_dir}: {str(e)}")
+        return None
 
-async def monitor_crawler_output(session_id: str, websocket: WebSocket, output_file: str):
+async def monitor_crawler_output(session_id: str, websocket: WebSocket, output_file: str, screenshot_dir: str):
     """Monitor the crawler output file and send updates every second"""
     logger.info(f"Starting output monitoring for session {session_id}")
     
@@ -168,9 +145,37 @@ async def monitor_crawler_output(session_id: str, websocket: WebSocket, output_f
         "atoms": [],
         "trajectories": []
     }
+
+    sent_screenshots = set()
     
     try:
         while True:
+            # Read and send screenshot updates
+            latest_screenshot_file = await read_latest_screenshot_data(screenshot_dir)
+            if latest_screenshot_file and latest_screenshot_file not in sent_screenshots:
+                try:
+                    # Read the screenshot file and encode it as base64
+                    with open(latest_screenshot_file, 'rb') as f:
+                        image_data = f.read()
+                    
+                    # Encode as base64
+                    base64_data = base64.b64encode(image_data).decode('utf-8')
+                    
+                    # Create data URI format (data:image/jpg;base64,...)
+                    image_url = f"data:image/jpeg;base64,{base64_data}"
+                    
+                    filename = os.path.basename(latest_screenshot_file)
+                    screenshot_message = {
+                        "type": "screenshot",
+                        "session": session_id,
+                        "image_url": image_url
+                    }
+                    await websocket.send_json(screenshot_message)
+                    sent_screenshots.add(latest_screenshot_file)
+                    logger.info(f"Sent screenshot update for session {session_id}: {filename}")
+                except Exception as e:
+                    logger.error(f"Error sending screenshot for session {session_id}: {str(e)}")
+
             # Read and send output file updates
             app_graph_data = await read_output_file(output_file)
             if app_graph_data:
@@ -305,8 +310,7 @@ async def control_crawler(websocket: WebSocket):
                     await send_message(websocket, message)
                     
                     # Start background monitoring for both logs and output
-                    #asyncio.create_task(monitor_process_logs(session_id, websocket, process))
-                    monitoring_task = asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file))
+                    monitoring_task = asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file, screenshot_dir_path))
                     
                     logger.info(f"Started crawler for session {session_id} with URL {url}")
                     
@@ -383,6 +387,7 @@ async def control_crawler(websocket: WebSocket):
                     session_data = crawler_sessions[session_id]
                     status = session_data.get('status', 'unknown')
                     output_file = session_data.get('output_file')
+                    screenshot_dir_path = session_data.get('screenshot_dir')
                     
                     # Send current status
                     message = {
@@ -391,9 +396,8 @@ async def control_crawler(websocket: WebSocket):
                         "session": session_id
                     }
                     await send_message(websocket, message)
-                    
-                    asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file))
-                    
+
+                    asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file, screenshot_dir_path))
                     logger.info(f"Loaded session {session_id} with status {status}")
                     
                 else:

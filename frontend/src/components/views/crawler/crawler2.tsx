@@ -41,10 +41,6 @@ import NewWorkspaceForm from "./newworkspace";
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
 
-interface CrawlerViewProps {
-  // No props needed - self-contained component
-}
-
 interface CrawlResult {
   key: string;
   state: string;
@@ -92,7 +88,6 @@ interface LogEntry {
 
 interface ScreenshotData {
   imageUrl: string;
-  description?: string;
   timestamp: string;
 }
 
@@ -295,14 +290,13 @@ export default function CrawlerView(): JSX.Element {
         }
         break;
       case "screenshot":
-        if (data.imageUrl) {
+        if (data.image_url) {
           const screenshotData: ScreenshotData = {
-            imageUrl: data.imageUrl,
-            description: data.description || "Screenshot captured",
+            imageUrl: data.image_url,
             timestamp: new Date().toLocaleTimeString()
           };
           setCurrentScreenshot(screenshotData);
-          addLogEntry("info", `Screenshot received: ${screenshotData.description}`);
+          addLogEntry("info", `Screenshot received: ${screenshotData.timestamp}`);
         }
         break;
       default:
@@ -767,18 +761,10 @@ export default function CrawlerView(): JSX.Element {
               
               {currentScreenshot ? (
                 <Card className="flex-1 flex flex-col" bodyStyle={{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  {currentScreenshot.description && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <Text type="secondary" style={{ fontSize: '12px' }}>
-                        {currentScreenshot.description}
-                      </Text>
-                    </div>
-                  )}
-                  
                   <div className="flex-1 flex items-center justify-center" style={{ minHeight: '400px' }}>
                     <img
                       src={currentScreenshot.imageUrl}
-                      alt={currentScreenshot.description || "Screenshot"}
+                      alt={"Screenshot"}
                       style={{
                         maxWidth: '100%',
                         maxHeight: '100%',
@@ -795,39 +781,6 @@ export default function CrawlerView(): JSX.Element {
                         addLogEntry('success', 'Screenshot image loaded successfully');
                       }}
                     />
-                  </div>
-                  
-                  <div style={{ marginTop: '12px', textAlign: 'center' }}>
-                    <Space>
-                      <Button
-                        size="small"
-                        icon={<DownloadOutlined />}
-                        onClick={() => {
-                          if (currentScreenshot) {
-                            const link = document.createElement('a');
-                            link.href = currentScreenshot.imageUrl;
-                            link.download = `screenshot_${Date.now()}.png`;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                            addLogEntry('info', 'Screenshot downloaded');
-                          }
-                        }}
-                      >
-                        Download
-                      </Button>
-                      <Button
-                        size="small"
-                        icon={<ExpandOutlined />}
-                        onClick={() => {
-                          if (currentScreenshot) {
-                            window.open(currentScreenshot.imageUrl, '_blank');
-                          }
-                        }}
-                      >
-                        View Full Size
-                      </Button>
-                    </Space>
                   </div>
                 </Card>
               ) : (
