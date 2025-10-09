@@ -1,6 +1,6 @@
 import React from "react";
 import { message } from "antd";
-import CrawlerView from "./crawler/crawler";
+import CrawlerView from "./crawler/crawler2";
 import ContentHeader from "../contentheader";
 
 export const CrawlerManager: React.FC = () => {
