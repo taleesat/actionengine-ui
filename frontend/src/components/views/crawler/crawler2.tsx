@@ -320,9 +320,10 @@ export default function CrawlerView(): JSX.Element {
   };
 
   const handleStopCrawl = () => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
+    if (socket && socket.readyState === WebSocket.OPEN && currentSessionId) {
       socket.send(JSON.stringify({
-        type: "stop"
+        type: "stop",
+        session: currentSessionId
       }));
     }
     setIsRunning(false);
@@ -330,9 +331,10 @@ export default function CrawlerView(): JSX.Element {
   };
 
   const handleExportResults = () => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
+    if (socket && socket.readyState === WebSocket.OPEN && currentSessionId) {
       socket.send(JSON.stringify({
-        type: "download"
+        type: "download",
+        session: currentSessionId
       }));
     }
     addLogEntry("info", "Export request sent");
