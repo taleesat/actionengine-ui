@@ -591,6 +591,9 @@ export default function CrawlerView(): JSX.Element {
               <Title level={2} style={{ margin: 0, color: "#1f2937" }}>
                 Index Crawler {(currentSessionId && `- Session: ${currentSessionId}`) || ''}
               </Title>
+              <Text style={{ fontSize: '12px', color: 'black' }}>
+                Please save your session ID for future reference.
+              </Text>
             </div>
             <div className="flex items-center gap-4">
               <Button
@@ -619,7 +622,7 @@ export default function CrawlerView(): JSX.Element {
         {/* Statistics Section */}
         <div className="p-6 border-b border-gray-200 bg-gray-50">
           <Title level={4} style={{ marginBottom: "16px", color: "#374151" }}>
-            Crawler Controls
+            Statistic
           </Title>
           <Row gutter={16}>
             <Col span={8}>
