@@ -42,6 +42,9 @@ async def control_crawler(
     output_file = "result.yaml"
     stop_file_monitoring = threading.Event()
     
+    # Active session tracking for this connection
+    active_session_id: Optional[str] = None
+    
     # Get the current event loop to pass to the thread
     event_loop = asyncio.get_running_loop()
     
@@ -147,7 +150,7 @@ async def control_crawler(
                 python_executable, app_path, 
                 "--app_url", url,
                 "--action_index_path", output_file,
-                "--crawl_action"
+                "--crawl_action", "--crawl_trajectory"
             ]
             
             logger.info(f"Starting crawler process with command: {' '.join(cmd)} in directory: {crawler_work_dir}")
@@ -167,9 +170,10 @@ async def control_crawler(
                 if line:
                     line = line.strip()
                     log_messages.append(line)
-                    logger.info(f"Crawler output: {line}")
+                    #logger.info(f"Crawler output: {line}")
                     
                     # Send log update via websocket (in a thread-safe way)
+                    """
                     asyncio.run_coroutine_threadsafe(
                         websocket.send_json({
                             "type": "update_log",
@@ -177,6 +181,7 @@ async def control_crawler(
                         }),
                         loop
                     )
+                    """
             
             # Wait for process to complete
             return_code = crawler_process.wait() if crawler_process else 0
@@ -255,6 +260,9 @@ async def control_crawler(
                 # Generate session ID
                 session_id = str(uuid.uuid4())
                 
+                # Set this as the active session for this connection
+                active_session_id = session_id
+                
                 # Store session data
                 crawler_sessions[session_id] = {
                     "url": url,
@@ -292,26 +300,65 @@ async def control_crawler(
                 logger.info(f"Started crawler with session {session_id} for URL: {url}")
             
             elif message_type == "stop":
-                # Stop file monitoring
+                stopped = False
+                
+                # If there's an active session, try to stop its crawler process
+                if active_session_id and active_session_id in crawler_sessions:
+                    session_data = crawler_sessions[active_session_id]
+                    
+                    # Update session status to stopped
+                    crawler_sessions[active_session_id]["status"] = "stopped"
+                    
+                    # Try to find and kill the process by looking for processes in the session's work directory
+                    if session_data.get("work_dir"):
+                        try:
+                            # Kill any python processes running the crawler app in this session's directory
+                            import psutil
+                            for proc in psutil.process_iter(['pid', 'name', 'cwd', 'cmdline']):
+                                try:
+                                    if (proc.info['name'] and 'python' in proc.info['name'].lower() and
+                                        proc.info['cwd'] and session_data["work_dir"] in proc.info['cwd'] and
+                                        proc.info['cmdline'] and any(app_path in arg for arg in proc.info['cmdline'])):
+                                        logger.info(f"Terminating crawler process {proc.info['pid']} for session {active_session_id}")
+                                        proc.terminate()
+                                        try:
+                                            proc.wait(timeout=5)
+                                        except psutil.TimeoutExpired:
+                                            proc.kill()
+                                            logger.info(f"Force killed crawler process {proc.info['pid']}")
+                                        stopped = True
+                                        break
+                                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                                    continue
+                        except ImportError:
+                            logger.warning("psutil not available, cannot stop background crawler process")
+                        except Exception as e:
+                            logger.error(f"Error stopping crawler process for session {active_session_id}: {str(e)}")
+                    
+                    logger.info(f"Stopped crawler for active session {active_session_id}")
+                
+                # Also stop local process and monitoring if they exist
                 stop_file_monitoring.set()
                 if file_monitor_thread is not None and file_monitor_thread.is_alive():
                     file_monitor_thread.join(timeout=2.0)
                     file_monitor_thread = None
                     logger.info("File monitoring thread stopped")
                 
-                # Kill the process and thread
+                # Kill the local process if it exists
                 if crawler_process is not None:
                     try:
                         crawler_process.terminate()
                         crawler_process.wait(timeout=5)
                         crawler_process = None
-                        logger.info("Crawler process terminated")
+                        logger.info("Local crawler process terminated")
+                        stopped = True
                     except subprocess.TimeoutExpired:
                         crawler_process.kill()
                         crawler_process = None
-                        logger.info("Crawler process killed (forced)")
+                        logger.info("Local crawler process killed (forced)")
+                        stopped = True
                     except Exception as e:
-                        logger.error(f"Error stopping crawler process: {str(e)}")
+                        logger.error(f"Error stopping local crawler process: {str(e)}")
                 
                 if crawler_thread is not None and crawler_thread.is_alive():
                     # Note: Python threads cannot be forcibly killed, but the process termination will end the thread
@@ -319,11 +366,19 @@ async def control_crawler(
                     logger.info("Crawler thread reference cleared")
                 
                 # Send stopped status
-                await websocket.send_json({
-                    "type": "status",
-                    "status": "stopped"
-                })
-                logger.info("Crawler stopped")
+                if stopped or active_session_id:
+                    await websocket.send_json({
+                        "type": "status",
+                        "status": "stopped",
+                        "session": active_session_id
+                    })
+                    logger.info(f"Crawler stopped for session {active_session_id}")
+                else:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "No active session to stop"
+                    })
+                    logger.warning("Stop message received but no active session found")
             
             elif message_type == "load":
                 session_id = message.get("session")
@@ -341,6 +396,9 @@ async def control_crawler(
                         "message": f"Session {session_id} not found"
                     })
                     continue
+                
+                # Set this session as the active session for this connection
+                active_session_id = session_id
                 
                 session_data = crawler_sessions[session_id]
                 response = {
@@ -394,8 +452,17 @@ async def control_crawler(
             elif message_type == "download":
                 # Read the output file and send back the data
                 try:
-                    # Use the full path to the output file in the crawler work directory
-                    output_file_path = os.path.join(crawler_work_dir, output_file) if crawler_work_dir else output_file
+                    # Determine the work directory to use - prioritize active session
+                    work_dir = None
+                    if active_session_id and active_session_id in crawler_sessions:
+                        work_dir = crawler_sessions[active_session_id].get("work_dir")
+                    
+                    # Fall back to local crawler_work_dir if no active session work dir
+                    if not work_dir:
+                        work_dir = crawler_work_dir
+                    
+                    # Use the full path to the output file in the determined work directory
+                    output_file_path = os.path.join(work_dir, output_file) if work_dir else output_file
                     
                     if os.path.exists(output_file_path):
                         with open(output_file_path, 'r', encoding='utf-8') as f:

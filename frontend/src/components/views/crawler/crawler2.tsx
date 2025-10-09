@@ -398,6 +398,7 @@ export default function CrawlerView(): JSX.Element {
     }
 
     // Clear previous results
+    setIsStarted(true);
     setCrawlResults([]);
     setTrajectoryResults([]);
     setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0 });
@@ -407,8 +408,8 @@ export default function CrawlerView(): JSX.Element {
     const sendRetrieveCommand = () => {
       if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
         currentSocket.send(JSON.stringify({
-          type: "retrieve_session",
-          sessionId: sessionId.trim()
+          type: "load",
+          session: sessionId.trim()
         }));
         addLogEntry("info", `Retrieving session: ${sessionId}`);
         setIsRunning(true); // Set running state to show main UI
