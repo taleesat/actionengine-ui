@@ -194,6 +194,7 @@ export default function CrawlerView(): JSX.Element {
   };
 
   const handleWebSocketMessage = (data: any) => {
+    console.log("Received WebSocket message:", data);
     switch (data.type) {
       case "status":
         // Handle new schema with session field
@@ -321,6 +322,7 @@ export default function CrawlerView(): JSX.Element {
 
   const handleStopCrawl = () => {
     if (socket && socket.readyState === WebSocket.OPEN && currentSessionId) {
+      console.log("Sending stop command for session:", currentSessionId);
       socket.send(JSON.stringify({
         type: "stop",
         session: currentSessionId
@@ -476,15 +478,9 @@ export default function CrawlerView(): JSX.Element {
             <Collapse size="small" ghost>
               <Panel 
                 header={
-                  <Badge 
-                    count={atoms.length} 
-                    style={{ backgroundColor: '#52c41a' }}
-                    showZero
-                  >
                     <Text style={{ fontSize: "12px" }}>
                       {atoms.length} atom{atoms.length !== 1 ? 's' : ''} discovered
                     </Text>
-                  </Badge>
                 } 
                 key="1"
               >
@@ -537,15 +533,9 @@ export default function CrawlerView(): JSX.Element {
             <Collapse size="small" ghost>
               <Panel 
                 header={
-                  <Badge 
-                    count={actions.length} 
-                    style={{ backgroundColor: '#fa8c16' }}
-                    showZero
-                  >
-                    <Text style={{ fontSize: "12px" }}>
-                      {actions.length} action{actions.length !== 1 ? 's' : ''} in sequence
-                    </Text>
-                  </Badge>
+                  <Text style={{ fontSize: "12px" }}>
+                    {actions.length} action{actions.length !== 1 ? 's' : ''} in sequence
+                  </Text>
                 } 
                 key="1"
               >
@@ -683,7 +673,6 @@ export default function CrawlerView(): JSX.Element {
               } : false}
               scroll={{ y: "calc(25vh - 60px)" }}
               size="small"
-              loading={isRunning && crawlResults.length === 0}
             />
             
             {/* Trajectory Results Table */}
@@ -703,7 +692,6 @@ export default function CrawlerView(): JSX.Element {
                 } : false}
                 scroll={{ y: "calc(25vh - 60px)" }}
                 size="small"
-                loading={isRunning && trajectoryResults.length === 0}
               />
             </div>
             <div style={{ marginTop: '24px' }} className="flex items-center justify-between mb-4">

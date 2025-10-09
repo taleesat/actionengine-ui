@@ -33,6 +33,7 @@ def build_crawler_command(url: str, output_file: str) -> list[str]:
 
 # Global session storage - in production, this should be replaced with persistent storage
 crawler_sessions: Dict[str, Dict[str, Any]] = {}
+# Store active monitoring tasks to allow proper cancellation
 
 def generate_session_id() -> str:
     """Generate a unique session ID"""
@@ -50,8 +51,9 @@ async def read_output_file(output_file: str) -> Optional[Dict[str, Any]]:
         if os.path.exists(output_file):
             with open(output_file, 'r', encoding='utf-8') as f:
                 content = yaml.safe_load(f)
-                if content and isinstance(content, dict):
-                    return content
+                if content:
+                    app_graph = AppGraph.model_validate(content)
+                    return app_graph.model_dump()
     except Exception as e:
         logger.error(f"Error reading output file {output_file}: {str(e)}")
     return None
@@ -103,50 +105,136 @@ def format_update_result(app_graph_data: Dict[str, Any]) -> Dict[str, Any]:
             "trajectories": []
         }
 
-async def monitor_crawler_output(session_id: str, websocket: WebSocket, output_file: str):
-    """Monitor the crawler output file and send updates every second"""
-    logger.info(f"Starting output monitoring for session {session_id}")
+async def monitor_process_logs(session_id: str, websocket: WebSocket, process: subprocess.Popen):
+    """Monitor the crawler process stdout and stderr and send log updates"""
+    logger.info(f"Starting log monitoring for session {session_id}")
     
     try:
         while session_id in crawler_sessions:
             session_data = crawler_sessions[session_id]
             
-            # Check if process is still running
-            if session_data.get('process'):
-                try:
-                    process = session_data['process']
-                    return_code = process.poll()
-                    if return_code is not None:
-                        # Process has finished
-                        logger.info(f"Crawler process finished for session {session_id} with return code {return_code}")
-                        session_data['status'] = 'done'
-                        await websocket.send_json({
-                            "type": "status",
-                            "status": "done",
-                            "session": session_id
-                        })
-                        break
-                except Exception as e:
-                    logger.error(f"Error checking process status for session {session_id}: {str(e)}")
+            if not process or process.poll() is not None:
+                # Process has finished or doesn't exist
+                break
             
+            # Read stdout
+            try:
+                if process.stdout and process.stdout.readable():
+                    line = process.stdout.readline()
+                    if line:
+                        log_message = line.strip()
+                        if log_message:
+                            message = {
+                                "type": "update_log",
+                                "session": session_id,
+                                "messages": [f"[STDOUT] {log_message}"]
+                            }
+                            await send_message(websocket, message)
+                            logger.info(f"{session_id}: {log_message}")
+            except Exception as e:
+                logger.error(f"Error reading stdout for session {session_id}: {str(e)}")
+            
+            # Read stderr
+            try:
+                if process.stderr and process.stderr.readable():
+                    line = process.stderr.readline()
+                    if line:
+                        log_message = line.strip()
+                        if log_message:
+                            message = {
+                                "type": "update_log",
+                                "session": session_id,
+                                "messages": [f"[STDERR] {log_message}"]
+                            }
+                            await send_message(websocket, message)
+                            logger.info(f"{session_id}: {log_message}")
+            except Exception as e:
+                logger.error(f"Error reading stderr for session {session_id}: {str(e)}")
+            
+            # Small delay to prevent busy waiting
+            await asyncio.sleep(0.1)
+            
+    except Exception as e:
+        logger.error(f"Error in log monitoring for session {session_id}: {str(e)}")
+    finally:
+        logger.info(f"Log monitoring ended for session {session_id}")
+
+async def monitor_crawler_output(session_id: str, websocket: WebSocket, output_file: str):
+    """Monitor the crawler output file and send updates every second"""
+    logger.info(f"Starting output monitoring for session {session_id}")
+    
+    # Track what has been sent to avoid duplicates
+    sent_results = {
+        "atoms": [],
+        "trajectories": []
+    }
+    
+    try:
+        while True:
             # Read and send output file updates
             app_graph_data = await read_output_file(output_file)
             if app_graph_data:
                 update_result = format_update_result(app_graph_data)
-                update_result["session"] = session_id
-                try:
-                    await websocket.send_json(update_result)
-                except Exception as e:
-                    logger.error(f"Error sending update for session {session_id}: {str(e)}")
-                    break
+                
+                # Check for new atoms
+                new_atoms = []
+                current_atoms = update_result.get("atoms", [])
+                for atom in current_atoms:
+                    if atom not in sent_results["atoms"]:
+                        new_atoms.append(atom)
+                        sent_results["atoms"].append(atom)
+                
+                # Check for new trajectories
+                new_trajectories = []
+                current_trajectories = update_result.get("trajectories", [])
+                for trajectory in current_trajectories:
+                    if trajectory not in sent_results["trajectories"]:
+                        new_trajectories.append(trajectory)
+                        sent_results["trajectories"].append(trajectory)
+                
+                # Only send update if there are new results
+                if new_atoms or new_trajectories:
+                    update_message = {
+                        "type": "update_result",
+                        "session": session_id,
+                        "atoms": new_atoms,
+                        "trajectories": new_trajectories
+                    }
+                    try:
+                        await send_message(websocket, update_message)
+                        logger.info(f"Sent {len(new_atoms)} new atoms and {len(new_trajectories)} new trajectories for session {session_id}")
+                    except Exception as e:
+                        logger.error(f"Error sending update for session {session_id}: {str(e)}")
+                        break
             
             # Wait 1 second before next update
             await asyncio.sleep(1)
+
+            # Check if session is still active
+            if session_id not in crawler_sessions:
+                logger.info(f"Session {session_id} is no longer running, stopping output monitoring")
+                break
+            session_data = crawler_sessions.get(session_id)
+            if not session_data or session_data.get('status') != 'running' or websocket.client_state != websocket.client_state.CONNECTED:
+                logger.info(f"Session {session_id} is no longer running, stopping output monitoring")
+                break
             
+    except asyncio.CancelledError:
+        logger.info(f"Output monitoring task cancelled for session {session_id}")
+        raise
     except Exception as e:
         logger.error(f"Error in output monitoring for session {session_id}: {str(e)}")
     finally:
         logger.info(f"Output monitoring ended for session {session_id}")
+        # Remove from active monitoring tasks
+
+async def send_message(websocket: WebSocket, message: Dict[str, Any]):
+    """Send a JSON message over the websocket"""
+    try:
+        logger.info(f"Sending message: {message}")
+        await websocket.send_json(message)
+    except Exception as e:
+        logger.error(f"Error sending message over websocket: {str(e)}")
 
 @router.websocket("/crawler")
 async def control_crawler(websocket: WebSocket):
@@ -164,16 +252,18 @@ async def control_crawler(websocket: WebSocket):
                 # Handle start message
                 url = message.get("url")
                 if not url:
-                    await websocket.send_json({
+                    message = {
                         "type": "error",
                         "message": "URL is required for start message"
-                    })
+                    }
+                    await send_message(websocket, message)
                     continue
                 
                 # Generate session and create temp directory
                 session_id = generate_session_id()
                 temp_dir = create_temp_directory(session_id)
                 output_file = os.path.join(temp_dir, "result.yaml")
+                logger.info(f"Starting new crawler session {session_id} for URL {url}; output: {output_file}")
                 
                 # Build crawler command
                 crawler_command = build_crawler_command(url, output_file)
@@ -198,32 +288,36 @@ async def control_crawler(websocket: WebSocket):
                     }
                     
                     # Send running status
-                    await websocket.send_json({
+                    message = {
                         "type": "status",
                         "status": "running",
                         "session": session_id
-                    })
+                    }
+                    await send_message(websocket, message)
                     
-                    # Start background monitoring
-                    asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file))
+                    # Start background monitoring for both logs and output
+                    #asyncio.create_task(monitor_process_logs(session_id, websocket, process))
+                    monitoring_task = asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file))
                     
                     logger.info(f"Started crawler for session {session_id} with URL {url}")
                     
                 except Exception as e:
                     logger.error(f"Error starting crawler: {str(e)}")
-                    await websocket.send_json({
+                    message = {
                         "type": "error",
                         "message": f"Failed to start crawler: {str(e)}"
-                    })
+                    }
+                    await send_message(websocket, message)
             
             elif message_type == "stop":
                 # Handle stop message
                 session_id = message.get("session")
                 if not session_id:
-                    await websocket.send_json({
+                    message = {
                         "type": "error",
                         "message": "Session ID is required for stop message"
-                    })
+                    }
+                    await send_message(websocket, message)
                     continue
                 
                 if session_id in crawler_sessions:
@@ -232,49 +326,48 @@ async def control_crawler(websocket: WebSocket):
                     
                     if process:
                         try:
-                            process.terminate()
-                            # Wait a bit for graceful termination
-                            try:
-                                process.wait(timeout=5)
-                            except subprocess.TimeoutExpired:
-                                process.kill()  # Force kill if doesn't terminate gracefully
-                                process.wait()
+                            process.kill()  # Force kill if doesn't terminate gracefully
+                            process.wait()
                             
                             session_data['status'] = 'stopped'
                             
-                            await websocket.send_json({
+                            message = {
                                 "type": "status",
                                 "status": "stopped",
                                 "session": session_id
-                            })
+                            }
+                            await send_message(websocket, message)
                             
                             logger.info(f"Stopped crawler for session {session_id}")
                             
                         except Exception as e:
                             logger.error(f"Error stopping crawler for session {session_id}: {str(e)}")
-                            await websocket.send_json({
+                            message = {
                                 "type": "error",
                                 "message": f"Failed to stop crawler: {str(e)}"
-                            })
+                            }
+                            await send_message(websocket, message)
                     else:
-                        await websocket.send_json({
+                        message = {
                             "type": "error",
                             "message": f"No active process found for session {session_id}"
-                        })
+                        }
+                        await send_message(websocket, message)
                 else:
-                    await websocket.send_json({
+                    message = { 
                         "type": "error",
                         "message": f"Session {session_id} not found"
-                    })
-            
+                    }
+                    await send_message(websocket, message)
             elif message_type == "load":
                 # Handle load message
                 session_id = message.get("session")
                 if not session_id:
-                    await websocket.send_json({
+                    message = {
                         "type": "error",
                         "message": "Session ID is required for load message"
-                    })
+                    }
+                    await send_message(websocket, message)
                     continue
                 
                 if session_id in crawler_sessions:
@@ -283,40 +376,33 @@ async def control_crawler(websocket: WebSocket):
                     output_file = session_data.get('output_file')
                     
                     # Send current status
-                    await websocket.send_json({
+                    message = {
                         "type": "status",
                         "status": status,
                         "session": session_id
-                    })
+                    }
+                    await send_message(websocket, message)
                     
-                    # Send current results if available
-                    if output_file:
-                        app_graph_data = await read_output_file(output_file)
-                        if app_graph_data:
-                            update_result = format_update_result(app_graph_data)
-                            update_result["session"] = session_id
-                            await websocket.send_json(update_result)
-                    
-                    # If still running, start monitoring again
-                    if status == "running":
-                        asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file))
+                    asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file))
                     
                     logger.info(f"Loaded session {session_id} with status {status}")
                     
                 else:
-                    await websocket.send_json({
+                    message = {
                         "type": "error",
                         "message": f"Session {session_id} not found"
-                    })
-            
+                    }
+                    await send_message(websocket, message)
+
             elif message_type == "download":
                 # Handle download message
                 session_id = message.get("session")
                 if not session_id:
-                    await websocket.send_json({
+                    message = {
                         "type": "error",
                         "message": "Session ID is required for download message"
-                    })
+                    }
+                    await send_message(websocket, message)
                     continue
                 
                 if session_id in crawler_sessions:
@@ -328,36 +414,42 @@ async def control_crawler(websocket: WebSocket):
                             with open(output_file, 'r', encoding='utf-8') as f:
                                 file_content = f.read()
                             
-                            await websocket.send_json({
+                            message = {
                                 "type": "save",
                                 "session": session_id,
-                                "data": file_content
-                            })
+                                "filename": os.path.basename(output_file),
+                                "content": file_content
+                            }
+                            await send_message(websocket, message)
                             
                             logger.info(f"Sent raw data for session {session_id}")
                             
                         except Exception as e:
                             logger.error(f"Error reading output file for session {session_id}: {str(e)}")
-                            await websocket.send_json({
+                            message = {
                                 "type": "error",
                                 "message": f"Failed to read output file: {str(e)}"
-                            })
+                            }
+                            await send_message(websocket, message)
                     else:
-                        await websocket.send_json({
+                        message = {
                             "type": "error",
                             "message": f"Output file not found for session {session_id}"
-                        })
+                        }
+                        await send_message(websocket, message)
                 else:
-                    await websocket.send_json({
+                    message = {
                         "type": "error",
                         "message": f"Session {session_id} not found"
-                    })
-            
+                    }
+                    await send_message(websocket, message)
+
             else:
-                await websocket.send_json({
+                message = {
                     "type": "error",
                     "message": f"Unknown message type: {message_type}"
-                })
+                }
+                await send_message(websocket, message)
                 logger.warning(f"Unknown message type received: {message_type}")
                 
     except WebSocketDisconnect:
@@ -416,13 +508,12 @@ async def run_websocket(
                         asyncio.create_task(ws_manager.call_action_engine(run_id, task))
                     else:
                         logger.warning(f"Invalid start message format for run {run_id}")
-                        await websocket.send_json(
-                            {
-                                "type": "error",
-                                "error": "Invalid start message format",
-                                "timestamp": datetime.utcnow().isoformat(),
-                            }
-                        )
+                        message = {
+                            "type": "error",
+                            "error": "Invalid start message format",
+                            "timestamp": datetime.utcnow().isoformat(),
+                        }
+                        await websocket.send_json(message)
 
                 elif message.get("type") == "stop":
                     logger.info(f"Received stop request for run {run_id}")
