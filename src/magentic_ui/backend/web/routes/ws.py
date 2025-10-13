@@ -233,38 +233,6 @@ async def monitor_crawler_output(session_id: str, websocket: WebSocket, output_f
         logger.info(f"Output monitoring ended for session {session_id}")
         # Remove from active monitoring tasks
 
-async def log_process_stdout(session_id: str, process: subprocess.Popen):
-    """Log stdout from the crawler process"""
-    logger.info(f"Starting stdout logging for session {session_id}")
-    try:
-        while True:
-            line = await asyncio.to_thread(process.stdout.readline)
-            if not line:
-                break
-            line = line.strip()
-            if line:
-                logger.info(f"[{session_id}] STDOUT: {line}")
-    except Exception as e:
-        logger.error(f"Error logging stdout for session {session_id}: {str(e)}")
-    finally:
-        logger.info(f"Stdout logging ended for session {session_id}")
-
-async def log_process_stderr(session_id: str, process: subprocess.Popen):
-    """Log stderr from the crawler process"""
-    logger.info(f"Starting stderr logging for session {session_id}")
-    try:
-        while True:
-            line = await asyncio.to_thread(process.stderr.readline)
-            if not line:
-                break
-            line = line.strip()
-            if line:
-                logger.error(f"[{session_id}] STDERR: {line}")
-    except Exception as e:
-        logger.error(f"Error logging stderr for session {session_id}: {str(e)}")
-    finally:
-        logger.info(f"Stderr logging ended for session {session_id}")
-
 async def send_message(websocket: WebSocket, message: Dict[str, Any]):
     """Send a JSON message over the websocket"""
     try:
@@ -343,10 +311,6 @@ async def control_crawler(websocket: WebSocket):
                     
                     # Start background monitoring for both logs and output
                     monitoring_task = asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file, screenshot_dir_path))
-                    
-                    # Start background logging for stdout and stderr
-                    stdout_task = asyncio.create_task(log_process_stdout(session_id, process))
-                    stderr_task = asyncio.create_task(log_process_stderr(session_id, process))
                     
                     logger.info(f"Started crawler for session {session_id} with URL {url}")
                     
