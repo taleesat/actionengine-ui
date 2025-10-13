@@ -18,6 +18,8 @@ export HOMEPAGE="http://homepage.com"
 export AZURE_OPENAI_ENDPOINT=${OPENAI_ENDPOINT}
 export AZURE_OPEN_AI_DEPLOYMENT_ID=${OPENAI_TEXT_MODEL}
 
+export OPENAI_API_KEY=""
+
 export MCPSTUDIO_UI_PORT="8000"
 playwright install
 xvfb-run magentic ui --host 0.0.0.0 --port $MCPSTUDIO_UI_PORT --config config.yaml
