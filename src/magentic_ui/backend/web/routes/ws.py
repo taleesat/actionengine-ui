@@ -34,7 +34,6 @@ def build_crawler_command(url: str, output_file: str) -> list[str]:
 
 # Global session storage - in production, this should be replaced with persistent storage
 crawler_sessions: Dict[str, Dict[str, Any]] = {}
-# Store active monitoring tasks to allow proper cancellation
 
 def generate_session_id() -> str:
     """Generate a unique session ID"""
@@ -136,9 +135,18 @@ async def read_latest_screenshot_data(screenshot_dir: str) -> Optional[str]:
         logger.error(f"Error reading latest screenshot from {screenshot_dir}: {str(e)}")
         return None
 
-async def monitor_crawler_output(session_id: str, websocket: WebSocket, output_file: str, screenshot_dir: str, action_statistic_file: str):
-    """Monitor the crawler output file and send updates every second"""
-    logger.info(f"Starting output monitoring for session {session_id}")
+async def monitor_crawler(session_id: str, websocket: WebSocket):
+    """Monitor the crawler and send updates every second"""
+    logger.info(f"Starting monitoring for session {session_id}")
+
+    session_data = crawler_sessions.get(session_id)
+    if not session_data:
+        logger.error(f"No session data found for session {session_id}, stopping monitoring")
+        return
+
+    output_file = session_data.get('output_file')
+    screenshot_dir = session_data.get('screenshot_dir')
+    action_statistic_file = session_data.get('action_statistic_file')
     
     # Track what has been sent to avoid duplicates
     sent_results = {
@@ -338,7 +346,7 @@ async def control_crawler(websocket: WebSocket):
                     await send_message(websocket, message)
                     
                     # Start background monitoring for both logs and output
-                    asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file, screenshot_dir_path, action_statistic_file_path))
+                    asyncio.create_task(monitor_crawler(session_id, websocket))
                     
                 except Exception as e:
                     logger.error(f"Error starting crawler: {str(e)}")
@@ -424,7 +432,7 @@ async def control_crawler(websocket: WebSocket):
                     await send_message(websocket, message)
 
                     action_statistic_file_path = session_data.get('action_statistic_file')
-                    asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file, screenshot_dir_path, action_statistic_file_path))
+                    asyncio.create_task(monitor_crawler(session_id, websocket))
                     logger.info(f"Loaded session {session_id} with status {status}")
                     
                 else:
