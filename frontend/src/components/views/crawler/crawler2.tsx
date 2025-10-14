@@ -315,7 +315,7 @@ export default function CrawlerView(): JSX.Element {
             crawledUrls: data.num_crawled_urls,
             crawledUiElements: data.num_crawled_ui_elements
           }));
-          addLogEntry("info", `Statistics: ${data.num_visited_urls} visited, ${data.num_crawled_urls} crawled, ${data.num_crawled_ui_elements} UI elements`);
+          //addLogEntry("info", `Statistics: ${data.num_visited_urls} visited, ${data.num_crawled_urls} crawled, ${data.num_crawled_ui_elements} UI elements`);
         }
         break;
       default:
@@ -468,7 +468,7 @@ export default function CrawlerView(): JSX.Element {
 
   const columns = [
     {
-      title: "State",
+      title: "Template Pages",
       dataIndex: "state",
       key: "state",
       width: "40%",
@@ -481,7 +481,7 @@ export default function CrawlerView(): JSX.Element {
       ),
     },
     {
-      title: "Atoms",
+      title: "UI Functions",
       dataIndex: "atoms",
       key: "atoms",
       width: "60%",
@@ -492,7 +492,7 @@ export default function CrawlerView(): JSX.Element {
               <Panel 
                 header={
                     <Text style={{ fontSize: "12px" }}>
-                      {atoms.length} atom{atoms.length !== 1 ? 's' : ''} discovered
+                      {atoms.length} UI function{atoms.length !== 1 ? 's' : ''} discovered
                     </Text>
                 } 
                 key="1"
@@ -513,7 +513,7 @@ export default function CrawlerView(): JSX.Element {
             </Collapse>
           ) : (
             <Text type="secondary" style={{ fontSize: "12px" }}>
-              No atoms found
+              No UI functions discovered
             </Text>
           )}
         </div>
@@ -668,7 +668,7 @@ export default function CrawlerView(): JSX.Element {
             <Col span={4}>
               <Card>
                 <Statistic
-                  title="States Discovered"
+                  title="Template Pages Discovered"
                   value={crawlStats.totalStates}
                   valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
                 />
@@ -677,7 +677,7 @@ export default function CrawlerView(): JSX.Element {
             <Col span={4}>
               <Card>
                 <Statistic
-                  title="Atoms Found"
+                  title="UI Funtions Discovered"
                   value={crawlStats.totalAtoms}
                   valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
                 />
@@ -686,7 +686,7 @@ export default function CrawlerView(): JSX.Element {
             <Col span={4}>
               <Card>
                 <Statistic
-                  title="Trajectories Found"
+                  title="Trajectories Discovered"
                   value={crawlStats.totalTrajectories}
                   valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
                 />
@@ -700,7 +700,7 @@ export default function CrawlerView(): JSX.Element {
           <div className="flex-1 p-6 overflow-hidden">
             <div className="flex items-center justify-between mb-4">
               <Title level={4} style={{ margin: 0, color: "#374151" }}>
-                Atoms
+                UI Functions
               </Title>
             </div>
             
