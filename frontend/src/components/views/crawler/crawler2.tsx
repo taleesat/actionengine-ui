@@ -638,59 +638,57 @@ export default function CrawlerView(): JSX.Element {
             Statistic
           </Title>
           <Row gutter={16}>
-            <Col span={8}>
+            <Col span={4}>
               <Card>
                 <Statistic
                   title="Visited URLs"
                   value={crawlStats.visitedUrls}
-                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}
+                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
-            <Col span={8}>
+            <Col span={4}>
               <Card>
                 <Statistic
                   title="Crawled URLs"
                   value={crawlStats.crawledUrls}
-                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#52c41a' }}
+                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
-            <Col span={8}>
+            <Col span={4}>
               <Card>
                 <Statistic
                   title="Crawled UI Elements"
                   value={crawlStats.crawledUiElements}
-                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#faad14' }}
+                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
-          </Row>
-          <Row gutter={16} style={{ marginTop: '16px' }}>
-            <Col span={8}>
+            <Col span={4}>
               <Card>
                 <Statistic
                   title="States Discovered"
                   value={crawlStats.totalStates}
-                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#722ed1' }}
+                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
-            <Col span={8}>
+            <Col span={4}>
               <Card>
                 <Statistic
                   title="Atoms Found"
                   value={crawlStats.totalAtoms}
-                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#eb2f96' }}
+                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
-            <Col span={8}>
+            <Col span={4}>
               <Card>
                 <Statistic
                   title="Trajectories Found"
                   value={crawlStats.totalTrajectories}
-                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#13c2c2' }}
+                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
