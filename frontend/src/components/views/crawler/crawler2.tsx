@@ -77,6 +77,9 @@ interface CrawlStats {
   totalStates: number;
   totalAtoms: number;
   totalTrajectories: number;
+  visitedUrls: number;
+  crawledUrls: number;
+  crawledUiElements: number;
 }
 
 interface LogEntry {
@@ -110,7 +113,10 @@ export default function CrawlerView(): JSX.Element {
   const [crawlStats, setCrawlStats] = React.useState<CrawlStats>({
     totalStates: 0,
     totalAtoms: 0,
-    totalTrajectories: 0
+    totalTrajectories: 0,
+    visitedUrls: 0,
+    crawledUrls: 0,
+    crawledUiElements: 0
   });
   const [messageApi, contextHolder] = message.useMessage();
   const [socket, setSocket] = React.useState<WebSocket | null>(null);
@@ -299,6 +305,19 @@ export default function CrawlerView(): JSX.Element {
           addLogEntry("info", `Screenshot received: ${screenshotData.timestamp}`);
         }
         break;
+      case "statistic":
+        if (data.session && typeof data.num_visited_urls === 'number' && 
+            typeof data.num_crawled_urls === 'number' && 
+            typeof data.num_crawled_ui_elements === 'number') {
+          setCrawlStats(prev => ({
+            ...prev,
+            visitedUrls: data.num_visited_urls,
+            crawledUrls: data.num_crawled_urls,
+            crawledUiElements: data.num_crawled_ui_elements
+          }));
+          addLogEntry("info", `Statistics: ${data.num_visited_urls} visited, ${data.num_crawled_urls} crawled, ${data.num_crawled_ui_elements} UI elements`);
+        }
+        break;
       default:
         console.log("Unknown message type:", data.type);
     }
@@ -362,7 +381,7 @@ export default function CrawlerView(): JSX.Element {
     setIsStarted(true);
     setCrawlResults([]); // Clear previous results
     setTrajectoryResults([]); // Clear previous trajectory results
-    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0 });
+    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0, visitedUrls: 0, crawledUrls: 0, crawledUiElements: 0 });
     setCurrentScreenshot(null); // Clear previous screenshot
     setCurrentSessionId(null); // Clear previous session ID
     
@@ -399,7 +418,7 @@ export default function CrawlerView(): JSX.Element {
     setIsStarted(true);
     setCrawlResults([]);
     setTrajectoryResults([]);
-    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0 });
+    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0, visitedUrls: 0, crawledUrls: 0, crawledUiElements: 0 });
     setCurrentScreenshot(null);
     
     // Wait for socket to be ready, then send retrieve command
@@ -622,9 +641,38 @@ export default function CrawlerView(): JSX.Element {
             <Col span={8}>
               <Card>
                 <Statistic
+                  title="Visited URLs"
+                  value={crawlStats.visitedUrls}
+                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}
+                />
+              </Card>
+            </Col>
+            <Col span={8}>
+              <Card>
+                <Statistic
+                  title="Crawled URLs"
+                  value={crawlStats.crawledUrls}
+                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#52c41a' }}
+                />
+              </Card>
+            </Col>
+            <Col span={8}>
+              <Card>
+                <Statistic
+                  title="Crawled UI Elements"
+                  value={crawlStats.crawledUiElements}
+                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#faad14' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+          <Row gutter={16} style={{ marginTop: '16px' }}>
+            <Col span={8}>
+              <Card>
+                <Statistic
                   title="States Discovered"
                   value={crawlStats.totalStates}
-                  valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
+                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#722ed1' }}
                 />
               </Card>
             </Col>
@@ -633,7 +681,7 @@ export default function CrawlerView(): JSX.Element {
                 <Statistic
                   title="Atoms Found"
                   value={crawlStats.totalAtoms}
-                  valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
+                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#eb2f96' }}
                 />
               </Card>
             </Col>
@@ -642,7 +690,7 @@ export default function CrawlerView(): JSX.Element {
                 <Statistic
                   title="Trajectories Found"
                   value={crawlStats.totalTrajectories}
-                  valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
+                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#13c2c2' }}
                 />
               </Card>
             </Col>

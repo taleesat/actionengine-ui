@@ -136,7 +136,7 @@ async def read_latest_screenshot_data(screenshot_dir: str) -> Optional[str]:
         logger.error(f"Error reading latest screenshot from {screenshot_dir}: {str(e)}")
         return None
 
-async def monitor_crawler_output(session_id: str, websocket: WebSocket, output_file: str, screenshot_dir: str):
+async def monitor_crawler_output(session_id: str, websocket: WebSocket, output_file: str, screenshot_dir: str, action_statistic_file: str):
     """Monitor the crawler output file and send updates every second"""
     logger.info(f"Starting output monitoring for session {session_id}")
     
@@ -175,6 +175,30 @@ async def monitor_crawler_output(session_id: str, websocket: WebSocket, output_f
                     logger.info(f"Sent screenshot update for session {session_id}: {filename}")
                 except Exception as e:
                     logger.error(f"Error sending screenshot for session {session_id}: {str(e)}")
+
+            # Read and send action statistic file
+            try:
+                if os.path.exists(action_statistic_file):
+                    with open(action_statistic_file, 'r', encoding='utf-8') as f:
+                        stats_data = json.load(f)
+                        
+                    # Extract counts from the statistics data
+                    num_visited_urls = len(stats_data.get('visited_urls', []))
+                    num_crawled_urls = len(stats_data.get('crawled_urls', []))
+                    num_crawled_ui_elements = len(stats_data.get('crawled_ui_elements', []))
+                    
+                    # Send statistics message
+                    stats_message = {
+                        "type": "statistic",
+                        "session": session_id,
+                        "num_visited_urls": num_visited_urls,
+                        "num_crawled_urls": num_crawled_urls,
+                        "num_crawled_ui_elements": num_crawled_ui_elements
+                    }
+                    await websocket.send_json(stats_message)
+                    #logger.info(f"Sent statistics update for session {session_id}: {num_visited_urls} visited, {num_crawled_urls} crawled, {num_crawled_ui_elements} UI elements")
+            except Exception as e:
+                logger.error(f"Error reading action statistics file for session {session_id}: {str(e)}")
 
             # Read and send output file updates
             app_graph_data = await read_output_file(output_file)
@@ -270,7 +294,6 @@ async def control_crawler(websocket: WebSocket):
                 session_id = generate_session_id()
                 temp_dir = create_temp_directory(session_id)
                 output_file = os.path.join(temp_dir, "result.yaml")
-                logger.info(f"Starting new crawler session {session_id} for URL {url}; output: {output_file}")
                 
                 # Build crawler command
                 crawler_command = build_crawler_command(url, output_file)
@@ -281,14 +304,18 @@ async def control_crawler(websocket: WebSocket):
                     screenshot_dir_path = os.path.join(temp_dir, "screenshot")
                     os.makedirs(screenshot_dir_path, exist_ok=True)
                     env["SCREENSHOT_DIR_PATH"] = screenshot_dir_path
-                    process = subprocess.Popen(
-                        crawler_command,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        text=True,
-                        cwd=temp_dir,
-                        env=env
-                    )
+                    log_file_path = os.path.join(temp_dir, "crawler_console.log")
+                    action_statistic_file_path = os.path.join(temp_dir, "action_statistics.json")
+                    with open(log_file_path, 'w', encoding='utf-8') as log_file:
+                        process = subprocess.Popen(
+                            crawler_command,
+                            stdout=log_file,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                            cwd=temp_dir,
+                            env=env
+                        )
+                    logger.info(f"Started crawler process PID {process.pid} for URL {url} with session {session_id} via command {' '.join(crawler_command)}; its output will be in {temp_dir}")
                     
                     # Store session data
                     crawler_sessions[session_id] = {
@@ -298,6 +325,7 @@ async def control_crawler(websocket: WebSocket):
                         "temp_dir": temp_dir,
                         "screenshot_dir": screenshot_dir_path,
                         "output_file": output_file,
+                        "action_statistic_file": action_statistic_file_path,
                         "command": crawler_command
                     }
                     
@@ -310,9 +338,7 @@ async def control_crawler(websocket: WebSocket):
                     await send_message(websocket, message)
                     
                     # Start background monitoring for both logs and output
-                    monitoring_task = asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file, screenshot_dir_path))
-                    
-                    logger.info(f"Started crawler for session {session_id} with URL {url}")
+                    asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file, screenshot_dir_path, action_statistic_file_path))
                     
                 except Exception as e:
                     logger.error(f"Error starting crawler: {str(e)}")
@@ -397,7 +423,8 @@ async def control_crawler(websocket: WebSocket):
                     }
                     await send_message(websocket, message)
 
-                    asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file, screenshot_dir_path))
+                    action_statistic_file_path = session_data.get('action_statistic_file')
+                    asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file, screenshot_dir_path, action_statistic_file_path))
                     logger.info(f"Loaded session {session_id} with status {status}")
                     
                 else:
