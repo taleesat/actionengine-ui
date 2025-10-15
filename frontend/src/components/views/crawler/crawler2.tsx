@@ -2,16 +2,12 @@ import * as React from "react";
 import { 
   message, 
   Button, 
-  Input, 
   Table, 
   Typography, 
-  Progress, 
   Card, 
-  Divider, 
   Badge, 
   Tooltip, 
   Space, 
-  Alert,
   Collapse,
   Tag,
   Statistic,
@@ -19,26 +15,19 @@ import {
   Col
 } from "antd";
 import { 
-  PlayCircleOutlined, 
   StopOutlined, 
-  ExportOutlined, 
-  ReloadOutlined,
   GlobalOutlined,
   BugOutlined,
   CheckCircleOutlined,
-  ClockCircleOutlined,
   WarningOutlined,
   InfoCircleOutlined,
   DownloadOutlined,
   EyeOutlined,
-  ExpandOutlined,
-  CompressOutlined,
-  SearchOutlined
 } from "@ant-design/icons";
 import { getServerUrl } from "../../utils";
 import NewWorkspaceForm from "./newworkspace";
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 const { Panel } = Collapse;
 
 interface CrawlResult {
@@ -52,22 +41,6 @@ interface TrajectoryResult {
   id: string;
   description: string;
   actions: string[];
-}
-
-// New message schema interface
-interface UpdateResultMessage {
-  type: "update_result";
-  atoms: Array<{
-    state: string;
-    atoms: Array<{
-      id: string;
-      description: string;
-    }>;
-  }>;
-  trajectories: Array<{
-    description: string;
-    actions: string[];
-  }>;
 }
 
 interface CrawlStats {
@@ -92,21 +65,11 @@ interface ScreenshotData {
 }
 
 export default function CrawlerView(): JSX.Element {
-  const [urlInput, setUrlInput] = React.useState("");
-  const [sessionIdInput, setSessionIdInput] = React.useState("");
   const [currentSessionId, setCurrentSessionId] = React.useState<string | null>(null);
   const [isRunning, setIsRunning] = React.useState(false);
   const [isStarted, setIsStarted] = React.useState(false);
   const [crawlerStatus, setCrawlerStatus] = React.useState<string>("unknown");
   const [currentUrl, setCurrentUrl] = React.useState<string>("");
-  const [logEntries, setLogEntries] = React.useState<LogEntry[]>([
-    {
-      id: '1',
-      timestamp: new Date().toLocaleTimeString(),
-      level: 'info',
-      message: 'Ready to start crawling...'
-    }
-  ]);
   const [crawlResults, setCrawlResults] = React.useState<CrawlResult[]>([]);
   const [trajectoryResults, setTrajectoryResults] = React.useState<TrajectoryResult[]>([]);
   const [crawlStats, setCrawlStats] = React.useState<CrawlStats>({
@@ -120,16 +83,6 @@ export default function CrawlerView(): JSX.Element {
   const [messageApi, contextHolder] = message.useMessage();
   const [socket, setSocket] = React.useState<WebSocket | null>(null);
   const [currentScreenshot, setCurrentScreenshot] = React.useState<ScreenshotData | null>(null);
-
-  const logContainerRef = React.useRef<HTMLDivElement | null>(null);
-
-  // Auto-scroll log to bottom when new messages are added
-  React.useEffect(() => {
-    if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-    }
-  }, [logEntries]);
-
 
   const getBaseUrl = (url: string): string => {
     try {
@@ -161,7 +114,6 @@ export default function CrawlerView(): JSX.Element {
       const newSocket = new WebSocket(wsUrl);
 
       newSocket.onopen = () => {
-        addLogEntry("success", "WebSocket connection established");
       };
 
       newSocket.onmessage = (event) => {
@@ -170,25 +122,21 @@ export default function CrawlerView(): JSX.Element {
           handleWebSocketMessage(data);
         } catch (error) {
           console.error("Error parsing WebSocket message:", error);
-          addLogEntry("error", "Error parsing WebSocket message");
         }
       };
 
       newSocket.onclose = () => {
-        addLogEntry("warning", "WebSocket connection closed");
         setSocket(null);
       };
 
       newSocket.onerror = (error) => {
         console.error("WebSocket error:", error);
-        addLogEntry("error", "WebSocket connection error");
       };
 
       setSocket(newSocket);
       return newSocket;
     } catch (error) {
       console.error("Error setting up WebSocket:", error);
-      addLogEntry("error", "Failed to setup WebSocket connection");
       return null;
     }
   };
@@ -200,7 +148,6 @@ export default function CrawlerView(): JSX.Element {
         // Handle new schema with session field
         if (data.session) {
           setCurrentSessionId(data.session);
-          addLogEntry("info", `Session ID: ${data.session}`);
         }
         
         // Update current URL if provided
@@ -217,32 +164,12 @@ export default function CrawlerView(): JSX.Element {
           const message = data.session 
             ? `Crawling started successfully (Session: ${data.session})${urlMessage}`
             : `Crawling started successfully${urlMessage}`;
-          addLogEntry("info", message);
         } else if (data.status === "stopped") {
           setIsRunning(false);
-          addLogEntry("warning", "Crawling stopped");
         } else if (data.status === "done") {
           setIsRunning(false);
-          addLogEntry("success", "Crawling completed successfully");
         } else if (data.status === "error") {
           setIsRunning(false);
-          addLogEntry("error", `Crawling failed: ${data.message || 'Unknown error'}`);
-        }
-        break;
-      case "update_log":
-        if (data.messages && Array.isArray(data.messages)) {
-          data.messages.forEach((message: string) => {
-            // Determine log level based on message content
-            let level: LogEntry['level'] = 'info';
-            if (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed')) {
-              level = 'error';
-            } else if (message.toLowerCase().includes('warning') || message.toLowerCase().includes('warn')) {
-              level = 'warning';
-            } else if (message.toLowerCase().includes('success') || message.toLowerCase().includes('completed')) {
-              level = 'success';
-            }
-            addLogEntry(level, message);
-          });
         }
         break;
       case "update_result":
@@ -292,7 +219,6 @@ export default function CrawlerView(): JSX.Element {
           const statusMessage = trajectoryCount > 0 
             ? `Discovered ${data.atoms.length} new state(s) with ${totalAtoms} atoms and ${trajectoryCount} trajectories`
             : `Discovered ${data.atoms.length} new state(s) with ${totalAtoms} atoms`;
-          addLogEntry("success", statusMessage);
         }
         break;
       case "save":
@@ -309,7 +235,6 @@ export default function CrawlerView(): JSX.Element {
           URL.revokeObjectURL(url);
           
           messageApi.success("Results saved successfully");
-          addLogEntry("success", "Results exported to YAML file");
         }
         break;
       case "screenshot":
@@ -319,7 +244,6 @@ export default function CrawlerView(): JSX.Element {
             timestamp: new Date().toLocaleTimeString()
           };
           setCurrentScreenshot(screenshotData);
-          addLogEntry("info", `Screenshot received: ${screenshotData.timestamp}`);
         }
         break;
       case "statistic":
@@ -332,22 +256,11 @@ export default function CrawlerView(): JSX.Element {
             crawledUrls: data.num_crawled_urls,
             crawledUiElements: data.num_crawled_ui_elements
           }));
-          //addLogEntry("info", `Statistics: ${data.num_visited_urls} visited, ${data.num_crawled_urls} crawled, ${data.num_crawled_ui_elements} UI elements`);
         }
         break;
       default:
         console.log("Unknown message type:", data.type);
     }
-  };
-
-  const addLogEntry = (level: LogEntry['level'], message: string) => {
-    const newEntry: LogEntry = {
-      id: `${Date.now()}-${Math.random()}`,
-      timestamp: new Date().toLocaleTimeString(),
-      level,
-      message
-    };
-    setLogEntries(prev => [...prev, newEntry]);
   };
 
   const handleStopCrawl = () => {
@@ -359,7 +272,6 @@ export default function CrawlerView(): JSX.Element {
       }));
     }
     setIsRunning(false);
-    addLogEntry("warning", "Crawling stopped by user");
   };
 
   const handleExportResults = () => {
@@ -369,21 +281,10 @@ export default function CrawlerView(): JSX.Element {
         session: currentSessionId
       }));
     }
-    addLogEntry("info", "Export request sent");
-  };
-
-  const handleClearLogs = () => {
-    setLogEntries([{
-      id: '1',
-      timestamp: new Date().toLocaleTimeString(),
-      level: 'info',
-      message: 'Logs cleared'
-    }]);
   };
 
   // Callback functions for NewWorkspaceForm
   const handleNewSessionFromForm = (url: string) => {
-    setUrlInput(url);
     setCurrentUrl(url); // Set the current URL immediately
     
     // Setup WebSocket if not connected
@@ -411,7 +312,6 @@ export default function CrawlerView(): JSX.Element {
           type: "start",
           url: url.trim()
         }));
-        addLogEntry("info", `Starting crawl for: ${url}`);
       } else {
         setTimeout(sendCrawlCommand, 100); // Retry after 100ms
       }
@@ -421,7 +321,6 @@ export default function CrawlerView(): JSX.Element {
   };
 
   const handleLoadSessionFromForm = (sessionId: string) => {
-    setSessionIdInput(sessionId);
     
     // Setup WebSocket if not connected
     let currentSocket = socket;
@@ -447,7 +346,6 @@ export default function CrawlerView(): JSX.Element {
           type: "load",
           session: sessionId.trim()
         }));
-        addLogEntry("info", `Retrieving session: ${sessionId}`);
         setIsRunning(true); // Set running state to show main UI
       } else {
         setTimeout(sendRetrieveCommand, 100); // Retry after 100ms
@@ -671,14 +569,6 @@ export default function CrawlerView(): JSX.Element {
                       Status: {crawlerStatus}
                     </Text>
                   </div>
-                  {crawlerStatus === "running" && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <ClockCircleOutlined style={{ color: '#1890ff', fontSize: '14px' }} />
-                      <Text style={{ fontSize: '14px', color: '#666' }}>
-                        Running
-                      </Text>
-                    </div>
-                  )}
                 </Space>
               </Card>
             </Col>
@@ -797,10 +687,8 @@ export default function CrawlerView(): JSX.Element {
                       }}
                       onError={(e) => {
                         console.error('Error loading screenshot:', e);
-                        addLogEntry('error', 'Failed to load screenshot image');
                       }}
                       onLoad={() => {
-                        addLogEntry('success', 'Screenshot image loaded successfully');
                       }}
                     />
                   </div>
