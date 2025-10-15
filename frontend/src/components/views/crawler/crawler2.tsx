@@ -638,55 +638,37 @@ export default function CrawlerView(): JSX.Element {
             Statistic
           </Title>
           <Row gutter={16}>
-            <Col span={4}>
+            <Col span={6}>
               <Card>
                 <Statistic
-                  title="Visited URLs"
+                  title="Page Discovered"
                   value={crawlStats.visitedUrls}
                   valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
-            <Col span={4}>
+            <Col span={6}>
               <Card>
                 <Statistic
-                  title="Crawled URLs"
+                  title="Pages Crawled"
                   value={crawlStats.crawledUrls}
                   valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
-            <Col span={4}>
+            <Col span={6}>
               <Card>
                 <Statistic
-                  title="Crawled UI Elements"
-                  value={crawlStats.crawledUiElements}
-                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
-                />
-              </Card>
-            </Col>
-            <Col span={4}>
-              <Card>
-                <Statistic
-                  title="Template Pages Discovered"
-                  value={crawlStats.totalStates}
-                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
-                />
-              </Card>
-            </Col>
-            <Col span={4}>
-              <Card>
-                <Statistic
-                  title="UI Funtions Discovered"
+                  title="Functions Discovered"
                   value={crawlStats.totalAtoms}
                   valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
-            <Col span={4}>
+            <Col span={6}>
               <Card>
                 <Statistic
-                  title="Trajectories Discovered"
+                  title="Tasks Identified"
                   value={crawlStats.totalTrajectories}
                   valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
                 />

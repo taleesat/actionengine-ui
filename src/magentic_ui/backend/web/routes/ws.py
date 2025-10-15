@@ -158,6 +158,10 @@ async def monitor_crawler(session_id: str, websocket: WebSocket):
     
     try:
         while True:
+            if websocket.client_state != websocket.client_state.CONNECTED:
+                logger.info(f"WebSocket disconnected for session {session_id}, stopping monitoring")
+                break
+
             # Read and send screenshot updates
             latest_screenshot_file = await read_latest_screenshot_data(screenshot_dir)
             if latest_screenshot_file and latest_screenshot_file not in sent_screenshots:
@@ -247,15 +251,18 @@ async def monitor_crawler(session_id: str, websocket: WebSocket):
             # Wait 1 second before next update
             await asyncio.sleep(1)
 
-            # Check if session is still active
-            if session_id not in crawler_sessions:
-                logger.info(f"Session {session_id} is no longer running, stopping output monitoring")
+            process = session_data.get('process')
+            if process and process.poll() is not None:
+                # Process has finished
+                session_data['status'] = 'finished'
+                message = {
+                    "type": "status",
+                    "status": "done",
+                    "session": session_id
+                }
+                await send_message(websocket, message)
+                logger.info(f"Crawler process finished for session {session_id}")
                 break
-            session_data = crawler_sessions.get(session_id)
-            if not session_data or session_data.get('status') != 'running' or websocket.client_state != websocket.client_state.CONNECTED:
-                logger.info(f"Session {session_id} is no longer running, stopping output monitoring")
-                break
-            
     except asyncio.CancelledError:
         logger.info(f"Output monitoring task cancelled for session {session_id}")
         raise
@@ -263,7 +270,6 @@ async def monitor_crawler(session_id: str, websocket: WebSocket):
         logger.error(f"Error in output monitoring for session {session_id}: {str(e)}")
     finally:
         logger.info(f"Output monitoring ended for session {session_id}")
-        # Remove from active monitoring tasks
 
 async def send_message(websocket: WebSocket, message: Dict[str, Any]):
     """Send a JSON message over the websocket"""
@@ -341,6 +347,7 @@ async def control_crawler(websocket: WebSocket):
                     message = {
                         "type": "status",
                         "status": "running",
+                        "url": url,
                         "session": session_id
                     }
                     await send_message(websocket, message)
@@ -422,11 +429,13 @@ async def control_crawler(websocket: WebSocket):
                     status = session_data.get('status', 'unknown')
                     output_file = session_data.get('output_file')
                     screenshot_dir_path = session_data.get('screenshot_dir')
+                    url = session_data.get('url')
                     
                     # Send current status
                     message = {
                         "type": "status",
                         "status": status,
+                        "url": url,
                         "session": session_id
                     }
                     await send_message(websocket, message)
