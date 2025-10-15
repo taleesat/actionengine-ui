@@ -470,11 +470,8 @@ export default function CrawlerView(): JSX.Element {
                 <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                   {actions.map((action, index) => (
                     <div key={index} style={{ marginBottom: '4px', padding: '8px', border: '1px solid #f0f0f0', borderRadius: '4px' }}>
-                      <Tag color="orange" style={{ fontSize: '10px', marginBottom: '4px' }}>
-                        Action {index + 1}
-                      </Tag>
                       <Text style={{ fontSize: '11px', display: 'block', wordBreak: 'break-word' }}>
-                        {action}
+                        {index + 1}: {action}
                       </Text>
                     </div>
                   ))}
@@ -590,7 +587,7 @@ export default function CrawlerView(): JSX.Element {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <CodeOutlined style={{ color: '#1890ff', fontSize: '12px' }} />
                     <Text strong style={{ fontSize: '10px' }}>
-                      Action:
+                      Function Crawler:
                     </Text>
                     {actionStatus === "running" && <Badge status="processing" />}
                     {actionStatus === "done" && <Badge status="success" />}
@@ -601,9 +598,9 @@ export default function CrawlerView(): JSX.Element {
                     </Text>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <NodeIndexOutlined style={{ color: '#52c41a', fontSize: '12px' }} />
+                    <CodeOutlined style={{ color: '#1890ff', fontSize: '12px' }} />
                     <Text strong style={{ fontSize: '10px' }}>
-                      Trajectory:
+                      Task Crawler:
                     </Text>
                     {trajectoryStatus === "running" && <Badge status="processing" />}
                     {trajectoryStatus === "done" && <Badge status="success" />}
@@ -718,14 +715,7 @@ export default function CrawlerView(): JSX.Element {
                     key: 'action',
                     label: (
                       <span>
-                        <CodeOutlined />
-                        Action Crawler
-                        {actionScreenshot && (
-                          <Badge 
-                            count="●" 
-                            style={{ backgroundColor: '#52c41a', marginLeft: '8px' }}
-                          />
-                        )}
+                        <CodeOutlined /> Function Crawler
                       </span>
                     ),
                     children: (
@@ -759,12 +749,11 @@ export default function CrawlerView(): JSX.Element {
                         ) : (
                           <Card className="flex-1" bodyStyle={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <div className="text-center">
-                              <CodeOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
                               <Title level={5} type="secondary">
-                                No Action Screenshot Available
+                                Function crawler is starting, this may take a few seconds...
                               </Title>
                               <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Action crawler screenshots will appear here
+                                Function crawler screenshots will appear here
                               </Text>
                             </div>
                           </Card>
@@ -776,14 +765,7 @@ export default function CrawlerView(): JSX.Element {
                     key: 'trajectory',
                     label: (
                       <span>
-                        <NodeIndexOutlined />
-                        Trajectory Crawler
-                        {trajectoryScreenshot && (
-                          <Badge 
-                            count="●" 
-                            style={{ backgroundColor: '#52c41a', marginLeft: '8px' }}
-                          />
-                        )}
+                        <CodeOutlined /> Task Crawler
                       </span>
                     ),
                     children: (
@@ -817,12 +799,11 @@ export default function CrawlerView(): JSX.Element {
                         ) : (
                           <Card className="flex-1" bodyStyle={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <div className="text-center">
-                              <NodeIndexOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
                               <Title level={5} type="secondary">
-                                No Trajectory Screenshot Available
+                                Task crawler is starting, this may take a few seconds...
                               </Title>
                               <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Trajectory crawler screenshots will appear here
+                                Task crawler screenshots will appear here
                               </Text>
                             </div>
                           </Card>
