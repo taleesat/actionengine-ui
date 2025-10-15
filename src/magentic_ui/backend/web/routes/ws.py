@@ -253,13 +253,23 @@ async def monitor_crawler(session_id: str, websocket: WebSocket):
 
             process = session_data.get('process')
             if process and process.poll() is not None:
-                # Process has finished
-                session_data['status'] = 'finished'
-                message = {
-                    "type": "status",
-                    "status": "done",
-                    "session": session_id
-                }
+                # Process has finished or stopped
+                current_status = session_data.get('status')
+                if current_status == 'stopped':
+                    message = {
+                        "type": "status",
+                        "status": "stopped",
+                        "url": session_data.get('url'),
+                        "session": session_id
+                    }
+                else:
+                    session_data['status'] = 'done'
+                    message = {
+                        "type": "status",
+                        "status": "done",
+                        "url": session_data.get('url'),
+                        "session": session_id
+                    }
                 await send_message(websocket, message)
                 logger.info(f"Crawler process finished for session {session_id}")
                 break
@@ -388,6 +398,7 @@ async def control_crawler(websocket: WebSocket):
                             message = {
                                 "type": "status",
                                 "status": "stopped",
+                                "url": session_data.get('url'),
                                 "session": session_id
                             }
                             await send_message(websocket, message)

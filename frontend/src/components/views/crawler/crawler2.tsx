@@ -97,6 +97,8 @@ export default function CrawlerView(): JSX.Element {
   const [currentSessionId, setCurrentSessionId] = React.useState<string | null>(null);
   const [isRunning, setIsRunning] = React.useState(false);
   const [isStarted, setIsStarted] = React.useState(false);
+  const [crawlerStatus, setCrawlerStatus] = React.useState<string>("unknown");
+  const [currentUrl, setCurrentUrl] = React.useState<string>("");
   const [logEntries, setLogEntries] = React.useState<LogEntry[]>([
     {
       id: '1',
@@ -201,11 +203,20 @@ export default function CrawlerView(): JSX.Element {
           addLogEntry("info", `Session ID: ${data.session}`);
         }
         
+        // Update current URL if provided
+        if (data.url) {
+          setCurrentUrl(data.url);
+        }
+        
+        // Update crawler status
+        setCrawlerStatus(data.status || "unknown");
+        
         if (data.status === "running") {
           setIsRunning(true);
+          const urlMessage = data.url ? ` for ${data.url}` : "";
           const message = data.session 
-            ? `Crawling started successfully (Session: ${data.session})`
-            : "Crawling started successfully";
+            ? `Crawling started successfully (Session: ${data.session})${urlMessage}`
+            : `Crawling started successfully${urlMessage}`;
           addLogEntry("info", message);
         } else if (data.status === "stopped") {
           setIsRunning(false);
@@ -373,6 +384,7 @@ export default function CrawlerView(): JSX.Element {
   // Callback functions for NewWorkspaceForm
   const handleNewSessionFromForm = (url: string) => {
     setUrlInput(url);
+    setCurrentUrl(url); // Set the current URL immediately
     
     // Setup WebSocket if not connected
     let currentSocket = socket;
@@ -390,6 +402,7 @@ export default function CrawlerView(): JSX.Element {
     setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0, visitedUrls: 0, crawledUrls: 0, crawledUiElements: 0 });
     setCurrentScreenshot(null); // Clear previous screenshot
     setCurrentSessionId(null); // Clear previous session ID
+    setCrawlerStatus("unknown"); // Reset status
     
     // Wait for socket to be ready, then send crawl command
     const sendCrawlCommand = () => {
@@ -608,45 +621,100 @@ export default function CrawlerView(): JSX.Element {
           </div>
         </div>
 
-        {/* Statistics Section */}
-        <div className="p-6 border-b border-gray-200 bg-gray-50">
+        {/* Status Section - All cards in a single row */}
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50">
           <Title level={4} style={{ marginBottom: "16px", color: "#374151" }}>
-            Statistic
+            Status
           </Title>
           <Row gutter={16}>
-            <Col span={6}>
-              <Card>
+            <Col span={4}>
+              <Card style={{ height: '100px' }}>
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <GlobalOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
+                    <Text strong style={{ fontSize: '16px' }}>
+                      Target URL
+                    </Text>
+                  </div>
+                  {currentUrl ? (
+                    <Text 
+                      style={{ 
+                        fontSize: '14px', 
+                        color: '#1890ff', 
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        wordBreak: 'break-all'
+                      }}
+                      onClick={() => window.open(currentUrl, '_blank')}
+                      ellipsis
+                    >
+                      {currentUrl}
+                    </Text>
+                  ) : (
+                    <Text style={{ fontSize: '14px', color: '#999', fontStyle: 'italic' }}>
+                      No URL available
+                    </Text>
+                  )}
+                </Space>
+              </Card>
+            </Col>
+            <Col span={4}>
+              <Card style={{ height: '100px' }}>
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {crawlerStatus === "running" && <Badge status="processing" />}
+                    {crawlerStatus === "done" && <Badge status="success" />}
+                    {crawlerStatus === "stopped" && <Badge status="warning" />}
+                    {crawlerStatus === "error" && <Badge status="error" />}
+                    {crawlerStatus === "unknown" && <Badge status="warning" />}
+                    <Text strong style={{ fontSize: '16px', textTransform: 'capitalize' }}>
+                      Status: {crawlerStatus}
+                    </Text>
+                  </div>
+                  {crawlerStatus === "running" && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <ClockCircleOutlined style={{ color: '#1890ff', fontSize: '14px' }} />
+                      <Text style={{ fontSize: '14px', color: '#666' }}>
+                        Running
+                      </Text>
+                    </div>
+                  )}
+                </Space>
+              </Card>
+            </Col>
+            <Col span={4}>
+              <Card style={{ height: '100px' }}>
                 <Statistic
                   title="Page Discovered"
                   value={crawlStats.visitedUrls}
-                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
+                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
-            <Col span={6}>
-              <Card>
+            <Col span={4}>
+              <Card style={{ height: '100px' }}>
                 <Statistic
                   title="Pages Crawled"
                   value={crawlStats.crawledUrls}
-                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
+                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
-            <Col span={6}>
-              <Card>
+            <Col span={4}>
+              <Card style={{ height: '100px' }}>
                 <Statistic
                   title="Functions Discovered"
                   value={crawlStats.totalAtoms}
-                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
+                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
-            <Col span={6}>
-              <Card>
+            <Col span={4}>
+              <Card style={{ height: '100px' }}>
                 <Statistic
                   title="Tasks Identified"
                   value={crawlStats.totalTrajectories}
-                  valueStyle={{ fontSize: '14px', fontWeight: 'bold', color: '#ffffff' }}
+                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
