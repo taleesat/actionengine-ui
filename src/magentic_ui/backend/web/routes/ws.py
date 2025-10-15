@@ -206,7 +206,7 @@ async def monitor_crawler(session_id: str, websocket: WebSocket):
                         action_base64_data = base64.b64encode(action_image_data).decode('utf-8')
                         screenshot_message["action_image_url"] = f"data:image/jpeg;base64,{action_base64_data}"
                         sent_screenshots.add(action_screenshot_file)
-                        logger.info(f"Sent action screenshot update for session {session_id}: {os.path.basename(action_screenshot_file)}")
+                        #logger.info(f"Sent action screenshot update for session {session_id}: {os.path.basename(action_screenshot_file)}")
                     
                     # Add trajectory screenshot if available
                     if new_trajectory_screenshot:
@@ -215,35 +215,58 @@ async def monitor_crawler(session_id: str, websocket: WebSocket):
                         trajectory_base64_data = base64.b64encode(trajectory_image_data).decode('utf-8')
                         screenshot_message["trajectory_image_url"] = f"data:image/jpeg;base64,{trajectory_base64_data}"
                         sent_screenshots.add(trajectory_screenshot_file)
-                        logger.info(f"Sent trajectory screenshot update for session {session_id}: {os.path.basename(trajectory_screenshot_file)}")
+                        #logger.info(f"Sent trajectory screenshot update for session {session_id}: {os.path.basename(trajectory_screenshot_file)}")
                     
                     await websocket.send_json(screenshot_message)
                 except Exception as e:
                     logger.error(f"Error sending screenshot for session {session_id}: {str(e)}")
 
-            # Read and send action statistic file
+            # Read and merge statistics from both action and trajectory files
             try:
-                if os.path.exists(action_statistic_file):
+                trajectory_statistic_file = session_data.get('trajectory_statistic_file')
+                
+                # Initialize merged data sets
+                merged_visited_urls = set()
+                merged_crawled_urls = set()
+                merged_crawled_ui_elements = set()
+                
+                # Read action statistics file
+                if action_statistic_file and os.path.exists(action_statistic_file):
                     with open(action_statistic_file, 'r', encoding='utf-8') as f:
-                        stats_data = json.load(f)
-                        
-                    # Extract counts from the statistics data
-                    num_visited_urls = len(stats_data.get('visited_urls', []))
-                    num_crawled_urls = len(stats_data.get('crawled_urls', []))
-                    num_crawled_ui_elements = len(stats_data.get('crawled_ui_elements', []))
+                        action_stats_data = json.load(f)
                     
-                    # Send statistics message
-                    stats_message = {
-                        "type": "statistic",
-                        "session": session_id,
-                        "num_visited_urls": num_visited_urls,
-                        "num_crawled_urls": num_crawled_urls,
-                        "num_crawled_ui_elements": num_crawled_ui_elements
-                    }
-                    await websocket.send_json(stats_message)
-                    #logger.info(f"Sent statistics update for session {session_id}: {num_visited_urls} visited, {num_crawled_urls} crawled, {num_crawled_ui_elements} UI elements")
+                    # Add action data to merged sets (using sets to avoid duplicates)
+                    merged_visited_urls.update(action_stats_data.get('visited_urls', []))
+                    merged_crawled_urls.update(action_stats_data.get('crawled_urls', []))
+                    merged_crawled_ui_elements.update(action_stats_data.get('crawled_ui_elements', []))
+                
+                # Read trajectory statistics file
+                if trajectory_statistic_file and os.path.exists(trajectory_statistic_file):
+                    with open(trajectory_statistic_file, 'r', encoding='utf-8') as f:
+                        trajectory_stats_data = json.load(f)
+                    
+                    # Add trajectory data to merged sets (union to avoid duplicates)
+                    merged_visited_urls.update(trajectory_stats_data.get('visited_urls', []))
+                    merged_crawled_urls.update(trajectory_stats_data.get('crawled_urls', []))
+                    merged_crawled_ui_elements.update(trajectory_stats_data.get('crawled_ui_elements', []))
+
+                # Extract counts from the merged data
+                num_visited_urls = len(merged_visited_urls)
+                num_crawled_urls = len(merged_crawled_urls)
+                num_crawled_ui_elements = len(merged_crawled_ui_elements)
+                
+                # Send combined statistics message
+                stats_message = {
+                    "type": "statistic",
+                    "session": session_id,
+                    "num_visited_urls": num_visited_urls,
+                    "num_crawled_urls": num_crawled_urls,
+                    "num_crawled_ui_elements": num_crawled_ui_elements
+                }
+                await websocket.send_json(stats_message)
+                
             except Exception as e:
-                logger.error(f"Error reading action statistics file for session {session_id}: {str(e)}")
+                logger.error(f"Error reading statistics files for session {session_id}: {str(e)}")
 
             # Read and send output file updates from both action and trajectory files
             action_output_file = session_data.get('action_output_file')
@@ -410,12 +433,12 @@ async def control_crawler(websocket: WebSocket):
                     os.makedirs(trajectory_screenshot_dir, exist_ok=True)
                     
                     # Create separate log files
-                    action_log_file_path = os.path.join(temp_dir, "action_crawler_console.log")
-                    trajectory_log_file_path = os.path.join(temp_dir, "trajectory_crawler_console.log")
+                    action_log_file_path = os.path.join(action_output_dir, "action_crawler_console.log")
+                    trajectory_log_file_path = os.path.join(trajectory_output_dir, "trajectory_crawler_console.log")
                     
                     # Create separate statistics files
-                    action_statistic_file_path = os.path.join(temp_dir, "action_statistics.json")
-                    trajectory_statistic_file_path = os.path.join(temp_dir, "trajectory_statistics.json")
+                    action_statistic_file_path = os.path.join(action_output_dir, "action_statistics.json")
+                    trajectory_statistic_file_path = os.path.join(trajectory_output_dir, "trajectory_statistics.json")
                     
                     # Start action crawler process
                     action_env = env.copy()
