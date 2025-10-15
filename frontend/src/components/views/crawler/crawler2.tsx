@@ -43,11 +43,8 @@ const { Panel } = Collapse;
 
 interface CrawlResult {
   key: string;
-  state: string;
-  atoms: Array<{
-    id: string;
-    description: string;
-  }>;
+  functionId: string;
+  description: string;
 }
 
 interface TrajectoryResult {
@@ -240,15 +237,24 @@ export default function CrawlerView(): JSX.Element {
       case "update_result":
         // Handle new schema: { type: "update_result", atoms: [...], trajectories: [...] }
         if (data.atoms && Array.isArray(data.atoms)) {
-          const newResults = data.atoms.map((atomGroup: any, index: number) => ({
-            key: `${Date.now()}-${index}`,
-            state: atomGroup.state || "",
-            atoms: atomGroup.atoms || []
-          }));
-          setCrawlResults(prev => [...prev, ...newResults]);
+          // Flatten atoms into individual rows
+          const newResults: CrawlResult[] = [];
+          let totalAtoms = 0;
           
-          // Update stats
-          const totalAtoms = newResults.reduce((sum: number, result: CrawlResult) => sum + result.atoms.length, 0);
+          data.atoms.forEach((atomGroup: any) => {
+            if (atomGroup.atoms && Array.isArray(atomGroup.atoms)) {
+              atomGroup.atoms.forEach((atom: any) => {
+                newResults.push({
+                  key: `${Date.now()}-${totalAtoms}`,
+                  functionId: atom.id || `function_${totalAtoms}`,
+                  description: atom.description || "No description available"
+                });
+                totalAtoms++;
+              });
+            }
+          });
+          
+          setCrawlResults(prev => [...prev, ...newResults]);
           
           // Handle trajectories from the new schema
           let trajectoryCount = 0;
@@ -267,14 +273,14 @@ export default function CrawlerView(): JSX.Element {
           
           setCrawlStats(prev => ({
             ...prev,
-            totalStates: prev.totalStates + newResults.length,
+            totalStates: prev.totalStates + data.atoms.length,
             totalAtoms: prev.totalAtoms + totalAtoms,
             totalTrajectories: prev.totalTrajectories + trajectoryCount
           }));
           
           const statusMessage = trajectoryCount > 0 
-            ? `Discovered ${newResults.length} new state(s) with ${totalAtoms} atoms and ${trajectoryCount} trajectories`
-            : `Discovered ${newResults.length} new state(s) with ${totalAtoms} atoms`;
+            ? `Discovered ${data.atoms.length} new state(s) with ${totalAtoms} atoms and ${trajectoryCount} trajectories`
+            : `Discovered ${data.atoms.length} new state(s) with ${totalAtoms} atoms`;
           addLogEntry("success", statusMessage);
         }
         break;
@@ -468,55 +474,25 @@ export default function CrawlerView(): JSX.Element {
 
   const columns = [
     {
-      title: "Template Pages",
-      dataIndex: "state",
-      key: "state",
-      width: "40%",
+      title: "Function",
+      dataIndex: "functionId",
+      key: "functionId",
+      width: "30%",
       render: (text: string) => (
-        <Tooltip title={text}>
-          <Text style={{ fontSize: "12px", wordBreak: "break-all" }} ellipsis>
-            {text}
-          </Text>
-        </Tooltip>
+        <Text style={{ fontSize: "12px", wordBreak: "break-word" }}>
+          {text}
+        </Text>
       ),
     },
     {
-      title: "UI Functions",
-      dataIndex: "atoms",
-      key: "atoms",
-      width: "60%",
-      render: (atoms: Array<{id: string, description: string}>) => (
-        <div>
-          {atoms.length > 0 ? (
-            <Collapse size="small" ghost>
-              <Panel 
-                header={
-                    <Text style={{ fontSize: "12px" }}>
-                      {atoms.length} UI function{atoms.length !== 1 ? 's' : ''} discovered
-                    </Text>
-                } 
-                key="1"
-              >
-                <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                  {atoms.map((atom, index) => (
-                    <div key={atom.id} style={{ marginBottom: '4px' }}>
-                      <Tag color="blue" style={{ fontSize: '10px' }}>
-                        {atom.id}
-                      </Tag>
-                      <Text style={{ fontSize: '11px' }}>
-                        {atom.description}
-                      </Text>
-                    </div>
-                  ))}
-                </div>
-              </Panel>
-            </Collapse>
-          ) : (
-            <Text type="secondary" style={{ fontSize: "12px" }}>
-              No UI functions discovered
-            </Text>
-          )}
-        </div>
+      title: "Description",
+      dataIndex: "description",
+      key: "description",
+      width: "70%",
+      render: (text: string) => (
+        <Text style={{ fontSize: "12px", wordBreak: "break-word" }}>
+          {text}
+        </Text>
       ),
     },
   ];
@@ -526,7 +502,7 @@ export default function CrawlerView(): JSX.Element {
       title: "Description",
       dataIndex: "description",
       key: "description",
-      width: "40%",
+      width: "30%",
       render: (text: string) => (
         <Tooltip title={text}>
           <Text style={{ fontSize: "12px", wordBreak: "break-all" }} ellipsis>
@@ -539,7 +515,7 @@ export default function CrawlerView(): JSX.Element {
       title: "Actions",
       dataIndex: "actions",
       key: "actions",
-      width: "60%",
+      width: "70%",
       render: (actions: string[]) => (
         <div>
           {actions.length > 0 ? (
@@ -694,7 +670,7 @@ export default function CrawlerView(): JSX.Element {
                 pageSize: 10, 
                 showSizeChanger: true,
                 showQuickJumper: true,
-                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} states`
+                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} functions`
               } : false}
               scroll={{ y: "calc(25vh - 60px)" }}
               size="small"
@@ -719,58 +695,8 @@ export default function CrawlerView(): JSX.Element {
                 size="small"
               />
             </div>
-            <div style={{ marginTop: '24px' }} className="flex items-center justify-between mb-4">
-              <Title level={4} style={{ margin: 0, color: "#374151" }}>
-                Live Activity Log
-              </Title>
-              <Space>
-                <Button 
-                  type="text" 
-                  icon={<ReloadOutlined />} 
-                  onClick={handleClearLogs}
-                  title="Clear logs"
-                  size="small"
-                />
-              </Space>
-            </div>
-            
-            <div
-              ref={logContainerRef}
-              className="bg-gray-900 text-white p-4 rounded-lg font-mono text-sm overflow-y-auto h-full border border-gray-700"
-              style={{ 
-                height: "400px",
-                fontFamily: "Consolas, 'Courier New', monospace"
-              }}
-            >
-              {logEntries.map((entry) => (
-                <div key={entry.id} className="mb-2 flex items-start gap-2">
-                  <span className="text-gray-400 text-xs mt-1 min-w-[80px]">
-                    {entry.timestamp}
-                  </span>
-                  <span className="mt-1">
-                    {getLogIcon(entry.level)}
-                  </span>
-                  <span 
-                    className="flex-1"
-                    style={{ color: getLogColor(entry.level) }}
-                  >
-                    {entry.message}
-                  </span>
-                </div>
-              ))}
-              {isRunning && (
-                <div className="flex items-center gap-2 animate-pulse mt-2">
-                  <span className="text-gray-400 text-xs">
-                    {new Date().toLocaleTimeString()}
-                  </span>
-                  <ClockCircleOutlined className="text-yellow-400" />
-                  <span className="text-yellow-400">
-                    Crawling in progress...
-                  </span>
-                </div>
-              )}
-            </div>
           </div>
+
           <div className="flex-1 p-6 border-l border-gray-200 overflow-hidden">
             {/* Screenshot Display Section */}
             <div className="h-full flex flex-col">
