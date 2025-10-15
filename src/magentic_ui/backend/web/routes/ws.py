@@ -25,16 +25,36 @@ router = APIRouter()
 python_executable = os.environ.get("PYTHON_EXECUTABLE")
 app_path = os.environ.get("CRAWLER_APP_PATH")
 
-def build_crawler_command(url: str, output_file: str) -> list[str]:
+def build_crawler_command(url: str, index_path: str, output_dir_path: str) -> list[str]:
     cmd = [ python_executable, app_path,
            "--app_url", url,
-           "--action_index_path", output_file,
-           "--crawl_action", "--crawl_trajectory" ]
+           "--action_index_path", index_path,
+           "--output_dir_path", output_dir_path,
+           "--crawl_action",
+           "--crawl_trajectory",
+           ]
+    return cmd
+
+def build_action_crawler_command(url: str, index_path: str, output_dir_path: str) -> list[str]:
+    cmd = [ python_executable, app_path,
+           "--app_url", url,
+           "--action_index_path", index_path,
+           "--output_dir_path", output_dir_path,
+           "--crawl_action",
+           ]
+    return cmd
+
+def build_trajectory_crawler_command(url: str, index_path: str, output_dir_path: str) -> list[str]:
+    cmd = [ python_executable, app_path,
+           "--app_url", url,
+           "--action_index_path", index_path,
+           "--output_dir_path", output_dir_path,
+           "--crawl_trajectory",
+           ]
     return cmd
 
 # Global session storage - in production, this should be replaced with persistent storage
 crawler_sessions: Dict[str, Dict[str, Any]] = {}
-# Store active monitoring tasks to allow proper cancellation
 
 def generate_session_id() -> str:
     """Generate a unique session ID"""
@@ -136,9 +156,16 @@ async def read_latest_screenshot_data(screenshot_dir: str) -> Optional[str]:
         logger.error(f"Error reading latest screenshot from {screenshot_dir}: {str(e)}")
         return None
 
-async def monitor_crawler_output(session_id: str, websocket: WebSocket, output_file: str, screenshot_dir: str):
-    """Monitor the crawler output file and send updates every second"""
-    logger.info(f"Starting output monitoring for session {session_id}")
+async def monitor_crawler(session_id: str, websocket: WebSocket):
+    """Monitor the crawler and send updates every second"""
+    logger.info(f"Starting monitoring for session {session_id}")
+
+    session_data = crawler_sessions.get(session_id)
+    if not session_data:
+        logger.error(f"No session data found for session {session_id}, stopping monitoring")
+        return
+
+    action_statistic_file = session_data.get('action_statistic_file')
     
     # Track what has been sent to avoid duplicates
     sent_results = {
@@ -150,80 +177,191 @@ async def monitor_crawler_output(session_id: str, websocket: WebSocket, output_f
     
     try:
         while True:
-            # Read and send screenshot updates
-            latest_screenshot_file = await read_latest_screenshot_data(screenshot_dir)
-            if latest_screenshot_file and latest_screenshot_file not in sent_screenshots:
+            if websocket.client_state != websocket.client_state.CONNECTED:
+                logger.info(f"WebSocket disconnected for session {session_id}, stopping monitoring")
+                break
+
+            # Read and send screenshot updates from both directories
+            action_screenshot_dir = session_data.get('action_screenshot_dir')
+            trajectory_screenshot_dir = session_data.get('trajectory_screenshot_dir')
+            
+            action_screenshot_file = await read_latest_screenshot_data(action_screenshot_dir)
+            trajectory_screenshot_file = await read_latest_screenshot_data(trajectory_screenshot_dir)
+            
+            # Check if we have new screenshots from either directory
+            new_action_screenshot = action_screenshot_file and action_screenshot_file not in sent_screenshots
+            new_trajectory_screenshot = trajectory_screenshot_file and trajectory_screenshot_file not in sent_screenshots
+            
+            if new_action_screenshot or new_trajectory_screenshot:
                 try:
-                    # Read the screenshot file and encode it as base64
-                    with open(latest_screenshot_file, 'rb') as f:
-                        image_data = f.read()
-                    
-                    # Encode as base64
-                    base64_data = base64.b64encode(image_data).decode('utf-8')
-                    
-                    # Create data URI format (data:image/jpg;base64,...)
-                    image_url = f"data:image/jpeg;base64,{base64_data}"
-                    
-                    filename = os.path.basename(latest_screenshot_file)
                     screenshot_message = {
                         "type": "screenshot",
-                        "session": session_id,
-                        "image_url": image_url
+                        "session": session_id
                     }
+                    
+                    # Add action screenshot if available
+                    if new_action_screenshot:
+                        with open(action_screenshot_file, 'rb') as f:
+                            action_image_data = f.read()
+                        action_base64_data = base64.b64encode(action_image_data).decode('utf-8')
+                        screenshot_message["action_image_url"] = f"data:image/jpeg;base64,{action_base64_data}"
+                        sent_screenshots.add(action_screenshot_file)
+                        #logger.info(f"Sent action screenshot update for session {session_id}: {os.path.basename(action_screenshot_file)}")
+                    
+                    # Add trajectory screenshot if available
+                    if new_trajectory_screenshot:
+                        with open(trajectory_screenshot_file, 'rb') as f:
+                            trajectory_image_data = f.read()
+                        trajectory_base64_data = base64.b64encode(trajectory_image_data).decode('utf-8')
+                        screenshot_message["trajectory_image_url"] = f"data:image/jpeg;base64,{trajectory_base64_data}"
+                        sent_screenshots.add(trajectory_screenshot_file)
+                        #logger.info(f"Sent trajectory screenshot update for session {session_id}: {os.path.basename(trajectory_screenshot_file)}")
+                    
                     await websocket.send_json(screenshot_message)
-                    sent_screenshots.add(latest_screenshot_file)
-                    logger.info(f"Sent screenshot update for session {session_id}: {filename}")
                 except Exception as e:
                     logger.error(f"Error sending screenshot for session {session_id}: {str(e)}")
 
-            # Read and send output file updates
-            app_graph_data = await read_output_file(output_file)
-            if app_graph_data:
-                update_result = format_update_result(app_graph_data)
+            # Read and merge statistics from both action and trajectory files
+            try:
+                trajectory_statistic_file = session_data.get('trajectory_statistic_file')
                 
-                # Check for new atoms
-                new_atoms = []
-                current_atoms = update_result.get("atoms", [])
-                for atom in current_atoms:
+                # Initialize merged data sets
+                merged_visited_urls = set()
+                merged_crawled_urls = set()
+                merged_crawled_ui_elements = set()
+                
+                # Read action statistics file
+                if action_statistic_file and os.path.exists(action_statistic_file):
+                    with open(action_statistic_file, 'r', encoding='utf-8') as f:
+                        action_stats_data = json.load(f)
+                    
+                    # Add action data to merged sets (using sets to avoid duplicates)
+                    merged_visited_urls.update(action_stats_data.get('visited_urls', []))
+                    merged_crawled_urls.update(action_stats_data.get('crawled_urls', []))
+                    merged_crawled_ui_elements.update(action_stats_data.get('crawled_ui_elements', []))
+                
+                # Read trajectory statistics file
+                if trajectory_statistic_file and os.path.exists(trajectory_statistic_file):
+                    with open(trajectory_statistic_file, 'r', encoding='utf-8') as f:
+                        trajectory_stats_data = json.load(f)
+                    
+                    # Add trajectory data to merged sets (union to avoid duplicates)
+                    merged_visited_urls.update(trajectory_stats_data.get('visited_urls', []))
+                    merged_crawled_urls.update(trajectory_stats_data.get('crawled_urls', []))
+                    merged_crawled_ui_elements.update(trajectory_stats_data.get('crawled_ui_elements', []))
+
+                # Extract counts from the merged data
+                num_visited_urls = len(merged_visited_urls)
+                num_crawled_urls = len(merged_crawled_urls)
+                num_crawled_ui_elements = len(merged_crawled_ui_elements)
+                
+                # Send combined statistics message
+                stats_message = {
+                    "type": "statistic",
+                    "session": session_id,
+                    "num_visited_urls": num_visited_urls,
+                    "num_crawled_urls": num_crawled_urls,
+                    "num_crawled_ui_elements": num_crawled_ui_elements
+                }
+                await websocket.send_json(stats_message)
+                
+            except Exception as e:
+                logger.error(f"Error reading statistics files for session {session_id}: {str(e)}")
+
+            # Read and send output file updates from both action and trajectory files
+            action_output_file = session_data.get('action_output_file')
+            trajectory_output_file = session_data.get('trajectory_output_file')
+            
+            # Read action output file
+            action_app_graph_data = await read_output_file(action_output_file)
+            action_new_atoms = []
+            if action_app_graph_data:
+                action_update_result = format_update_result(action_app_graph_data)
+                
+                # Check for new atoms from action crawler
+                current_action_atoms = action_update_result.get("atoms", [])
+                for atom in current_action_atoms:
                     if atom not in sent_results["atoms"]:
-                        new_atoms.append(atom)
+                        action_new_atoms.append(atom)
                         sent_results["atoms"].append(atom)
+            
+            # Read trajectory output file
+            trajectory_app_graph_data = await read_output_file(trajectory_output_file)
+            trajectory_new_trajectories = []
+            if trajectory_app_graph_data:
+                trajectory_update_result = format_update_result(trajectory_app_graph_data)
                 
-                # Check for new trajectories
-                new_trajectories = []
-                current_trajectories = update_result.get("trajectories", [])
-                for trajectory in current_trajectories:
+                # Check for new trajectories from trajectory crawler
+                current_trajectory_trajectories = trajectory_update_result.get("trajectories", [])
+                for trajectory in current_trajectory_trajectories:
                     if trajectory not in sent_results["trajectories"]:
-                        new_trajectories.append(trajectory)
+                        trajectory_new_trajectories.append(trajectory)
                         sent_results["trajectories"].append(trajectory)
-                
-                # Only send update if there are new results
-                if new_atoms or new_trajectories:
-                    update_message = {
-                        "type": "update_result",
-                        "session": session_id,
-                        "atoms": new_atoms,
-                        "trajectories": new_trajectories
-                    }
-                    try:
-                        await send_message(websocket, update_message)
-                        logger.info(f"Sent {len(new_atoms)} new atoms and {len(new_trajectories)} new trajectories for session {session_id}")
-                    except Exception as e:
-                        logger.error(f"Error sending update for session {session_id}: {str(e)}")
-                        break
+            
+            # Send update if there are new results from either crawler
+            if action_new_atoms or trajectory_new_trajectories:
+                update_message = {
+                    "type": "update_result",
+                    "session": session_id,
+                    "atoms": action_new_atoms,
+                    "trajectories": trajectory_new_trajectories
+                }
+                try:
+                    await send_message(websocket, update_message)
+                    logger.info(f"Sent {len(action_new_atoms)} new atoms and {len(trajectory_new_trajectories)} new trajectories for session {session_id}")
+                except Exception as e:
+                    logger.error(f"Error sending update for session {session_id}: {str(e)}")
+                    break
             
             # Wait 1 second before next update
             await asyncio.sleep(1)
 
-            # Check if session is still active
-            if session_id not in crawler_sessions:
-                logger.info(f"Session {session_id} is no longer running, stopping output monitoring")
-                break
-            session_data = crawler_sessions.get(session_id)
-            if not session_data or session_data.get('status') != 'running' or websocket.client_state != websocket.client_state.CONNECTED:
-                logger.info(f"Session {session_id} is no longer running, stopping output monitoring")
-                break
+            # Check both processes for completion
+            action_process = session_data.get('action_process')
+            trajectory_process = session_data.get('trajectory_process')
             
+            action_done = action_process and action_process.poll() is not None
+            trajectory_done = trajectory_process and trajectory_process.poll() is not None
+            
+            # Determine individual process statuses
+            current_action_status = session_data.get('action_status', 'running')
+            current_trajectory_status = session_data.get('trajectory_status', 'running')
+            
+            if current_action_status == 'stopped' or current_trajectory_status == 'stopped':
+                action_status = 'stopped' if current_action_status == 'stopped' else ('done' if action_done else 'running')
+                trajectory_status = 'stopped' if current_trajectory_status == 'stopped' else ('done' if trajectory_done else 'running')
+            else:
+                action_status = 'done' if action_done else 'running'
+                trajectory_status = 'done' if trajectory_done else 'running'
+            
+            # Send status update if there's been a change in individual process status
+            prev_action_status = session_data.get('_prev_action_status', 'running')
+            prev_trajectory_status = session_data.get('_prev_trajectory_status', 'running')
+            
+            if action_status != prev_action_status or trajectory_status != prev_trajectory_status:
+                # Update stored status
+                session_data['_prev_action_status'] = action_status
+                session_data['_prev_trajectory_status'] = trajectory_status
+                session_data['action_status'] = action_status
+                session_data['trajectory_status'] = trajectory_status
+                
+                message = {
+                    "type": "status",
+                    "action_status": action_status,
+                    "trajectory_status": trajectory_status,
+                    "url": session_data.get('url'),
+                    "session": session_id
+                }
+                await send_message(websocket, message)
+                logger.info(f"Status update for session {session_id}: action={action_status}, trajectory={trajectory_status}")
+            
+            # Check if both processes have finished
+            if action_done and trajectory_done:
+                if current_action_status != 'stopped' and current_trajectory_status != 'stopped':
+                    session_data['action_status'] = 'done'
+                    session_data['trajectory_status'] = 'done'
+                logger.info(f"Both crawler processes finished for session {session_id}")
+                break
     except asyncio.CancelledError:
         logger.info(f"Output monitoring task cancelled for session {session_id}")
         raise
@@ -231,7 +369,6 @@ async def monitor_crawler_output(session_id: str, websocket: WebSocket, output_f
         logger.error(f"Error in output monitoring for session {session_id}: {str(e)}")
     finally:
         logger.info(f"Output monitoring ended for session {session_id}")
-        # Remove from active monitoring tasks
 
 async def send_message(websocket: WebSocket, message: Dict[str, Any]):
     """Send a JSON message over the websocket"""
@@ -266,53 +403,107 @@ async def control_crawler(websocket: WebSocket):
                 
                 if not url.startswith("http://") and not url.startswith("https://"):
                     url = "http://" + url  # Default to http if no scheme provided
+                
                 # Generate session and create temp directory
                 session_id = generate_session_id()
                 temp_dir = create_temp_directory(session_id)
-                output_file = os.path.join(temp_dir, "result.yaml")
-                logger.info(f"Starting new crawler session {session_id} for URL {url}; output: {output_file}")
                 
-                # Build crawler command
-                crawler_command = build_crawler_command(url, output_file)
+                # Create separate output files for action and trajectory crawlers
+                action_output_file = os.path.join(temp_dir, "action_result.yaml")
+                trajectory_output_file = os.path.join(temp_dir, "trajectory_result.yaml")
+                
+                # Create separate output directories with prefixes
+                action_output_dir = os.path.join(temp_dir, "action_output")
+                trajectory_output_dir = os.path.join(temp_dir, "trajectory_output")
+                os.makedirs(action_output_dir, exist_ok=True)
+                os.makedirs(trajectory_output_dir, exist_ok=True)
+                
+                # Build crawler commands
+                action_crawler_command = build_action_crawler_command(url, action_output_file, action_output_dir)
+                trajectory_crawler_command = build_trajectory_crawler_command(url, trajectory_output_file, trajectory_output_dir)
                 
                 try:
-                    # Start the crawler process
+                    # Prepare environment for both processes
                     env = os.environ.copy()
-                    screenshot_dir_path = os.path.join(temp_dir, "screenshot")
-                    os.makedirs(screenshot_dir_path, exist_ok=True)
-                    env["SCREENSHOT_DIR_PATH"] = screenshot_dir_path
-                    process = subprocess.Popen(
-                        crawler_command,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        text=True,
-                        cwd=temp_dir,
-                        env=env
-                    )
                     
-                    # Store session data
+                    # Create separate screenshot directories with prefixes
+                    action_screenshot_dir = os.path.join(action_output_dir, "action_screenshot")
+                    trajectory_screenshot_dir = os.path.join(trajectory_output_dir, "trajectory_screenshot")
+                    os.makedirs(action_screenshot_dir, exist_ok=True)
+                    os.makedirs(trajectory_screenshot_dir, exist_ok=True)
+                    
+                    # Create separate log files
+                    action_log_file_path = os.path.join(action_output_dir, "action_crawler_console.log")
+                    trajectory_log_file_path = os.path.join(trajectory_output_dir, "trajectory_crawler_console.log")
+                    
+                    # Create separate statistics files
+                    action_statistic_file_path = os.path.join(action_output_dir, "action_statistics.json")
+                    trajectory_statistic_file_path = os.path.join(trajectory_output_dir, "trajectory_statistics.json")
+                    
+                    # Start action crawler process
+                    action_env = env.copy()
+                    action_env["SCREENSHOT_DIR_PATH"] = action_screenshot_dir
+                    
+                    with open(action_log_file_path, 'w', encoding='utf-8') as action_log_file:
+                        action_process = subprocess.Popen(
+                            action_crawler_command,
+                            stdout=action_log_file,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                            cwd=action_output_dir,
+                            env=action_env
+                        )
+                    
+                    # Start trajectory crawler process
+                    trajectory_env = env.copy()
+                    trajectory_env["SCREENSHOT_DIR_PATH"] = trajectory_screenshot_dir
+                    
+                    with open(trajectory_log_file_path, 'w', encoding='utf-8') as trajectory_log_file:
+                        trajectory_process = subprocess.Popen(
+                            trajectory_crawler_command,
+                            stdout=trajectory_log_file,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                            cwd=trajectory_output_dir,
+                            env=trajectory_env
+                        )
+                    
+                    logger.info(f"Started action crawler process PID {action_process.pid} for URL {url} with session {session_id} via command {' '.join(action_crawler_command)}")
+                    logger.info(f"Started trajectory crawler process PID {trajectory_process.pid} for URL {url} with session {session_id} via command {' '.join(trajectory_crawler_command)}")
+                    logger.info(f"Output will be in {temp_dir}")
+                    
+                    # Store session data for both processes
                     crawler_sessions[session_id] = {
-                        "process": process,
-                        "status": "running",
+                        "action_process": action_process,
+                        "trajectory_process": trajectory_process,
+                        "action_status": "running",
+                        "trajectory_status": "running",
                         "url": url,
                         "temp_dir": temp_dir,
-                        "screenshot_dir": screenshot_dir_path,
-                        "output_file": output_file,
-                        "command": crawler_command
+                        "action_output_dir": action_output_dir,
+                        "trajectory_output_dir": trajectory_output_dir,
+                        "action_screenshot_dir": action_screenshot_dir,
+                        "trajectory_screenshot_dir": trajectory_screenshot_dir,
+                        "action_output_file": action_output_file,
+                        "trajectory_output_file": trajectory_output_file,
+                        "action_statistic_file": action_statistic_file_path,
+                        "trajectory_statistic_file": trajectory_statistic_file_path,
+                        "action_command": action_crawler_command,
+                        "trajectory_command": trajectory_crawler_command
                     }
                     
                     # Send running status
                     message = {
                         "type": "status",
-                        "status": "running",
+                        "action_status": "running",
+                        "trajectory_status": "running",
+                        "url": url,
                         "session": session_id
                     }
                     await send_message(websocket, message)
                     
                     # Start background monitoring for both logs and output
-                    monitoring_task = asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file, screenshot_dir_path))
-                    
-                    logger.info(f"Started crawler for session {session_id} with URL {url}")
+                    asyncio.create_task(monitor_crawler(session_id, websocket))
                     
                 except Exception as e:
                     logger.error(f"Error starting crawler: {str(e)}")
@@ -335,35 +526,57 @@ async def control_crawler(websocket: WebSocket):
                 
                 if session_id in crawler_sessions:
                     session_data = crawler_sessions[session_id]
-                    process = session_data.get('process')
+                    action_process = session_data.get('action_process')
+                    trajectory_process = session_data.get('trajectory_process')
                     
-                    if process:
-                        try:
-                            process.kill()  # Force kill if doesn't terminate gracefully
-                            process.wait()
-                            
-                            session_data['status'] = 'stopped'
+                    processes_stopped = 0
+                    try:
+                        # Stop action crawler process
+                        if action_process:
+                            try:
+                                action_process.kill()
+                                action_process.wait()
+                                logger.info(f"Stopped action crawler process for session {session_id}")
+                                processes_stopped += 1
+                            except Exception as e:
+                                logger.error(f"Error stopping action crawler process for session {session_id}: {str(e)}")
+                        
+                        # Stop trajectory crawler process
+                        if trajectory_process:
+                            try:
+                                trajectory_process.kill()
+                                trajectory_process.wait()
+                                logger.info(f"Stopped trajectory crawler process for session {session_id}")
+                                processes_stopped += 1
+                            except Exception as e:
+                                logger.error(f"Error stopping trajectory crawler process for session {session_id}: {str(e)}")
+                        
+                        if processes_stopped > 0:
+                            session_data['action_status'] = 'stopped'
+                            session_data['trajectory_status'] = 'stopped'
                             
                             message = {
                                 "type": "status",
-                                "status": "stopped",
+                                "action_status": "stopped",
+                                "trajectory_status": "stopped",
+                                "url": session_data.get('url'),
                                 "session": session_id
                             }
                             await send_message(websocket, message)
                             
-                            logger.info(f"Stopped crawler for session {session_id}")
-                            
-                        except Exception as e:
-                            logger.error(f"Error stopping crawler for session {session_id}: {str(e)}")
+                            logger.info(f"Stopped {processes_stopped} crawler processes for session {session_id}")
+                        else:
                             message = {
                                 "type": "error",
-                                "message": f"Failed to stop crawler: {str(e)}"
+                                "message": f"No active processes found for session {session_id}"
                             }
                             await send_message(websocket, message)
-                    else:
+                            
+                    except Exception as e:
+                        logger.error(f"Error stopping crawler processes for session {session_id}: {str(e)}")
                         message = {
                             "type": "error",
-                            "message": f"No active process found for session {session_id}"
+                            "message": f"Failed to stop crawler: {str(e)}"
                         }
                         await send_message(websocket, message)
                 else:
@@ -385,20 +598,36 @@ async def control_crawler(websocket: WebSocket):
                 
                 if session_id in crawler_sessions:
                     session_data = crawler_sessions[session_id]
-                    status = session_data.get('status', 'unknown')
-                    output_file = session_data.get('output_file')
-                    screenshot_dir_path = session_data.get('screenshot_dir')
+                    action_status = session_data.get('action_status', 'unknown')
+                    trajectory_status = session_data.get('trajectory_status', 'unknown')
+                    url = session_data.get('url')
+                    
+                    # Determine current individual process statuses
+                    action_process = session_data.get('action_process')
+                    trajectory_process = session_data.get('trajectory_process')
+                    
+                    if action_status == 'stopped' and trajectory_status == 'stopped':
+                        # Both processes were stopped
+                        current_action_status = 'stopped'
+                        current_trajectory_status = 'stopped'
+                    else:
+                        action_done = action_process and action_process.poll() is not None
+                        trajectory_done = trajectory_process and trajectory_process.poll() is not None
+                        current_action_status = 'done' if action_done else action_status
+                        current_trajectory_status = 'done' if trajectory_done else trajectory_status
                     
                     # Send current status
                     message = {
                         "type": "status",
-                        "status": status,
+                        "action_status": current_action_status,
+                        "trajectory_status": current_trajectory_status,
+                        "url": url,
                         "session": session_id
                     }
                     await send_message(websocket, message)
 
-                    asyncio.create_task(monitor_crawler_output(session_id, websocket, output_file, screenshot_dir_path))
-                    logger.info(f"Loaded session {session_id} with status {status}")
+                    asyncio.create_task(monitor_crawler(session_id, websocket))
+                    logger.info(f"Loaded session {session_id} with action_status={current_action_status}, trajectory_status={current_trajectory_status}")
                     
                 else:
                     message = {
@@ -420,34 +649,55 @@ async def control_crawler(websocket: WebSocket):
                 
                 if session_id in crawler_sessions:
                     session_data = crawler_sessions[session_id]
-                    output_file = session_data.get('output_file')
+                    action_output_file = session_data.get('action_output_file')
+                    trajectory_output_file = session_data.get('trajectory_output_file')
                     
-                    if output_file and os.path.exists(output_file):
+                    # Combine both output files into a single download
+                    combined_content = {}
+                    files_found = 0
+                    
+                    if action_output_file and os.path.exists(action_output_file):
                         try:
-                            with open(output_file, 'r', encoding='utf-8') as f:
-                                file_content = f.read()
+                            with open(action_output_file, 'r', encoding='utf-8') as f:
+                                combined_content['action_crawler_results'] = f.read()
+                            files_found += 1
+                        except Exception as e:
+                            logger.error(f"Error reading action output file for session {session_id}: {str(e)}")
+                    
+                    if trajectory_output_file and os.path.exists(trajectory_output_file):
+                        try:
+                            with open(trajectory_output_file, 'r', encoding='utf-8') as f:
+                                combined_content['trajectory_crawler_results'] = f.read()
+                            files_found += 1
+                        except Exception as e:
+                            logger.error(f"Error reading trajectory output file for session {session_id}: {str(e)}")
+                    
+                    if files_found > 0:
+                        try:
+                            # Convert combined content to YAML format
+                            combined_yaml = yaml.dump(combined_content, default_flow_style=False, allow_unicode=True)
                             
                             message = {
                                 "type": "save",
                                 "session": session_id,
-                                "filename": os.path.basename(output_file),
-                                "content": file_content
+                                "filename": f"combined_crawler_results_{session_id}.yaml",
+                                "content": combined_yaml
                             }
                             await send_message(websocket, message)
                             
-                            logger.info(f"Sent raw data for session {session_id}")
+                            logger.info(f"Sent combined crawler data for session {session_id}")
                             
                         except Exception as e:
-                            logger.error(f"Error reading output file for session {session_id}: {str(e)}")
+                            logger.error(f"Error creating combined output for session {session_id}: {str(e)}")
                             message = {
                                 "type": "error",
-                                "message": f"Failed to read output file: {str(e)}"
+                                "message": f"Failed to create combined output: {str(e)}"
                             }
                             await send_message(websocket, message)
                     else:
                         message = {
                             "type": "error",
-                            "message": f"Output file not found for session {session_id}"
+                            "message": f"No output files found for session {session_id}"
                         }
                         await send_message(websocket, message)
                 else:

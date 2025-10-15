@@ -2,52 +2,41 @@ import * as React from "react";
 import { 
   message, 
   Button, 
-  Input, 
   Table, 
   Typography, 
-  Progress, 
   Card, 
-  Divider, 
   Badge, 
   Tooltip, 
   Space, 
-  Alert,
   Collapse,
   Tag,
   Statistic,
   Row,
-  Col
+  Col,
+  Tabs
 } from "antd";
 import { 
-  PlayCircleOutlined, 
   StopOutlined, 
-  ExportOutlined, 
-  ReloadOutlined,
   GlobalOutlined,
   BugOutlined,
   CheckCircleOutlined,
-  ClockCircleOutlined,
   WarningOutlined,
   InfoCircleOutlined,
   DownloadOutlined,
   EyeOutlined,
-  ExpandOutlined,
-  CompressOutlined,
-  SearchOutlined
+  CodeOutlined,
+  NodeIndexOutlined
 } from "@ant-design/icons";
 import { getServerUrl } from "../../utils";
 import NewWorkspaceForm from "./newworkspace";
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 const { Panel } = Collapse;
 
 interface CrawlResult {
   key: string;
-  state: string;
-  atoms: Array<{
-    id: string;
-    description: string;
-  }>;
+  functionId: string;
+  description: string;
 }
 
 interface TrajectoryResult {
@@ -57,26 +46,13 @@ interface TrajectoryResult {
   actions: string[];
 }
 
-// New message schema interface
-interface UpdateResultMessage {
-  type: "update_result";
-  atoms: Array<{
-    state: string;
-    atoms: Array<{
-      id: string;
-      description: string;
-    }>;
-  }>;
-  trajectories: Array<{
-    description: string;
-    actions: string[];
-  }>;
-}
-
 interface CrawlStats {
   totalStates: number;
   totalAtoms: number;
   totalTrajectories: number;
+  visitedUrls: number;
+  crawledUrls: number;
+  crawledUiElements: number;
 }
 
 interface LogEntry {
@@ -92,39 +68,26 @@ interface ScreenshotData {
 }
 
 export default function CrawlerView(): JSX.Element {
-  const [urlInput, setUrlInput] = React.useState("");
-  const [sessionIdInput, setSessionIdInput] = React.useState("");
   const [currentSessionId, setCurrentSessionId] = React.useState<string | null>(null);
   const [isRunning, setIsRunning] = React.useState(false);
   const [isStarted, setIsStarted] = React.useState(false);
-  const [logEntries, setLogEntries] = React.useState<LogEntry[]>([
-    {
-      id: '1',
-      timestamp: new Date().toLocaleTimeString(),
-      level: 'info',
-      message: 'Ready to start crawling...'
-    }
-  ]);
+  const [actionStatus, setActionStatus] = React.useState<string>("unknown");
+  const [trajectoryStatus, setTrajectoryStatus] = React.useState<string>("unknown");
+  const [currentUrl, setCurrentUrl] = React.useState<string>("");
   const [crawlResults, setCrawlResults] = React.useState<CrawlResult[]>([]);
   const [trajectoryResults, setTrajectoryResults] = React.useState<TrajectoryResult[]>([]);
   const [crawlStats, setCrawlStats] = React.useState<CrawlStats>({
     totalStates: 0,
     totalAtoms: 0,
-    totalTrajectories: 0
+    totalTrajectories: 0,
+    visitedUrls: 0,
+    crawledUrls: 0,
+    crawledUiElements: 0
   });
   const [messageApi, contextHolder] = message.useMessage();
   const [socket, setSocket] = React.useState<WebSocket | null>(null);
-  const [currentScreenshot, setCurrentScreenshot] = React.useState<ScreenshotData | null>(null);
-
-  const logContainerRef = React.useRef<HTMLDivElement | null>(null);
-
-  // Auto-scroll log to bottom when new messages are added
-  React.useEffect(() => {
-    if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-    }
-  }, [logEntries]);
-
+  const [actionScreenshot, setActionScreenshot] = React.useState<ScreenshotData | null>(null);
+  const [trajectoryScreenshot, setTrajectoryScreenshot] = React.useState<ScreenshotData | null>(null);
 
   const getBaseUrl = (url: string): string => {
     try {
@@ -156,7 +119,6 @@ export default function CrawlerView(): JSX.Element {
       const newSocket = new WebSocket(wsUrl);
 
       newSocket.onopen = () => {
-        addLogEntry("success", "WebSocket connection established");
       };
 
       newSocket.onmessage = (event) => {
@@ -165,25 +127,21 @@ export default function CrawlerView(): JSX.Element {
           handleWebSocketMessage(data);
         } catch (error) {
           console.error("Error parsing WebSocket message:", error);
-          addLogEntry("error", "Error parsing WebSocket message");
         }
       };
 
       newSocket.onclose = () => {
-        addLogEntry("warning", "WebSocket connection closed");
         setSocket(null);
       };
 
       newSocket.onerror = (error) => {
         console.error("WebSocket error:", error);
-        addLogEntry("error", "WebSocket connection error");
       };
 
       setSocket(newSocket);
       return newSocket;
     } catch (error) {
       console.error("Error setting up WebSocket:", error);
-      addLogEntry("error", "Failed to setup WebSocket connection");
       return null;
     }
   };
@@ -195,54 +153,59 @@ export default function CrawlerView(): JSX.Element {
         // Handle new schema with session field
         if (data.session) {
           setCurrentSessionId(data.session);
-          addLogEntry("info", `Session ID: ${data.session}`);
         }
         
-        if (data.status === "running") {
-          setIsRunning(true);
-          const message = data.session 
-            ? `Crawling started successfully (Session: ${data.session})`
-            : "Crawling started successfully";
-          addLogEntry("info", message);
-        } else if (data.status === "stopped") {
-          setIsRunning(false);
-          addLogEntry("warning", "Crawling stopped");
-        } else if (data.status === "done") {
-          setIsRunning(false);
-          addLogEntry("success", "Crawling completed successfully");
-        } else if (data.status === "error") {
-          setIsRunning(false);
-          addLogEntry("error", `Crawling failed: ${data.message || 'Unknown error'}`);
+        // Update current URL if provided
+        if (data.url) {
+          setCurrentUrl(data.url);
         }
-        break;
-      case "update_log":
-        if (data.messages && Array.isArray(data.messages)) {
-          data.messages.forEach((message: string) => {
-            // Determine log level based on message content
-            let level: LogEntry['level'] = 'info';
-            if (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed')) {
-              level = 'error';
-            } else if (message.toLowerCase().includes('warning') || message.toLowerCase().includes('warn')) {
-              level = 'warning';
-            } else if (message.toLowerCase().includes('success') || message.toLowerCase().includes('completed')) {
-              level = 'success';
-            }
-            addLogEntry(level, message);
-          });
+        
+        // Update individual crawler statuses
+        if (data.action_status) {
+          setActionStatus(data.action_status);
+        }
+        if (data.trajectory_status) {
+          setTrajectoryStatus(data.trajectory_status);
+        }
+        
+        // Determine overall running state based on individual statuses
+        const actionRunning = data.action_status === "running";
+        const trajectoryRunning = data.trajectory_status === "running";
+        const anyRunning = actionRunning || trajectoryRunning;
+        
+        if (anyRunning) {
+          setIsRunning(true);
+          const urlMessage = data.url ? ` for ${data.url}` : "";
+          const message = data.session 
+            ? `Crawling started successfully (Session: ${data.session})${urlMessage}`
+            : `Crawling started successfully${urlMessage}`;
+        } else if (data.action_status === "stopped" && data.trajectory_status === "stopped") {
+          setIsRunning(false);
+        } else if (data.action_status === "done" && data.trajectory_status === "done") {
+          setIsRunning(false);
         }
         break;
       case "update_result":
         // Handle new schema: { type: "update_result", atoms: [...], trajectories: [...] }
         if (data.atoms && Array.isArray(data.atoms)) {
-          const newResults = data.atoms.map((atomGroup: any, index: number) => ({
-            key: `${Date.now()}-${index}`,
-            state: atomGroup.state || "",
-            atoms: atomGroup.atoms || []
-          }));
-          setCrawlResults(prev => [...prev, ...newResults]);
+          // Flatten atoms into individual rows
+          const newResults: CrawlResult[] = [];
+          let totalAtoms = 0;
           
-          // Update stats
-          const totalAtoms = newResults.reduce((sum: number, result: CrawlResult) => sum + result.atoms.length, 0);
+          data.atoms.forEach((atomGroup: any) => {
+            if (atomGroup.atoms && Array.isArray(atomGroup.atoms)) {
+              atomGroup.atoms.forEach((atom: any) => {
+                newResults.push({
+                  key: `${Date.now()}-${totalAtoms}`,
+                  functionId: atom.id || `function_${totalAtoms}`,
+                  description: atom.description || "No description available"
+                });
+                totalAtoms++;
+              });
+            }
+          });
+          
+          setCrawlResults(prev => [...prev, ...newResults]);
           
           // Handle trajectories from the new schema
           let trajectoryCount = 0;
@@ -261,15 +224,14 @@ export default function CrawlerView(): JSX.Element {
           
           setCrawlStats(prev => ({
             ...prev,
-            totalStates: prev.totalStates + newResults.length,
+            totalStates: prev.totalStates + data.atoms.length,
             totalAtoms: prev.totalAtoms + totalAtoms,
             totalTrajectories: prev.totalTrajectories + trajectoryCount
           }));
           
           const statusMessage = trajectoryCount > 0 
-            ? `Discovered ${newResults.length} new state(s) with ${totalAtoms} atoms and ${trajectoryCount} trajectories`
-            : `Discovered ${newResults.length} new state(s) with ${totalAtoms} atoms`;
-          addLogEntry("success", statusMessage);
+            ? `Discovered ${data.atoms.length} new state(s) with ${totalAtoms} atoms and ${trajectoryCount} trajectories`
+            : `Discovered ${data.atoms.length} new state(s) with ${totalAtoms} atoms`;
         }
         break;
       case "save":
@@ -286,32 +248,44 @@ export default function CrawlerView(): JSX.Element {
           URL.revokeObjectURL(url);
           
           messageApi.success("Results saved successfully");
-          addLogEntry("success", "Results exported to YAML file");
         }
         break;
       case "screenshot":
-        if (data.image_url) {
-          const screenshotData: ScreenshotData = {
-            imageUrl: data.image_url,
-            timestamp: new Date().toLocaleTimeString()
+        const timestamp = new Date().toLocaleTimeString();
+        
+        // Handle action screenshot
+        if (data.action_image_url) {
+          const actionScreenshotData: ScreenshotData = {
+            imageUrl: data.action_image_url,
+            timestamp: timestamp
           };
-          setCurrentScreenshot(screenshotData);
-          addLogEntry("info", `Screenshot received: ${screenshotData.timestamp}`);
+          setActionScreenshot(actionScreenshotData);
+        }
+        
+        // Handle trajectory screenshot
+        if (data.trajectory_image_url) {
+          const trajectoryScreenshotData: ScreenshotData = {
+            imageUrl: data.trajectory_image_url,
+            timestamp: timestamp
+          };
+          setTrajectoryScreenshot(trajectoryScreenshotData);
+        }
+        break;
+      case "statistic":
+        if (data.session && typeof data.num_visited_urls === 'number' && 
+            typeof data.num_crawled_urls === 'number' && 
+            typeof data.num_crawled_ui_elements === 'number') {
+          setCrawlStats(prev => ({
+            ...prev,
+            visitedUrls: data.num_visited_urls,
+            crawledUrls: data.num_crawled_urls,
+            crawledUiElements: data.num_crawled_ui_elements
+          }));
         }
         break;
       default:
         console.log("Unknown message type:", data.type);
     }
-  };
-
-  const addLogEntry = (level: LogEntry['level'], message: string) => {
-    const newEntry: LogEntry = {
-      id: `${Date.now()}-${Math.random()}`,
-      timestamp: new Date().toLocaleTimeString(),
-      level,
-      message
-    };
-    setLogEntries(prev => [...prev, newEntry]);
   };
 
   const handleStopCrawl = () => {
@@ -323,7 +297,6 @@ export default function CrawlerView(): JSX.Element {
       }));
     }
     setIsRunning(false);
-    addLogEntry("warning", "Crawling stopped by user");
   };
 
   const handleExportResults = () => {
@@ -333,21 +306,11 @@ export default function CrawlerView(): JSX.Element {
         session: currentSessionId
       }));
     }
-    addLogEntry("info", "Export request sent");
-  };
-
-  const handleClearLogs = () => {
-    setLogEntries([{
-      id: '1',
-      timestamp: new Date().toLocaleTimeString(),
-      level: 'info',
-      message: 'Logs cleared'
-    }]);
   };
 
   // Callback functions for NewWorkspaceForm
   const handleNewSessionFromForm = (url: string) => {
-    setUrlInput(url);
+    setCurrentUrl(url); // Set the current URL immediately
     
     // Setup WebSocket if not connected
     let currentSocket = socket;
@@ -362,9 +325,12 @@ export default function CrawlerView(): JSX.Element {
     setIsStarted(true);
     setCrawlResults([]); // Clear previous results
     setTrajectoryResults([]); // Clear previous trajectory results
-    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0 });
-    setCurrentScreenshot(null); // Clear previous screenshot
+    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0, visitedUrls: 0, crawledUrls: 0, crawledUiElements: 0 });
+    setActionScreenshot(null); // Clear previous screenshots
+    setTrajectoryScreenshot(null);
     setCurrentSessionId(null); // Clear previous session ID
+    setActionStatus("unknown"); // Reset statuses
+    setTrajectoryStatus("unknown");
     
     // Wait for socket to be ready, then send crawl command
     const sendCrawlCommand = () => {
@@ -373,7 +339,6 @@ export default function CrawlerView(): JSX.Element {
           type: "start",
           url: url.trim()
         }));
-        addLogEntry("info", `Starting crawl for: ${url}`);
       } else {
         setTimeout(sendCrawlCommand, 100); // Retry after 100ms
       }
@@ -383,7 +348,6 @@ export default function CrawlerView(): JSX.Element {
   };
 
   const handleLoadSessionFromForm = (sessionId: string) => {
-    setSessionIdInput(sessionId);
     
     // Setup WebSocket if not connected
     let currentSocket = socket;
@@ -399,8 +363,9 @@ export default function CrawlerView(): JSX.Element {
     setIsStarted(true);
     setCrawlResults([]);
     setTrajectoryResults([]);
-    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0 });
-    setCurrentScreenshot(null);
+    setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0, visitedUrls: 0, crawledUrls: 0, crawledUiElements: 0 });
+    setActionScreenshot(null);
+    setTrajectoryScreenshot(null);
     
     // Wait for socket to be ready, then send retrieve command
     const sendRetrieveCommand = () => {
@@ -409,7 +374,6 @@ export default function CrawlerView(): JSX.Element {
           type: "load",
           session: sessionId.trim()
         }));
-        addLogEntry("info", `Retrieving session: ${sessionId}`);
         setIsRunning(true); // Set running state to show main UI
       } else {
         setTimeout(sendRetrieveCommand, 100); // Retry after 100ms
@@ -449,55 +413,25 @@ export default function CrawlerView(): JSX.Element {
 
   const columns = [
     {
-      title: "State",
-      dataIndex: "state",
-      key: "state",
-      width: "40%",
+      title: "Function",
+      dataIndex: "functionId",
+      key: "functionId",
+      width: "30%",
       render: (text: string) => (
-        <Tooltip title={text}>
-          <Text style={{ fontSize: "12px", wordBreak: "break-all" }} ellipsis>
-            {text}
-          </Text>
-        </Tooltip>
+        <Text style={{ fontSize: "12px", wordBreak: "break-word" }}>
+          {text}
+        </Text>
       ),
     },
     {
-      title: "Atoms",
-      dataIndex: "atoms",
-      key: "atoms",
-      width: "60%",
-      render: (atoms: Array<{id: string, description: string}>) => (
-        <div>
-          {atoms.length > 0 ? (
-            <Collapse size="small" ghost>
-              <Panel 
-                header={
-                    <Text style={{ fontSize: "12px" }}>
-                      {atoms.length} atom{atoms.length !== 1 ? 's' : ''} discovered
-                    </Text>
-                } 
-                key="1"
-              >
-                <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                  {atoms.map((atom, index) => (
-                    <div key={atom.id} style={{ marginBottom: '4px' }}>
-                      <Tag color="blue" style={{ fontSize: '10px' }}>
-                        {atom.id}
-                      </Tag>
-                      <Text style={{ fontSize: '11px' }}>
-                        {atom.description}
-                      </Text>
-                    </div>
-                  ))}
-                </div>
-              </Panel>
-            </Collapse>
-          ) : (
-            <Text type="secondary" style={{ fontSize: "12px" }}>
-              No atoms found
-            </Text>
-          )}
-        </div>
+      title: "Description",
+      dataIndex: "description",
+      key: "description",
+      width: "70%",
+      render: (text: string) => (
+        <Text style={{ fontSize: "12px", wordBreak: "break-word" }}>
+          {text}
+        </Text>
       ),
     },
   ];
@@ -507,7 +441,7 @@ export default function CrawlerView(): JSX.Element {
       title: "Description",
       dataIndex: "description",
       key: "description",
-      width: "40%",
+      width: "30%",
       render: (text: string) => (
         <Tooltip title={text}>
           <Text style={{ fontSize: "12px", wordBreak: "break-all" }} ellipsis>
@@ -520,7 +454,7 @@ export default function CrawlerView(): JSX.Element {
       title: "Actions",
       dataIndex: "actions",
       key: "actions",
-      width: "60%",
+      width: "70%",
       render: (actions: string[]) => (
         <div>
           {actions.length > 0 ? (
@@ -536,11 +470,8 @@ export default function CrawlerView(): JSX.Element {
                 <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                   {actions.map((action, index) => (
                     <div key={index} style={{ marginBottom: '4px', padding: '8px', border: '1px solid #f0f0f0', borderRadius: '4px' }}>
-                      <Tag color="orange" style={{ fontSize: '10px', marginBottom: '4px' }}>
-                        Action {index + 1}
-                      </Tag>
                       <Text style={{ fontSize: '11px', display: 'block', wordBreak: 'break-word' }}>
-                        {action}
+                        {index + 1}: {action}
                       </Text>
                     </div>
                   ))}
@@ -613,36 +544,108 @@ export default function CrawlerView(): JSX.Element {
           </div>
         </div>
 
-        {/* Statistics Section */}
-        <div className="p-6 border-b border-gray-200 bg-gray-50">
+        {/* Status Section - All cards in a single row */}
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50">
           <Title level={4} style={{ marginBottom: "16px", color: "#374151" }}>
-            Statistic
+            Status
           </Title>
           <Row gutter={16}>
-            <Col span={8}>
-              <Card>
+            <Col span={4}>
+              <Card style={{ height: '100px' }}>
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <GlobalOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
+                    <Text strong style={{ fontSize: '16px' }}>
+                      Target URL
+                    </Text>
+                  </div>
+                  {currentUrl ? (
+                    <Text 
+                      style={{ 
+                        fontSize: '14px', 
+                        color: '#1890ff', 
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        wordBreak: 'break-all'
+                      }}
+                      onClick={() => window.open(currentUrl, '_blank')}
+                      ellipsis
+                    >
+                      {currentUrl}
+                    </Text>
+                  ) : (
+                    <Text style={{ fontSize: '14px', color: '#999', fontStyle: 'italic' }}>
+                      No URL available
+                    </Text>
+                  )}
+                </Space>
+              </Card>
+            </Col>
+            <Col span={4}>
+              <Card style={{ height: '100px' }}>
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <CodeOutlined style={{ color: '#1890ff', fontSize: '12px' }} />
+                    <Text strong style={{ fontSize: '10px' }}>
+                      Function Crawler:
+                    </Text>
+                    {actionStatus === "running" && <Badge status="processing" />}
+                    {actionStatus === "done" && <Badge status="success" />}
+                    {actionStatus === "stopped" && <Badge status="warning" />}
+                    {actionStatus === "unknown" && <Badge status="warning" />}
+                    <Text style={{ fontSize: '10px', textTransform: 'capitalize' }}>
+                      {actionStatus}
+                    </Text>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <CodeOutlined style={{ color: '#1890ff', fontSize: '12px' }} />
+                    <Text strong style={{ fontSize: '10px' }}>
+                      Task Crawler:
+                    </Text>
+                    {trajectoryStatus === "running" && <Badge status="processing" />}
+                    {trajectoryStatus === "done" && <Badge status="success" />}
+                    {trajectoryStatus === "stopped" && <Badge status="warning" />}
+                    {trajectoryStatus === "unknown" && <Badge status="warning" />}
+                    <Text style={{ fontSize: '10px', textTransform: 'capitalize' }}>
+                      {trajectoryStatus}
+                    </Text>
+                  </div>
+                </Space>
+              </Card>
+            </Col>
+            <Col span={4}>
+              <Card style={{ height: '100px' }}>
                 <Statistic
-                  title="States Discovered"
-                  value={crawlStats.totalStates}
-                  valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
+                  title="Page Discovered"
+                  value={crawlStats.visitedUrls}
+                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
-            <Col span={8}>
-              <Card>
+            <Col span={4}>
+              <Card style={{ height: '100px' }}>
                 <Statistic
-                  title="Atoms Found"
+                  title="Pages Crawled"
+                  value={crawlStats.crawledUrls}
+                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff' }}
+                />
+              </Card>
+            </Col>
+            <Col span={4}>
+              <Card style={{ height: '100px' }}>
+                <Statistic
+                  title="Functions Discovered"
                   value={crawlStats.totalAtoms}
-                  valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
+                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
-            <Col span={8}>
-              <Card>
+            <Col span={4}>
+              <Card style={{ height: '100px' }}>
                 <Statistic
-                  title="Trajectories Found"
+                  title="Tasks Identified"
                   value={crawlStats.totalTrajectories}
-                  valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
+                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
             </Col>
@@ -654,7 +657,7 @@ export default function CrawlerView(): JSX.Element {
           <div className="flex-1 p-6 overflow-hidden">
             <div className="flex items-center justify-between mb-4">
               <Title level={4} style={{ margin: 0, color: "#374151" }}>
-                Atoms
+                UI Functions
               </Title>
             </div>
             
@@ -666,7 +669,7 @@ export default function CrawlerView(): JSX.Element {
                 pageSize: 10, 
                 showSizeChanger: true,
                 showQuickJumper: true,
-                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} states`
+                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} functions`
               } : false}
               scroll={{ y: "calc(25vh - 60px)" }}
               size="small"
@@ -691,111 +694,125 @@ export default function CrawlerView(): JSX.Element {
                 size="small"
               />
             </div>
-            <div style={{ marginTop: '24px' }} className="flex items-center justify-between mb-4">
-              <Title level={4} style={{ margin: 0, color: "#374151" }}>
-                Live Activity Log
-              </Title>
-              <Space>
-                <Button 
-                  type="text" 
-                  icon={<ReloadOutlined />} 
-                  onClick={handleClearLogs}
-                  title="Clear logs"
-                  size="small"
-                />
-              </Space>
-            </div>
-            
-            <div
-              ref={logContainerRef}
-              className="bg-gray-900 text-white p-4 rounded-lg font-mono text-sm overflow-y-auto h-full border border-gray-700"
-              style={{ 
-                height: "400px",
-                fontFamily: "Consolas, 'Courier New', monospace"
-              }}
-            >
-              {logEntries.map((entry) => (
-                <div key={entry.id} className="mb-2 flex items-start gap-2">
-                  <span className="text-gray-400 text-xs mt-1 min-w-[80px]">
-                    {entry.timestamp}
-                  </span>
-                  <span className="mt-1">
-                    {getLogIcon(entry.level)}
-                  </span>
-                  <span 
-                    className="flex-1"
-                    style={{ color: getLogColor(entry.level) }}
-                  >
-                    {entry.message}
-                  </span>
-                </div>
-              ))}
-              {isRunning && (
-                <div className="flex items-center gap-2 animate-pulse mt-2">
-                  <span className="text-gray-400 text-xs">
-                    {new Date().toLocaleTimeString()}
-                  </span>
-                  <ClockCircleOutlined className="text-yellow-400" />
-                  <span className="text-yellow-400">
-                    Crawling in progress...
-                  </span>
-                </div>
-              )}
-            </div>
           </div>
+
           <div className="flex-1 p-6 border-l border-gray-200 overflow-hidden">
-            {/* Screenshot Display Section */}
+            {/* Screenshot Display Section with Tabs */}
             <div className="h-full flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <Title level={4} style={{ margin: 0, color: "#374151" }}>
                   <EyeOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                  Live Screenshot
+                  Live Screenshots
                 </Title>
-                {currentScreenshot && (
-                  <Badge 
-                    status="success" 
-                    text={`Updated at ${currentScreenshot.timestamp}`}
-                  />
-                )}
               </div>
               
-              {currentScreenshot ? (
-                <Card className="flex-1 flex flex-col" bodyStyle={{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <div className="flex-1 flex items-center justify-center" style={{ minHeight: '400px' }}>
-                    <img
-                      src={currentScreenshot.imageUrl}
-                      alt={"Screenshot"}
-                      style={{
-                        maxWidth: '100%',
-                        maxHeight: '100%',
-                        objectFit: 'contain',
-                        border: '1px solid #d9d9d9',
-                        borderRadius: '6px',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                      }}
-                      onError={(e) => {
-                        console.error('Error loading screenshot:', e);
-                        addLogEntry('error', 'Failed to load screenshot image');
-                      }}
-                      onLoad={() => {
-                        addLogEntry('success', 'Screenshot image loaded successfully');
-                      }}
-                    />
-                  </div>
-                </Card>
-              ) : (
-                <Card className="flex-1 flex items-center justify-center" bodyStyle={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <div className="text-center">
-                    <EyeOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
-                    <Title level={5} type="secondary">
-                      No Screenshot Available
-                    </Title>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                      Screenshots will appear here when received from the crawler
-                    </Text>
-                  </div>
-                </Card>
-              )}
+              <Tabs
+                defaultActiveKey="action"
+                className="flex-1"
+                style={{ height: '100%' }}
+                items={[
+                  {
+                    key: 'action',
+                    label: (
+                      <span>
+                        <CodeOutlined /> Function Crawler
+                      </span>
+                    ),
+                    children: (
+                      <div className="h-full flex flex-col" style={{ height: 'calc(100% - 40px)' }}>
+                        {actionScreenshot ? (
+                          <>
+                            <div className="mb-2">
+                              <Badge 
+                                status="success" 
+                                text={`Updated at ${actionScreenshot.timestamp}`}
+                              />
+                            </div>
+                            <Card className="flex-1" bodyStyle={{ padding: '16px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <img
+                                src={actionScreenshot.imageUrl}
+                                alt="Action Crawler Screenshot"
+                                style={{
+                                  maxWidth: '100%',
+                                  maxHeight: '100%',
+                                  objectFit: 'contain',
+                                  border: '1px solid #d9d9d9',
+                                  borderRadius: '6px',
+                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                                }}
+                                onError={(e) => {
+                                  console.error('Error loading action screenshot:', e);
+                                }}
+                              />
+                            </Card>
+                          </>
+                        ) : (
+                          <Card className="flex-1" bodyStyle={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div className="text-center">
+                              <Title level={5} type="secondary">
+                                Function crawler is starting, this may take a few seconds...
+                              </Title>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Function crawler screenshots will appear here
+                              </Text>
+                            </div>
+                          </Card>
+                        )}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'trajectory',
+                    label: (
+                      <span>
+                        <CodeOutlined /> Task Crawler
+                      </span>
+                    ),
+                    children: (
+                      <div className="h-full flex flex-col" style={{ height: 'calc(100% - 40px)' }}>
+                        {trajectoryScreenshot ? (
+                          <>
+                            <div className="mb-2">
+                              <Badge 
+                                status="success" 
+                                text={`Updated at ${trajectoryScreenshot.timestamp}`}
+                              />
+                            </div>
+                            <Card className="flex-1" bodyStyle={{ padding: '16px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <img
+                                src={trajectoryScreenshot.imageUrl}
+                                alt="Trajectory Crawler Screenshot"
+                                style={{
+                                  maxWidth: '100%',
+                                  maxHeight: '100%',
+                                  objectFit: 'contain',
+                                  border: '1px solid #d9d9d9',
+                                  borderRadius: '6px',
+                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                                }}
+                                onError={(e) => {
+                                  console.error('Error loading trajectory screenshot:', e);
+                                }}
+                              />
+                            </Card>
+                          </>
+                        ) : (
+                          <Card className="flex-1" bodyStyle={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div className="text-center">
+                              <Title level={5} type="secondary">
+                                Task crawler is starting, this may take a few seconds...
+                              </Title>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Task crawler screenshots will appear here
+                              </Text>
+                            </div>
+                          </Card>
+                        )}
+                      </div>
+                    ),
+                  },
+                ]}
+              />
             </div>
           </div>
         </div>
