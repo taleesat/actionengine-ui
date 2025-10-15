@@ -12,7 +12,8 @@ import {
   Tag,
   Statistic,
   Row,
-  Col
+  Col,
+  Tabs
 } from "antd";
 import { 
   StopOutlined, 
@@ -23,6 +24,8 @@ import {
   InfoCircleOutlined,
   DownloadOutlined,
   EyeOutlined,
+  CodeOutlined,
+  NodeIndexOutlined
 } from "@ant-design/icons";
 import { getServerUrl } from "../../utils";
 import NewWorkspaceForm from "./newworkspace";
@@ -68,7 +71,8 @@ export default function CrawlerView(): JSX.Element {
   const [currentSessionId, setCurrentSessionId] = React.useState<string | null>(null);
   const [isRunning, setIsRunning] = React.useState(false);
   const [isStarted, setIsStarted] = React.useState(false);
-  const [crawlerStatus, setCrawlerStatus] = React.useState<string>("unknown");
+  const [actionStatus, setActionStatus] = React.useState<string>("unknown");
+  const [trajectoryStatus, setTrajectoryStatus] = React.useState<string>("unknown");
   const [currentUrl, setCurrentUrl] = React.useState<string>("");
   const [crawlResults, setCrawlResults] = React.useState<CrawlResult[]>([]);
   const [trajectoryResults, setTrajectoryResults] = React.useState<TrajectoryResult[]>([]);
@@ -82,7 +86,8 @@ export default function CrawlerView(): JSX.Element {
   });
   const [messageApi, contextHolder] = message.useMessage();
   const [socket, setSocket] = React.useState<WebSocket | null>(null);
-  const [currentScreenshot, setCurrentScreenshot] = React.useState<ScreenshotData | null>(null);
+  const [actionScreenshot, setActionScreenshot] = React.useState<ScreenshotData | null>(null);
+  const [trajectoryScreenshot, setTrajectoryScreenshot] = React.useState<ScreenshotData | null>(null);
 
   const getBaseUrl = (url: string): string => {
     try {
@@ -155,20 +160,28 @@ export default function CrawlerView(): JSX.Element {
           setCurrentUrl(data.url);
         }
         
-        // Update crawler status
-        setCrawlerStatus(data.status || "unknown");
+        // Update individual crawler statuses
+        if (data.action_status) {
+          setActionStatus(data.action_status);
+        }
+        if (data.trajectory_status) {
+          setTrajectoryStatus(data.trajectory_status);
+        }
         
-        if (data.status === "running") {
+        // Determine overall running state based on individual statuses
+        const actionRunning = data.action_status === "running";
+        const trajectoryRunning = data.trajectory_status === "running";
+        const anyRunning = actionRunning || trajectoryRunning;
+        
+        if (anyRunning) {
           setIsRunning(true);
           const urlMessage = data.url ? ` for ${data.url}` : "";
           const message = data.session 
             ? `Crawling started successfully (Session: ${data.session})${urlMessage}`
             : `Crawling started successfully${urlMessage}`;
-        } else if (data.status === "stopped") {
+        } else if (data.action_status === "stopped" && data.trajectory_status === "stopped") {
           setIsRunning(false);
-        } else if (data.status === "done") {
-          setIsRunning(false);
-        } else if (data.status === "error") {
+        } else if (data.action_status === "done" && data.trajectory_status === "done") {
           setIsRunning(false);
         }
         break;
@@ -238,12 +251,24 @@ export default function CrawlerView(): JSX.Element {
         }
         break;
       case "screenshot":
-        if (data.image_url) {
-          const screenshotData: ScreenshotData = {
-            imageUrl: data.image_url,
-            timestamp: new Date().toLocaleTimeString()
+        const timestamp = new Date().toLocaleTimeString();
+        
+        // Handle action screenshot
+        if (data.action_image_url) {
+          const actionScreenshotData: ScreenshotData = {
+            imageUrl: data.action_image_url,
+            timestamp: timestamp
           };
-          setCurrentScreenshot(screenshotData);
+          setActionScreenshot(actionScreenshotData);
+        }
+        
+        // Handle trajectory screenshot
+        if (data.trajectory_image_url) {
+          const trajectoryScreenshotData: ScreenshotData = {
+            imageUrl: data.trajectory_image_url,
+            timestamp: timestamp
+          };
+          setTrajectoryScreenshot(trajectoryScreenshotData);
         }
         break;
       case "statistic":
@@ -301,9 +326,11 @@ export default function CrawlerView(): JSX.Element {
     setCrawlResults([]); // Clear previous results
     setTrajectoryResults([]); // Clear previous trajectory results
     setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0, visitedUrls: 0, crawledUrls: 0, crawledUiElements: 0 });
-    setCurrentScreenshot(null); // Clear previous screenshot
+    setActionScreenshot(null); // Clear previous screenshots
+    setTrajectoryScreenshot(null);
     setCurrentSessionId(null); // Clear previous session ID
-    setCrawlerStatus("unknown"); // Reset status
+    setActionStatus("unknown"); // Reset statuses
+    setTrajectoryStatus("unknown");
     
     // Wait for socket to be ready, then send crawl command
     const sendCrawlCommand = () => {
@@ -337,7 +364,8 @@ export default function CrawlerView(): JSX.Element {
     setCrawlResults([]);
     setTrajectoryResults([]);
     setCrawlStats({ totalStates: 0, totalAtoms: 0, totalTrajectories: 0, visitedUrls: 0, crawledUrls: 0, crawledUiElements: 0 });
-    setCurrentScreenshot(null);
+    setActionScreenshot(null);
+    setTrajectoryScreenshot(null);
     
     // Wait for socket to be ready, then send retrieve command
     const sendRetrieveCommand = () => {
@@ -560,13 +588,29 @@ export default function CrawlerView(): JSX.Element {
               <Card style={{ height: '100px' }}>
                 <Space direction="vertical" size="small" style={{ width: '100%' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {crawlerStatus === "running" && <Badge status="processing" />}
-                    {crawlerStatus === "done" && <Badge status="success" />}
-                    {crawlerStatus === "stopped" && <Badge status="warning" />}
-                    {crawlerStatus === "error" && <Badge status="error" />}
-                    {crawlerStatus === "unknown" && <Badge status="warning" />}
-                    <Text strong style={{ fontSize: '16px', textTransform: 'capitalize' }}>
-                      Status: {crawlerStatus}
+                    <CodeOutlined style={{ color: '#1890ff', fontSize: '12px' }} />
+                    <Text strong style={{ fontSize: '10px' }}>
+                      Action:
+                    </Text>
+                    {actionStatus === "running" && <Badge status="processing" />}
+                    {actionStatus === "done" && <Badge status="success" />}
+                    {actionStatus === "stopped" && <Badge status="warning" />}
+                    {actionStatus === "unknown" && <Badge status="warning" />}
+                    <Text style={{ fontSize: '10px', textTransform: 'capitalize' }}>
+                      {actionStatus}
+                    </Text>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <NodeIndexOutlined style={{ color: '#52c41a', fontSize: '12px' }} />
+                    <Text strong style={{ fontSize: '10px' }}>
+                      Trajectory:
+                    </Text>
+                    {trajectoryStatus === "running" && <Badge status="processing" />}
+                    {trajectoryStatus === "done" && <Badge status="success" />}
+                    {trajectoryStatus === "stopped" && <Badge status="warning" />}
+                    {trajectoryStatus === "unknown" && <Badge status="warning" />}
+                    <Text style={{ fontSize: '10px', textTransform: 'capitalize' }}>
+                      {trajectoryStatus}
                     </Text>
                   </div>
                 </Space>
@@ -656,56 +700,138 @@ export default function CrawlerView(): JSX.Element {
           </div>
 
           <div className="flex-1 p-6 border-l border-gray-200 overflow-hidden">
-            {/* Screenshot Display Section */}
+            {/* Screenshot Display Section with Tabs */}
             <div className="h-full flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <Title level={4} style={{ margin: 0, color: "#374151" }}>
                   <EyeOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                  Live Screenshot
+                  Live Screenshots
                 </Title>
-                {currentScreenshot && (
-                  <Badge 
-                    status="success" 
-                    text={`Updated at ${currentScreenshot.timestamp}`}
-                  />
-                )}
               </div>
               
-              {currentScreenshot ? (
-                <Card className="flex-1 flex flex-col" bodyStyle={{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <div className="flex-1 flex items-center justify-center" style={{ minHeight: '400px' }}>
-                    <img
-                      src={currentScreenshot.imageUrl}
-                      alt={"Screenshot"}
-                      style={{
-                        maxWidth: '100%',
-                        maxHeight: '100%',
-                        objectFit: 'contain',
-                        border: '1px solid #d9d9d9',
-                        borderRadius: '6px',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                      }}
-                      onError={(e) => {
-                        console.error('Error loading screenshot:', e);
-                      }}
-                      onLoad={() => {
-                      }}
-                    />
-                  </div>
-                </Card>
-              ) : (
-                <Card className="flex-1 flex items-center justify-center" bodyStyle={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <div className="text-center">
-                    <EyeOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
-                    <Title level={5} type="secondary">
-                      No Screenshot Available
-                    </Title>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                      Screenshots will appear here when received from the crawler
-                    </Text>
-                  </div>
-                </Card>
-              )}
+              <Tabs
+                defaultActiveKey="action"
+                className="flex-1"
+                style={{ height: '100%' }}
+                items={[
+                  {
+                    key: 'action',
+                    label: (
+                      <span>
+                        <CodeOutlined />
+                        Action Crawler
+                        {actionScreenshot && (
+                          <Badge 
+                            count="●" 
+                            style={{ backgroundColor: '#52c41a', marginLeft: '8px' }}
+                          />
+                        )}
+                      </span>
+                    ),
+                    children: (
+                      <div className="h-full flex flex-col" style={{ height: 'calc(100% - 40px)' }}>
+                        {actionScreenshot ? (
+                          <>
+                            <div className="mb-2">
+                              <Badge 
+                                status="success" 
+                                text={`Updated at ${actionScreenshot.timestamp}`}
+                              />
+                            </div>
+                            <Card className="flex-1" bodyStyle={{ padding: '16px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <img
+                                src={actionScreenshot.imageUrl}
+                                alt="Action Crawler Screenshot"
+                                style={{
+                                  maxWidth: '100%',
+                                  maxHeight: '100%',
+                                  objectFit: 'contain',
+                                  border: '1px solid #d9d9d9',
+                                  borderRadius: '6px',
+                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                                }}
+                                onError={(e) => {
+                                  console.error('Error loading action screenshot:', e);
+                                }}
+                              />
+                            </Card>
+                          </>
+                        ) : (
+                          <Card className="flex-1" bodyStyle={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div className="text-center">
+                              <CodeOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+                              <Title level={5} type="secondary">
+                                No Action Screenshot Available
+                              </Title>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Action crawler screenshots will appear here
+                              </Text>
+                            </div>
+                          </Card>
+                        )}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'trajectory',
+                    label: (
+                      <span>
+                        <NodeIndexOutlined />
+                        Trajectory Crawler
+                        {trajectoryScreenshot && (
+                          <Badge 
+                            count="●" 
+                            style={{ backgroundColor: '#52c41a', marginLeft: '8px' }}
+                          />
+                        )}
+                      </span>
+                    ),
+                    children: (
+                      <div className="h-full flex flex-col" style={{ height: 'calc(100% - 40px)' }}>
+                        {trajectoryScreenshot ? (
+                          <>
+                            <div className="mb-2">
+                              <Badge 
+                                status="success" 
+                                text={`Updated at ${trajectoryScreenshot.timestamp}`}
+                              />
+                            </div>
+                            <Card className="flex-1" bodyStyle={{ padding: '16px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <img
+                                src={trajectoryScreenshot.imageUrl}
+                                alt="Trajectory Crawler Screenshot"
+                                style={{
+                                  maxWidth: '100%',
+                                  maxHeight: '100%',
+                                  objectFit: 'contain',
+                                  border: '1px solid #d9d9d9',
+                                  borderRadius: '6px',
+                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                                }}
+                                onError={(e) => {
+                                  console.error('Error loading trajectory screenshot:', e);
+                                }}
+                              />
+                            </Card>
+                          </>
+                        ) : (
+                          <Card className="flex-1" bodyStyle={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div className="text-center">
+                              <NodeIndexOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+                              <Title level={5} type="secondary">
+                                No Trajectory Screenshot Available
+                              </Title>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Trajectory crawler screenshots will appear here
+                              </Text>
+                            </div>
+                          </Card>
+                        )}
+                      </div>
+                    ),
+                  },
+                ]}
+              />
             </div>
           </div>
         </div>
