@@ -32,8 +32,7 @@ const CrawlerHeader = ({
             </Tooltip>
           </div>
           <div className="flex items-center space-x-2">
-            <img src={logo} alt="ActionEngine-UI Logo" className="h-10 w-10" />
-            <div className="text-primary text-2xl font-bold">ActionEngine-UI</div>
+            <div className="text-primary text-2xl font-bold">Action Index Crawler</div>
           </div>
         </div>
       </div>

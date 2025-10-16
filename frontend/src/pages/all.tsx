@@ -16,7 +16,7 @@ type Props = {
 
 const Page = ({ data }: Props) => {
   const { darkMode, user, setUser } = React.useContext(appContext);
-  const [activeTab, setActiveTab] = React.useState<string>("crawler");
+  const [activeTab, setActiveTab] = React.useState<string>("agent");
   const [crawlerSessionId, setCrawlerSessionId] = React.useState<string | null>(null);
 
   // Mimic sign-in: if no user or user.email, set default user and localStorage
@@ -67,6 +67,11 @@ const Page = ({ data }: Props) => {
           }}
         >
           <main className="flex-1 p-1 text-primary" style={{ height: "100%" }}>
+            <div className="mb-4 px-4 pt-4">
+              <h1 className="text-2xl font-bold text-center">
+                Action Engine Agent (Index-Enhanced Web Agent) & Action Index Crawler (Crawling for Actions on Web Pages)
+              </h1>
+            </div>
             <Tabs
               activeKey={activeTab}
               onChange={handleTabChange}
@@ -81,20 +86,20 @@ const Page = ({ data }: Props) => {
               }}
               items={[
                 {
+                  key: "agent",
+                  label: "Action Engine Agent",
+                  children: (
+                    <div className="h-full">
+                      <SessionManager crawlerSessionId={crawlerSessionId} />
+                    </div>
+                  ),
+                },
+                {
                   key: "crawler",
                   label: "Index Crawler",
                   children: (
                     <div className="h-full">
                       <CrawlerManager onSessionIdChange={handleCrawlerSessionId} />
-                    </div>
-                  ),
-                },
-                {
-                  key: "magentic",
-                  label: "Action Engine Agent",
-                  children: (
-                    <div className="h-full">
-                      <SessionManager crawlerSessionId={crawlerSessionId} />
                     </div>
                   ),
                 },

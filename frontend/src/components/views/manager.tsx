@@ -461,10 +461,6 @@ export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId
       {contextHolder}
 
       <ContentHeader
-        isMobileMenuOpen={isMobileMenuOpen}
-        onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onNewSession={() => handleEditSession()}
       />
 

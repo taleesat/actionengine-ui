@@ -41,10 +41,6 @@ export const CrawlerManager: React.FC<CrawlerManagerProps> = ({ onSessionIdChang
       {contextHolder}
 
       <CrawlerHeader
-        isMobileMenuOpen={isMobileMenuOpen}
-        onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onNewSession={() => {
           setShowNewWorkspaceForm(true);
           messageApi.info("Starting new session");

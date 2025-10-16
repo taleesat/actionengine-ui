@@ -21,7 +21,7 @@ const ContentHeader = ({
         <div className="flex items-center">
           {/* New Session Button */}
           <div className="w-[40px]">
-            <Tooltip title="Create new session">
+            <Tooltip title="Create new agent session">
               <Button
                 variant="tertiary"
                 size="sm"
@@ -32,8 +32,7 @@ const ContentHeader = ({
             </Tooltip>
           </div>
           <div className="flex items-center space-x-2">
-            <img src={logo} alt="ActionEngine-UI Logo" className="h-10 w-10" />
-            <div className="text-primary text-2xl font-bold">ActionEngine-UI</div>
+            <div className="text-primary text-2xl font-bold">Action Engine Agent</div>
           </div>
         </div>
       </div>
