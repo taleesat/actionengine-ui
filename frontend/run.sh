@@ -22,6 +22,9 @@ export OPENAI_API_KEY=""
 export OPENAI_TEXT_MODEL=${OPENAI_MODEL}
 export OPENAI_VISION_MODEL=${OPENAI_MODEL}
 
+export P24_LOGIN="azure_ad_token_provider"
+export P24_HEADLESS="true"
+
 export MCPSTUDIO_UI_PORT="8000"
 playwright install
 xvfb-run magentic ui --host 0.0.0.0 --port $MCPSTUDIO_UI_PORT --config config.yaml
