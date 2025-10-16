@@ -69,9 +69,10 @@ interface ScreenshotData {
 
 interface CrawlerViewProps {
   resetToForm?: boolean;
+  onSessionIdChange?: (sessionId: string | null) => void;
 }
 
-export default function CrawlerView({ resetToForm }: CrawlerViewProps): JSX.Element {
+export default function CrawlerView({ resetToForm, onSessionIdChange }: CrawlerViewProps): JSX.Element {
   const [currentSessionId, setCurrentSessionId] = React.useState<string | null>(null);
   const [isRunning, setIsRunning] = React.useState(false);
   const [isStarted, setIsStarted] = React.useState(false);
@@ -157,6 +158,10 @@ export default function CrawlerView({ resetToForm }: CrawlerViewProps): JSX.Elem
         // Handle new schema with session field
         if (data.session) {
           setCurrentSessionId(data.session);
+          // Notify parent component about session ID change
+          if (onSessionIdChange) {
+            onSessionIdChange(data.session);
+          }
         }
         
         // Update current URL if provided

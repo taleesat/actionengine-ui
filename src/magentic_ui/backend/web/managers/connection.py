@@ -192,13 +192,14 @@ class WebSocketManager:
                 final_result = await self.send_format_message(run_id, answer_message)
                 step += 1
 
-    async def call_action_engine(self, run_id: int, task: str | ChatMessage | Sequence[ChatMessage] | None,) -> None:
+    async def call_action_engine(self, run_id: int, task: str | ChatMessage | Sequence[ChatMessage] | None, index_id: str | None = None) -> None:
         """
         Start streaming task execution with proper run management
 
         Args:
             run_id (int): ID of the run
             task (str | ChatMessage | Sequence[ChatMessage] | None): Task to execute
+            index_id (str | None): Index ID to be passed with the task
             team_config (Dict[str, Any]): Configuration for the team
             settings_config (Dict[str, Any]): Configuration for settings
             user_settings (Settings, optional): User settings for the run
@@ -254,7 +255,13 @@ class WebSocketManager:
                 task_text = json.loads(actual_task.to_text())["content"]
             else:
                 task_text = str(actual_task) if actual_task else ""
-            await websocket_client.send(task_text)
+            
+            # Create JSON message with task and index_id
+            message_data = {"task": task_text}
+            if index_id is not None:
+                message_data["index_id"] = index_id
+            
+            await websocket_client.send(json.dumps(message_data))
 
             action_engine_novnc = json.loads(str(await websocket_client.recv()))
             content = action_engine_novnc.get("content", {})
@@ -294,7 +301,13 @@ class WebSocketManager:
                 else:
                     task_text = str(actual_task) if actual_task else ""
                 await self._send_message(run_id, self._format_message(TextMessage(source="user_proxy", content=task_text)) or {},)
-                await websocket_client.send(task_text)
+                
+                # Create JSON message with task and index_id for subsequent tasks
+                message_data = {"task": task_text}
+                if index_id is not None:
+                    message_data["index_id"] = index_id
+                
+                await websocket_client.send(json.dumps(message_data))
                 final_result = await self.process_answer(task_text, websocket_client, run_id)
             if (not cancellation_token.is_cancelled() and run_id not in self._closed_connections):
                 if final_result:

@@ -50,6 +50,7 @@ interface ChatViewProps {
   ) => WebSocket | null;
   visible?: boolean;
   onRunStatusChange: (sessionId: number, status: BaseRunStatus) => void;
+  crawlerSessionId?: string | null;
 }
 
 type PlanUpdateHandler = (plan: IPlanStep[]) => void;
@@ -75,6 +76,7 @@ export default function ChatView({
   getSessionSocket,
   visible = true,
   onRunStatusChange,
+  crawlerSessionId,
 }: ChatViewProps) {
   const serverUrl = getServerUrl();
   const [error, setError] = React.useState<IStatus | null>({
@@ -655,6 +657,7 @@ export default function ChatView({
           type: "start",
           task: JSON.stringify(taskJson),
           files: processedFiles,
+          ...(crawlerSessionId && { index_id: crawlerSessionId }),
           team_config: teamConfig,
           settings_config: currentSettings,
         })
@@ -770,10 +773,15 @@ export default function ChatView({
       // Use the current session's team config
       const currentTeamConfig = teamConfig || defaultTeamConfig;
 
+      const taskJson = {
+        content: newPlan.task,
+      };
+
       const message = {
         type: "start",
         id: `plan_${Date.now()}`,
-        task: newPlan.task,
+        task: JSON.stringify(taskJson),
+        ...(crawlerSessionId && { index_id: crawlerSessionId }),
         team_config: currentTeamConfig,
         settings_config: sessionSettingsConfig,
         sessionId: session.id,

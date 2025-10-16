@@ -25,16 +25,6 @@ router = APIRouter()
 python_executable = os.environ.get("PYTHON_EXECUTABLE")
 app_path = os.environ.get("CRAWLER_APP_PATH")
 
-def build_crawler_command(url: str, index_path: str, output_dir_path: str) -> list[str]:
-    cmd = [ python_executable, app_path,
-           "--app_url", url,
-           "--action_index_path", index_path,
-           "--output_dir_path", output_dir_path,
-           "--crawl_action",
-           "--crawl_trajectory",
-           ]
-    return cmd
-
 def build_action_crawler_command(url: str, index_path: str, output_dir_path: str) -> list[str]:
     cmd = [ python_executable, app_path,
            "--app_url", url,
@@ -765,11 +755,11 @@ async def run_websocket(
                     task = construct_task(
                         query=message.get("task"), files=message.get("files")
                     )
+                    index_id = message.get("index_id")
                     team_config = message.get("team_config")
                     #settings_config = message.get("settings_config")
                     if task and team_config:
-                        # await ws_manager.start_stream(run_id, task, team_config)
-                        asyncio.create_task(ws_manager.call_action_engine(run_id, task))
+                        asyncio.create_task(ws_manager.call_action_engine(run_id, task, index_id))
                     else:
                         logger.warning(f"Invalid start message format for run {run_id}")
                         message = {

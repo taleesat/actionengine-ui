@@ -12,7 +12,6 @@ import { sessionAPI } from "./api";
 import { SessionEditor } from "./session_editor";
 import type { Session } from "../types/datamodel";
 import ChatView from "./chat/chat";
-import { Sidebar } from "./sidebar";
 import { getServerUrl } from "../utils";
 import { RunStatus } from "../types/datamodel";
 import ContentHeader from "../contentheader";
@@ -27,7 +26,11 @@ type SessionWebSockets = {
   [sessionId: number]: SessionWebSocket;
 };
 
-export const SessionManager: React.FC = () => {
+interface SessionManagerProps {
+  crawlerSessionId?: string | null;
+}
+
+export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | undefined>();
@@ -390,6 +393,7 @@ export const SessionManager: React.FC = () => {
             getSessionSocket={getSessionSocket}
             visible={session?.id === s.id}
             onRunStatusChange={updateSessionRunStatus}
+            crawlerSessionId={crawlerSessionId}
           />
         </div>
       );
@@ -402,6 +406,7 @@ export const SessionManager: React.FC = () => {
     updateSessionRunStatus,
     isLoading,
     sessionRunStatuses,
+    crawlerSessionId,
   ]);
 
   // Add cleanup handlers for page unload and connection loss

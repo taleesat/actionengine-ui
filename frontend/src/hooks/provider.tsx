@@ -42,32 +42,22 @@ const Provider = ({ children }: any) => {
     setLocalStorage("darkmode", darkMode, false);
   };
 
-  // Modify logic here to add your own authentication
-  const initUser = {
-    name: "Guest User",
-    email: getLocalStorage("user_email") || "guestuser@gmail.com",
-    username: "guestuser",
+  // Generate a random user every time
+  const generateRandomUser = (): IUser => {
+    const randomId = Math.random().toString(36).substring(2, 15);
+    const randomEmail = `user_${randomId}@example.com`;
+    return {
+      name: `User ${randomId}`,
+      email: randomEmail,
+      username: `user_${randomId}`,
+    };
   };
+
+  const [userState, setUserState] = useState<IUser | null>(() => generateRandomUser());
 
   const setUser = (user: IUser | null) => {
-    if (user?.email) {
-      setLocalStorage("user_email", user.email, false);
-    }
     setUserState(user);
   };
-
-  const [userState, setUserState] = useState<IUser | null>(initUser);
-
-  React.useEffect(() => {
-    const storedEmail = getLocalStorage("user_email");
-    if (storedEmail) {
-      setUserState((prevUser) => ({
-        ...prevUser,
-        email: storedEmail,
-        name: storedEmail,
-      }));
-    }
-  }, []);
 
   return (
     <appContext.Provider

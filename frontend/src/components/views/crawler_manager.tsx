@@ -3,7 +3,11 @@ import { message } from "antd";
 import CrawlerView from "./crawler/crawler2";
 import CrawlerHeader from "../crawlerheader";
 
-export const CrawlerManager: React.FC = () => {
+interface CrawlerManagerProps {
+  onSessionIdChange?: (sessionId: string | null) => void;
+}
+
+export const CrawlerManager: React.FC<CrawlerManagerProps> = ({ onSessionIdChange }) => {
   const [messageApi, contextHolder] = message.useMessage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(() => {
@@ -49,7 +53,7 @@ export const CrawlerManager: React.FC = () => {
 
       <div className="flex flex-1 relative">
         <div className="flex-1 transition-all duration-200">
-          <CrawlerView resetToForm={showNewWorkspaceForm} />
+          <CrawlerView resetToForm={showNewWorkspaceForm} onSessionIdChange={onSessionIdChange} />
         </div>
       </div>
     </div>
