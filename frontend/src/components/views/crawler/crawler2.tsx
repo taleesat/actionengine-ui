@@ -67,7 +67,11 @@ interface ScreenshotData {
   timestamp: string;
 }
 
-export default function CrawlerView(): JSX.Element {
+interface CrawlerViewProps {
+  resetToForm?: boolean;
+}
+
+export default function CrawlerView({ resetToForm }: CrawlerViewProps): JSX.Element {
   const [currentSessionId, setCurrentSessionId] = React.useState<string | null>(null);
   const [isRunning, setIsRunning] = React.useState(false);
   const [isStarted, setIsStarted] = React.useState(false);
@@ -383,6 +387,36 @@ export default function CrawlerView(): JSX.Element {
     sendRetrieveCommand();
   };
 
+  // Handle reset to form when prop changes
+  React.useEffect(() => {
+    if (resetToForm) {
+      setIsStarted(false);
+      setIsRunning(false);
+      setCurrentSessionId(null);
+      setCurrentUrl("");
+      setCrawlResults([]);
+      setTrajectoryResults([]);
+      setCrawlStats({
+        totalStates: 0,
+        totalAtoms: 0,
+        totalTrajectories: 0,
+        visitedUrls: 0,
+        crawledUrls: 0,
+        crawledUiElements: 0
+      });
+      setActionScreenshot(null);
+      setTrajectoryScreenshot(null);
+      setActionStatus("unknown");
+      setTrajectoryStatus("unknown");
+      
+      // Close existing socket connection
+      if (socket) {
+        socket.close();
+        setSocket(null);
+      }
+    }
+  }, [resetToForm, socket]);
+
   // Cleanup WebSocket on component unmount
   React.useEffect(() => {
     return () => {
@@ -391,25 +425,6 @@ export default function CrawlerView(): JSX.Element {
       }
     };
   }, [socket]);
-
-  const getLogIcon = (level: LogEntry['level']) => {
-    switch (level) {
-      case 'error': return <BugOutlined style={{ color: '#ff4d4f' }} />;
-      case 'warning': return <WarningOutlined style={{ color: '#faad14' }} />;
-      case 'success': return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
-      default: return <InfoCircleOutlined style={{ color: '#1890ff' }} />;
-    }
-  };
-
-  const getLogColor = (level: LogEntry['level']) => {
-    switch (level) {
-      case 'error': return '#ff4d4f';
-      case 'warning': return '#faad14';
-      case 'success': return '#52c41a';
-      default: return '#1890ff';
-    }
-  };
-
 
   const columns = [
     {

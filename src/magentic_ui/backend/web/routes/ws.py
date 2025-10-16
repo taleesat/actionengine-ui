@@ -443,6 +443,7 @@ async def control_crawler(websocket: WebSocket):
                     # Start action crawler process
                     action_env = env.copy()
                     action_env["SCREENSHOT_DIR_PATH"] = action_screenshot_dir
+                    action_env["AE_BROWSER_INSTANCE"] = "local"
                     
                     with open(action_log_file_path, 'w', encoding='utf-8') as action_log_file:
                         action_process = subprocess.Popen(
@@ -457,6 +458,7 @@ async def control_crawler(websocket: WebSocket):
                     # Start trajectory crawler process
                     trajectory_env = env.copy()
                     trajectory_env["SCREENSHOT_DIR_PATH"] = trajectory_screenshot_dir
+                    trajectory_env["AE_BROWSER_INSTANCE"] = "local"
                     
                     with open(trajectory_log_file_path, 'w', encoding='utf-8') as trajectory_log_file:
                         trajectory_process = subprocess.Popen(
