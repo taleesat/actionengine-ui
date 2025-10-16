@@ -613,7 +613,6 @@ class WebSocketManager:
                 # Wait for response with timeout
                 if run_id in self._input_responses:
                     try:
-
                         async def poll_for_response():
                             while True:
                                 # Check if run was closed/cancelled
@@ -646,8 +645,6 @@ class WebSocketManager:
                             "Magentic-UI timed out while waiting for your input. To resume, please enter a follow-up message in the input box or you can simply type 'continue'.",
                         )
                         raise
-                else:
-                    raise ValueError(f"No input queue for run {run_id}")
 
             except Exception as e:
                 logger.error(f"Error handling input for run {run_id}: {e}")
