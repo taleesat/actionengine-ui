@@ -351,7 +351,19 @@ export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId
       {contextHolder}
 
       <ContentHeader
-        onNewSession={() => handleEditSession()}
+        onNewSession={() => {
+          // Disconnect current connection before starting new session
+          if (session?.id && sessionSockets[session.id]) {
+            console.log(`Disconnecting WebSocket for session ${session.id}`);
+            sessionSockets[session.id].socket.close();
+            setSessionSockets(prev => {
+              const newSockets = { ...prev };
+              delete newSockets[session.id!];
+              return newSockets;
+            });
+          }
+          handleEditSession();
+        }}
       />
 
       <div className="flex flex-1 relative">

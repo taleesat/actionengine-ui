@@ -715,6 +715,15 @@ class WebSocketManager:
         # Cancel any running tasks
         await self.stop_run(run_id, "Connection closed")
 
+        # Close the WebSocket connection if it exists
+        if run_id in self._connections:
+            try:
+                websocket = self._connections[run_id]
+                await websocket.close()
+                logger.info(f"WebSocket connection to Action Engine Server closed for run {run_id}")
+            except Exception as e:
+                logger.warning(f"Error closing WebSocket for run {run_id}: {e}")
+
         # Clean up resources
         self._connections.pop(run_id, None)
         self._cancellation_tokens.pop(run_id, None)
