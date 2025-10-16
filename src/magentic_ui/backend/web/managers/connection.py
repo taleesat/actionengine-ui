@@ -258,18 +258,14 @@ class WebSocketManager:
 
             action_engine_novnc = json.loads(str(await websocket_client.recv()))
             content = action_engine_novnc.get("content", {})
-            docker_address = content.get("docker_address", "localhost")
-            playwright_port = content.get("playwright_port", 9800)
-            novnc_port = content.get("novnc_port", 9801)
-            novnc_endpoint = f"{docker_address}:{novnc_port}"
+            novnc_endpoint = content.get("novnc_endpoint")
             vnc_message: TextMessage = TextMessage(
                 source="system",
-                content=f"Browser noVNC address can be found at http://{novnc_endpoint}/vnc.html",
+                content=f"Browser noVNC address can be found at {novnc_endpoint}/vnc.html",
                 metadata={
                     "internal": "no",
                     "type": "browser_address",
                     "novnc_endpoint": novnc_endpoint,
-                    "playwright_port": str(playwright_port),
                 },
             )
 
