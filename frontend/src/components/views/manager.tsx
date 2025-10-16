@@ -15,7 +15,6 @@ import ChatView from "./chat/chat";
 import { getServerUrl } from "../utils";
 import { RunStatus } from "../types/datamodel";
 import ContentHeader from "../contentheader";
-import PlanList from "../features/Plans/PlanList";
 
 interface SessionWebSocket {
   socket: WebSocket;
@@ -34,29 +33,15 @@ export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId
   const [isLoading, setIsLoading] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | undefined>();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("sessionSidebar");
-      return stored !== null ? JSON.parse(stored) : true;
-    }
-    return true;
-  });
   const [messageApi, contextHolder] = message.useMessage();
   const [sessionSockets, setSessionSockets] = useState<SessionWebSockets>({});
   const [sessionRunStatuses, setSessionRunStatuses] = useState<{
     [sessionId: number]: RunStatus;
   }>({});
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [activeSubMenuItem, setActiveSubMenuItem] = useState("current_session");
 
   const { user } = useContext(appContext);
   const { session, setSession, sessions, setSessions } = useConfigStore();
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("sessionSidebar", JSON.stringify(isSidebarOpen));
-    }
-  }, [isSidebarOpen]);
 
   const fetchSessions = useCallback(async () => {
     if (!user?.email) return;
@@ -79,21 +64,10 @@ export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId
       }
     } catch (error) {
       console.error("Error fetching sessions:", error);
-      messageApi.error("Error loading sessions");
     } finally {
       setIsLoading(false);
     }
   }, [user?.email, setSessions, session, setSession]);
-
-  // Handle initial URL params
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sessionId = params.get("sessionId");
-
-    if (sessionId && !session) {
-      handleSelectSession({ id: parseInt(sessionId) } as Session);
-    }
-  }, []);
 
   // Handle browser back/forward
   useEffect(() => {
@@ -155,7 +129,6 @@ export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId
   };
 
   const handleEditSession = (session?: Session) => {
-    setActiveSubMenuItem("current_session");
     setIsLoading(true);
     if (session) {
       setEditingSession(session);
@@ -165,70 +138,6 @@ export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId
       handleSaveSession({});
     }
     setIsLoading(false);
-  };
-
-  const handleDeleteSession = async (sessionId: number) => {
-    if (!user?.email) return;
-
-    try {
-      setIsLoading(true);
-      // Close and remove socket if it exists
-      if (sessionSockets[sessionId]) {
-        sessionSockets[sessionId].socket.close();
-        setSessionSockets((prev) => {
-          const updated = { ...prev };
-          delete updated[sessionId];
-          return updated;
-        });
-      }
-
-      const response = await sessionAPI.deleteSession(sessionId, user.email);
-      setSessions(sessions.filter((s) => s.id !== sessionId));
-      if (session?.id === sessionId || sessions.length === 0) {
-        setSession(sessions[0] || null);
-        window.history.pushState({}, "", window.location.pathname); // Clear URL params
-      }
-      messageApi.success("Session deleted");
-    } catch (error) {
-      console.error("Error deleting session:", error);
-      messageApi.error("Error deleting session");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSelectSession = async (selectedSession: Session) => {
-    if (!user?.email || !selectedSession.id) return;
-
-    try {
-      setActiveSubMenuItem("current_session");
-      setIsLoading(true);
-      const data = await sessionAPI.getSession(selectedSession.id, user.email);
-      if (!data) {
-        // Session not found
-        messageApi.error("Session not found");
-        window.history.pushState({}, "", window.location.pathname); // Clear URL
-        if (sessions.length > 0) {
-          setSession(sessions[0]); // Fall back to first session
-        } else {
-          setSession(null);
-        }
-        return;
-      }
-      setSession(data);
-      window.history.pushState({}, "", `?sessionId=${selectedSession.id}`);
-    } catch (error) {
-      console.error("Error loading session:", error);
-      messageApi.error("Error loading session");
-      window.history.pushState({}, "", window.location.pathname); // Clear invalid URL
-      if (sessions.length > 0) {
-        setSession(sessions[0]); // Fall back to first session
-      } else {
-        setSession(null);
-      }
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleSessionName = async (sessionData: Partial<Session>) => {
@@ -356,7 +265,7 @@ export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId
 
       setSessions([created, ...sessions]);
       setSession(created);
-      window.history.pushState({}, "", `?sessionId=${created.id}`);
+      //window.history.pushState({}, "", `?sessionId=${created.id}`);
     } catch (error) {
       console.error("Error creating default session:", error);
       messageApi.error("Error creating default session");
@@ -367,6 +276,8 @@ export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId
 
   const chatViews = useMemo(() => {
     return sessions.map((s: Session) => {
+      if (!s.id) return null;
+      
       const status = sessionRunStatuses[s.id] as RunStatus;
       const isSessionPotentiallyActive = [
         "active",
@@ -434,27 +345,6 @@ export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId
     };
   }, []); // Empty dependency array since we want this to run once on mount
 
-  const handleCreateSessionFromPlan = (
-    sessionId: number,
-    sessionName: string,
-    planData: any
-  ) => {
-    // First select the session
-    handleSelectSession({ id: sessionId } as Session);
-
-    // Then dispatch the plan data to the chat component
-    setTimeout(() => {
-      window.dispatchEvent(
-        new CustomEvent("planReady", {
-          detail: {
-            planData: planData,
-            sessionId: sessionId,
-            messageId: `plan_${Date.now()}`,
-          },
-        })
-      );
-    }, 2000); // Give time for session selection to complete
-  };
 
   return (
     <div className="relative flex flex-col h-full w-full">
@@ -468,21 +358,11 @@ export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId
         <div
           className={"flex-1 transition-all -mr-4 duration-200 w-[200px] ml-0"}
         >
-          {activeSubMenuItem === "current_session" ? (
-            session && sessions.length > 0 ? (
-              <div className="pl-4">{chatViews}</div>
-            ) : (
-              <div className="flex items-center justify-center h-full text-secondary">
-                <Spin size="large" tip={"Loading..."} />
-              </div>
-            )
+          {session && sessions.length > 0 ? (
+            <div className="pl-4">{chatViews}</div>
           ) : (
-            <div className="h-full overflow-hidden pl-4">
-              <PlanList
-                onTabChange={setActiveSubMenuItem}
-                onSelectSession={handleSelectSession}
-                onCreateSessionFromPlan={handleCreateSessionFromPlan}
-              />
+            <div className="flex items-center justify-center h-full text-secondary">
+              <Spin size="large" tip={"Loading..."} />
             </div>
           )}
         </div>
