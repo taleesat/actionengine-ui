@@ -371,23 +371,15 @@ export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId
           className={"flex-1 transition-all -mr-4 duration-200 w-[200px] ml-0"}
         >
           {session && sessions.length > 0 ? (
-            <div className="pl-4">{chatViews}</div>
+            <div className="pl-4">
+              {chatViews}
+            </div>
           ) : (
             <div className="flex items-center justify-center h-full text-secondary">
               <Spin size="large" tip={"Loading..."} />
             </div>
           )}
         </div>
-
-        <SessionEditor
-          session={editingSession}
-          isOpen={isEditorOpen}
-          onSave={handleSaveSession}
-          onCancel={() => {
-            setIsEditorOpen(false);
-            setEditingSession(undefined);
-          }}
-        />
       </div>
     </div>
   );

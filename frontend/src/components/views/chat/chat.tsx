@@ -1040,8 +1040,13 @@ export default function ChatView({
                   : "w-full max-w-full md:max-w-4xl lg:max-w-5xl xl:max-w-6xl"
               } mx-auto px-4 sm:px-6 md:px-8`}
             >
+              <div className="text-white text-3xl mb-6">
+                Action Engine agent is a web agent enhanced with action index.
+              </div>
               <div className="text-secondary text-lg mb-6">
-                Enter a message to get started
+                It comes with the pre-crawled index from some web pages. You can pick the site from the drop-down list.
+                <br />
+                If you want to work with other sites, you can create a new index from the Index Crawler tab.
               </div>
 
               <div className="w-full">
@@ -1068,7 +1073,7 @@ export default function ChatView({
                   inputRequest={currentRun?.input_request}
                   isPlanMessage={isPlanMessage}
                   onPause={handlePause}
-                  enable_upload={true}
+                  enable_upload={false}
                   onExecutePlan={handleExecutePlan}
                 />
               </div>

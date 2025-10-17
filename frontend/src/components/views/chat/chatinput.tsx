@@ -15,6 +15,7 @@ import {
   Modal,
   Dropdown,
   Menu,
+  Select,
 } from "antd";
 import type { UploadFile, UploadProps, RcFile } from "antd/es/upload/interface";
 import { FileTextIcon, ImageIcon, XIcon, UploadIcon } from "lucide-react";
@@ -38,6 +39,26 @@ const ALLOWED_FILE_TYPES = [
 
 // Threshold for large text files (in characters)
 const LARGE_TEXT_THRESHOLD = 1500;
+
+// Available domains for task execution
+const AVAILABLE_DOMAINS = [
+  { value: "allrecipes.com", label: "Allrecipes" },
+  { value: "amazon.com", label: "Amazon" },
+  { value: "apple.com", label: "Apple" },
+  { value: "arxiv.org", label: "arXiv" },
+  { value: "bbc.com", label: "BBC News" },
+  { value: "booking.com", label: "Booking" },
+  { value: "dictionary.cambridge.org", label: "Cambridge Dictionary" },
+  { value: "coursera.org", label: "Coursera" },
+  { value: "espn.com", label: "ESPN" },
+  { value: "github.com", label: "GitHub" },
+  { value: "gitlab.com", label: "GitLab" },
+  { value: "google.com/flights", label: "Google Flights" },
+  { value: "maps.google.com", label: "Google Maps" },
+  { value: "huggingface.co", label: "Hugging Face" },
+  { value: "wikipedia.org", label: "Wikipedia" },
+  { value: "wolframalpha.com", label: "Wolfram Alpha" }
+];
 
 interface ChatInputProps {
   onSubmit: (
@@ -93,6 +114,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
     const [isRelevantPlansVisible, setIsRelevantPlansVisible] =
       React.useState(false);
     const [isPlanModalVisible, setIsPlanModalVisible] = React.useState(false);
+    const [selectedDomain, setSelectedDomain] = React.useState(AVAILABLE_DOMAINS[0].value);
     const textAreaDefaultHeight = "64px";
     const isInputDisabled =
       disabled ||
@@ -379,10 +401,13 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       accepted: boolean,
       doResetInput: boolean = true
     ) => {
+      // Append the domain phrase to the query
+      const modifiedQuery = query + ` Perform the task on ${selectedDomain}`;
+      
       if (attachedPlan) {
-        onSubmit(query, files, accepted, attachedPlan);
+        onSubmit(modifiedQuery, files, accepted, attachedPlan);
       } else {
-        onSubmit(query, files, accepted);
+        onSubmit(modifiedQuery, files, accepted);
       }
 
       if (doResetInput) {
@@ -678,6 +703,28 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
             onDrop={handleDrop}
           >
             <div className="flex w-full">
+              {/* Domain Selection Dropdown - Left side of input */}
+              <div className={`flex items-center border-l border-t border-b border-accent ${
+                darkMode === "dark" ? "bg-[#444444]" : "bg-white"
+              } rounded-l-lg px-2`}>
+                <Select
+                  value={selectedDomain}
+                  onChange={setSelectedDomain}
+                  className="min-w-[120px]"
+                  size="small"
+                  bordered={false}
+                  style={{
+                    backgroundColor: 'transparent',
+                  }}
+                >
+                  {AVAILABLE_DOMAINS.map((domain) => (
+                    <Select.Option key={domain.value} value={domain.value}>
+                      {domain.label}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </div>
+
               <div className="flex-1">
                 <form
                   onSubmit={(e) => {
@@ -693,7 +740,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     defaultValue={""}
                     onChange={handleTextChange}
                     onKeyDown={handleKeyDown}
-                    className={`flex items-center w-full resize-none border-l border-t border-b border-accent p-2 pl-5 rounded-l-lg ${
+                    className={`flex items-center w-full resize-none border-t border-b border-accent border-l-0 p-2 pl-3 ${
                       darkMode === "dark"
                         ? "bg-[#444444] text-white"
                         : "bg-white text-black"
