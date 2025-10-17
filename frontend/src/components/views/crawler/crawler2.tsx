@@ -21,6 +21,7 @@ import {
   DownloadOutlined,
   EyeOutlined,
   CodeOutlined,
+  LoadingOutlined,
 } from "@ant-design/icons";
 import { getServerUrl } from "../../utils";
 import NewWorkspaceForm from "./newworkspace";
@@ -557,76 +558,34 @@ export default function CrawlerView({ resetToForm, onSessionIdChange, onUrlChang
           </div>
         </div>
 
-        {/* Status Section - All cards in a single row */}
+        {/* Status Section */}
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50">
-          <Title level={4} style={{ marginBottom: "16px", color: "#374151" }}>
-            Status
+          <Title level={3} style={{ marginBottom: "16px", color: "#374151" }}>
+            {(() => {
+              const actionRunning = actionStatus === "running";
+              const trajectoryRunning = trajectoryStatus === "running";
+              const anyRunning = actionRunning || trajectoryRunning;
+              const allDone = actionStatus === "done" && trajectoryStatus === "done";
+              const anyStopped = actionStatus === "stopped" || trajectoryStatus === "stopped";
+
+              if (anyRunning) {
+                return (
+                  <>
+                    {`Crawler is crawling ${currentUrl || 'target'}: ${crawlStats.totalAtoms} functions discovered and ${crawlStats.totalTrajectories} tasks discovered`}
+                    <LoadingOutlined style={{ marginLeft: '12px', color: '#1890ff' }} spin />
+                  </>
+                );
+              } else if (allDone) {
+                return `Crawler finished crawling for ${currentUrl || 'target'}: ${crawlStats.totalAtoms} functions discovered and ${crawlStats.totalTrajectories} tasks discovered`;
+              } else if (anyStopped) {
+                return `Crawler was stopped while crawling for ${currentUrl || 'target'}: ${crawlStats.totalAtoms} functions discovered and ${crawlStats.totalTrajectories} tasks discovered`;
+              } else {
+                return "Status";
+              }
+            })()}
           </Title>
           <Row gutter={16}>
-            <Col span={4}>
-              <Card style={{ height: '100px' }}>
-                <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <GlobalOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
-                    <Text strong style={{ fontSize: '16px' }}>
-                      Target URL
-                    </Text>
-                  </div>
-                  {currentUrl ? (
-                    <Text 
-                      style={{ 
-                        fontSize: '14px', 
-                        color: '#1890ff', 
-                        textDecoration: 'underline',
-                        cursor: 'pointer',
-                        wordBreak: 'break-all'
-                      }}
-                      onClick={() => window.open(currentUrl, '_blank')}
-                      ellipsis
-                    >
-                      {currentUrl}
-                    </Text>
-                  ) : (
-                    <Text style={{ fontSize: '14px', color: '#999', fontStyle: 'italic' }}>
-                      No URL available
-                    </Text>
-                  )}
-                </Space>
-              </Card>
-            </Col>
-            <Col span={4}>
-              <Card style={{ height: '100px' }}>
-                <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <CodeOutlined style={{ color: '#1890ff', fontSize: '12px' }} />
-                    <Text strong style={{ fontSize: '10px' }}>
-                      Function Crawler:
-                    </Text>
-                    {actionStatus === "running" && <Badge status="processing" />}
-                    {actionStatus === "done" && <Badge status="success" />}
-                    {actionStatus === "stopped" && <Badge status="warning" />}
-                    {actionStatus === "unknown" && <Badge status="warning" />}
-                    <Text style={{ fontSize: '10px', textTransform: 'capitalize' }}>
-                      {actionStatus}
-                    </Text>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <CodeOutlined style={{ color: '#1890ff', fontSize: '12px' }} />
-                    <Text strong style={{ fontSize: '10px' }}>
-                      Task Crawler:
-                    </Text>
-                    {trajectoryStatus === "running" && <Badge status="processing" />}
-                    {trajectoryStatus === "done" && <Badge status="success" />}
-                    {trajectoryStatus === "stopped" && <Badge status="warning" />}
-                    {trajectoryStatus === "unknown" && <Badge status="warning" />}
-                    <Text style={{ fontSize: '10px', textTransform: 'capitalize' }}>
-                      {trajectoryStatus}
-                    </Text>
-                  </div>
-                </Space>
-              </Card>
-            </Col>
-            <Col span={4}>
+            <Col span={12}>
               <Card style={{ height: '100px' }}>
                 <Statistic
                   title="Page Discovered"
@@ -635,29 +594,11 @@ export default function CrawlerView({ resetToForm, onSessionIdChange, onUrlChang
                 />
               </Card>
             </Col>
-            <Col span={4}>
+            <Col span={12}>
               <Card style={{ height: '100px' }}>
                 <Statistic
                   title="Pages Crawled"
                   value={crawlStats.crawledUrls}
-                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff' }}
-                />
-              </Card>
-            </Col>
-            <Col span={4}>
-              <Card style={{ height: '100px' }}>
-                <Statistic
-                  title="Functions Discovered"
-                  value={crawlStats.totalAtoms}
-                  valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff' }}
-                />
-              </Card>
-            </Col>
-            <Col span={4}>
-              <Card style={{ height: '100px' }}>
-                <Statistic
-                  title="Tasks Identified"
-                  value={crawlStats.totalTrajectories}
                   valueStyle={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff' }}
                 />
               </Card>
