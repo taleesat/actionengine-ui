@@ -5,13 +5,13 @@ import { useConfigStore } from "../hooks/store";
 import logo from "../assets/logo.svg";
 import { Button } from "./common/Button";
 
-type ContentHeaderProps = {
+type CrawlerHeaderProps = {
   onNewSession: () => void;
 };
 
-const ContentHeader = ({
+const CrawlerHeader = ({
   onNewSession,
-}: ContentHeaderProps) => {
+}: CrawlerHeaderProps) => {
   useConfigStore();
 
   return (
@@ -21,7 +21,7 @@ const ContentHeader = ({
         <div className="flex items-center">
           {/* New Session Button */}
           <div className="w-[40px]">
-            <Tooltip title="Create new agent session">
+            <Tooltip title="Create new session">
               <Button
                 variant="tertiary"
                 size="sm"
@@ -32,7 +32,7 @@ const ContentHeader = ({
             </Tooltip>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="text-primary text-2xl font-bold">Action Engine Agent</div>
+            <div className="text-primary text-2xl font-bold">Action Index Crawler</div>
           </div>
         </div>
       </div>
@@ -40,4 +40,4 @@ const ContentHeader = ({
   );
 };
 
-export default ContentHeader;
+export default CrawlerHeader;

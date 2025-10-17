@@ -50,6 +50,8 @@ interface ChatViewProps {
   ) => WebSocket | null;
   visible?: boolean;
   onRunStatusChange: (sessionId: number, status: BaseRunStatus) => void;
+  crawlerSessionId?: string | null;
+  crawlerUrl?: string | null;
 }
 
 type PlanUpdateHandler = (plan: IPlanStep[]) => void;
@@ -75,6 +77,8 @@ export default function ChatView({
   getSessionSocket,
   visible = true,
   onRunStatusChange,
+  crawlerSessionId,
+  crawlerUrl,
 }: ChatViewProps) {
   const serverUrl = getServerUrl();
   const [error, setError] = React.useState<IStatus | null>({
@@ -655,6 +659,7 @@ export default function ChatView({
           type: "start",
           task: JSON.stringify(taskJson),
           files: processedFiles,
+          ...(crawlerSessionId && { index_id: crawlerSessionId }),
           team_config: teamConfig,
           settings_config: currentSettings,
         })
@@ -770,10 +775,15 @@ export default function ChatView({
       // Use the current session's team config
       const currentTeamConfig = teamConfig || defaultTeamConfig;
 
+      const taskJson = {
+        content: newPlan.task,
+      };
+
       const message = {
         type: "start",
         id: `plan_${Date.now()}`,
-        task: newPlan.task,
+        task: JSON.stringify(taskJson),
+        ...(crawlerSessionId && { index_id: crawlerSessionId }),
         team_config: currentTeamConfig,
         settings_config: sessionSettingsConfig,
         sessionId: session.id,
@@ -1032,8 +1042,13 @@ export default function ChatView({
                   : "w-full max-w-full md:max-w-4xl lg:max-w-5xl xl:max-w-6xl"
               } mx-auto px-4 sm:px-6 md:px-8`}
             >
+              <div className="text-white text-3xl mb-6">
+                Action Engine agent is a web agent enhanced with action index.
+              </div>
               <div className="text-secondary text-lg mb-6">
-                Enter a message to get started
+                It comes with the pre-crawled index from some web pages. You can pick the site from the drop-down list.
+                <br />
+                If you want to work with other sites, you can create a new index from the Index Crawler tab.
               </div>
 
               <div className="w-full">
@@ -1060,8 +1075,9 @@ export default function ChatView({
                   inputRequest={currentRun?.input_request}
                   isPlanMessage={isPlanMessage}
                   onPause={handlePause}
-                  enable_upload={true}
+                  enable_upload={false}
                   onExecutePlan={handleExecutePlan}
+                  crawlerUrl={crawlerUrl}
                 />
               </div>
               <SampleTasks

@@ -120,7 +120,6 @@ const RunView: React.FC<RunViewProps> = ({
       lastBrowserAddressMsg.config.metadata?.novnc_endpoint !== novncEndpoint
     ) {
       setNovncEndpoint(lastBrowserAddressMsg.config.metadata?.novnc_endpoint);
-      // Show DetailViewer when novncEndpoint becomes available
       setShowDetailViewer(true);
       setIsDetailViewerMinimized(false);
     }

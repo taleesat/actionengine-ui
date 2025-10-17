@@ -1,9 +1,14 @@
 import React from "react";
 import { message } from "antd";
 import CrawlerView from "./crawler/crawler2";
-import ContentHeader from "../contentheader";
+import CrawlerHeader from "../crawlerheader";
 
-export const CrawlerManager: React.FC = () => {
+interface CrawlerManagerProps {
+  onSessionIdChange?: (sessionId: string | null) => void;
+  onUrlChange?: (url: string | null) => void;
+}
+
+export const CrawlerManager: React.FC<CrawlerManagerProps> = ({ onSessionIdChange, onUrlChange }) => {
   const [messageApi, contextHolder] = message.useMessage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(() => {
@@ -13,6 +18,7 @@ export const CrawlerManager: React.FC = () => {
     }
     return true;
   });
+  const [showNewWorkspaceForm, setShowNewWorkspaceForm] = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -20,24 +26,31 @@ export const CrawlerManager: React.FC = () => {
     }
   }, [isSidebarOpen]);
 
+  // Reset the showNewWorkspaceForm flag after it's been processed
+  React.useEffect(() => {
+    if (showNewWorkspaceForm) {
+      // Use a timeout to reset the flag after the CrawlerView has processed it
+      const timer = setTimeout(() => {
+        setShowNewWorkspaceForm(false);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [showNewWorkspaceForm]);
+
   return (
     <div className="relative flex flex-col h-full w-full">
       {contextHolder}
 
-      <ContentHeader
-        isMobileMenuOpen={isMobileMenuOpen}
-        onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+      <CrawlerHeader
         onNewSession={() => {
-          // No session management needed for crawler
-          messageApi.info("Crawler is ready to use");
+          setShowNewWorkspaceForm(true);
+          messageApi.info("Starting new session");
         }}
       />
 
       <div className="flex flex-1 relative">
         <div className="flex-1 transition-all duration-200">
-          <CrawlerView />
+          <CrawlerView resetToForm={showNewWorkspaceForm} onSessionIdChange={onSessionIdChange} onUrlChange={onUrlChange} />
         </div>
       </div>
     </div>

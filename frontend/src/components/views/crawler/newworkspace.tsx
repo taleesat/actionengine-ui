@@ -30,6 +30,9 @@ const NewWorkspaceForm: React.FC<Props> = ({ onStartNewSession, onLoadPreviousSe
 
   return (
     <div className="mt-4">
+      <div className="text-white text-3xl mb-6">
+        Web crawler that crawls performable actions on web sites.
+      </div>
       <Title level={3} style={{ color: "#cbd5e1", marginBottom: 24 }}>
         Start a new crawl session.
       </Title>

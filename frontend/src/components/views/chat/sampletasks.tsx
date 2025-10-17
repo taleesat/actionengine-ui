@@ -15,7 +15,6 @@ const SAMPLE_TASKS = [
 ];
 */
 const SAMPLE_TASKS = [
-  "Change my reddit bio to \"I am a robot\"",
   "Find a recipe for a vegetarian lasagna that has at least a four-star rating on https://www.allrecipes.com/.",
   "Discover a suitable chocolate cupcake recipe on https://www.allrecipes.com that has a preparation time of under 1 hour.",
   "Find out the starting price for the most recent model of the iMac on https://apple.com.",

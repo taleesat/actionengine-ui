@@ -192,13 +192,14 @@ class WebSocketManager:
                 final_result = await self.send_format_message(run_id, answer_message)
                 step += 1
 
-    async def call_action_engine(self, run_id: int, task: str | ChatMessage | Sequence[ChatMessage] | None,) -> None:
+    async def call_action_engine(self, run_id: int, task: str | ChatMessage | Sequence[ChatMessage] | None, index_id: str | None = None) -> None:
         """
         Start streaming task execution with proper run management
 
         Args:
             run_id (int): ID of the run
             task (str | ChatMessage | Sequence[ChatMessage] | None): Task to execute
+            index_id (str | None): Index ID to be passed with the task
             team_config (Dict[str, Any]): Configuration for the team
             settings_config (Dict[str, Any]): Configuration for settings
             user_settings (Settings, optional): User settings for the run
@@ -254,22 +255,24 @@ class WebSocketManager:
                 task_text = json.loads(actual_task.to_text())["content"]
             else:
                 task_text = str(actual_task) if actual_task else ""
-            await websocket_client.send(task_text)
+            
+            # Create JSON message with task and index_id
+            message_data = {"task": task_text}
+            if index_id is not None:
+                message_data["index_id"] = index_id
+            
+            await websocket_client.send(json.dumps(message_data))
 
             action_engine_novnc = json.loads(str(await websocket_client.recv()))
             content = action_engine_novnc.get("content", {})
-            docker_address = content.get("docker_address", "localhost")
-            playwright_port = content.get("playwright_port", 9800)
-            novnc_port = content.get("novnc_port", 9801)
-            novnc_endpoint = f"{docker_address}:{novnc_port}"
+            novnc_endpoint = content.get("novnc_endpoint")
             vnc_message: TextMessage = TextMessage(
                 source="system",
-                content=f"Browser noVNC address can be found at http://{novnc_endpoint}/vnc.html",
+                content=f"Browser noVNC address can be found at {novnc_endpoint}/vnc.html",
                 metadata={
                     "internal": "no",
                     "type": "browser_address",
                     "novnc_endpoint": novnc_endpoint,
-                    "playwright_port": str(playwright_port),
                 },
             )
 
@@ -298,7 +301,13 @@ class WebSocketManager:
                 else:
                     task_text = str(actual_task) if actual_task else ""
                 await self._send_message(run_id, self._format_message(TextMessage(source="user_proxy", content=task_text)) or {},)
-                await websocket_client.send(task_text)
+                
+                # Create JSON message with task and index_id for subsequent tasks
+                message_data = {"task": task_text}
+                if index_id is not None:
+                    message_data["index_id"] = index_id
+                
+                await websocket_client.send(json.dumps(message_data))
                 final_result = await self.process_answer(task_text, websocket_client, run_id)
             if (not cancellation_token.is_cancelled() and run_id not in self._closed_connections):
                 if final_result:
@@ -604,7 +613,6 @@ class WebSocketManager:
                 # Wait for response with timeout
                 if run_id in self._input_responses:
                     try:
-
                         async def poll_for_response():
                             while True:
                                 # Check if run was closed/cancelled
@@ -637,8 +645,6 @@ class WebSocketManager:
                             "Magentic-UI timed out while waiting for your input. To resume, please enter a follow-up message in the input box or you can simply type 'continue'.",
                         )
                         raise
-                else:
-                    raise ValueError(f"No input queue for run {run_id}")
 
             except Exception as e:
                 logger.error(f"Error handling input for run {run_id}: {e}")
@@ -705,6 +711,15 @@ class WebSocketManager:
 
         # Cancel any running tasks
         await self.stop_run(run_id, "Connection closed")
+
+        # Close the WebSocket connection if it exists
+        if run_id in self._connections:
+            try:
+                websocket = self._connections[run_id]
+                await websocket.close()
+                logger.info(f"WebSocket connection to Action Engine Server closed for run {run_id}")
+            except Exception as e:
+                logger.warning(f"Error closing WebSocket for run {run_id}: {e}")
 
         # Clean up resources
         self._connections.pop(run_id, None)

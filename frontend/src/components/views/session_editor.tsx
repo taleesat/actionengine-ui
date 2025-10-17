@@ -110,16 +110,6 @@ export const SessionEditor: React.FC<SessionEditorProps> = ({
         onFinishFailed={onFinishFailed}
         autoComplete="off"
       >
-        <Form.Item<FieldType>
-          label="Session Name"
-          name="name"
-          rules={[
-            { required: true, message: "Please enter a session name" },
-            { max: 100, message: "Session name cannot exceed 100 characters" },
-          ]}
-        >
-          <Input />
-        </Form.Item>
 
         <Form.Item className="flex justify-end mb-0">
           <div className="flex gap-2">
