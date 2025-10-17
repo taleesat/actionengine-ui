@@ -18,14 +18,9 @@ import {
 import { 
   StopOutlined, 
   GlobalOutlined,
-  BugOutlined,
-  CheckCircleOutlined,
-  WarningOutlined,
-  InfoCircleOutlined,
   DownloadOutlined,
   EyeOutlined,
   CodeOutlined,
-  NodeIndexOutlined
 } from "@ant-design/icons";
 import { getServerUrl } from "../../utils";
 import NewWorkspaceForm from "./newworkspace";
@@ -53,13 +48,6 @@ interface CrawlStats {
   visitedUrls: number;
   crawledUrls: number;
   crawledUiElements: number;
-}
-
-interface LogEntry {
-  id: string;
-  timestamp: string;
-  level: 'info' | 'warning' | 'error' | 'success';
-  message: string;
 }
 
 interface ScreenshotData {
@@ -519,7 +507,7 @@ export default function CrawlerView({ resetToForm, onSessionIdChange, onUrlChang
       <div className="text-primary h-[calc(100vh-100px)] bg-primary relative rounded flex-1 w-full">
         {contextHolder}
         <div className="flex flex-col h-full w-full justify-center items-center">
-          <div className="w-full max-w-2xl mx-auto p-8">
+          <div className="w-350 mx-auto p-8">
             <NewWorkspaceForm
               onStartNewSession={handleNewSessionFromForm}
               onLoadPreviousSession={handleLoadSessionFromForm}
