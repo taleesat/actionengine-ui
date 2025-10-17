@@ -70,9 +70,10 @@ interface ScreenshotData {
 interface CrawlerViewProps {
   resetToForm?: boolean;
   onSessionIdChange?: (sessionId: string | null) => void;
+  onUrlChange?: (url: string | null) => void;
 }
 
-export default function CrawlerView({ resetToForm, onSessionIdChange }: CrawlerViewProps): JSX.Element {
+export default function CrawlerView({ resetToForm, onSessionIdChange, onUrlChange }: CrawlerViewProps): JSX.Element {
   const [currentSessionId, setCurrentSessionId] = React.useState<string | null>(null);
   const [isRunning, setIsRunning] = React.useState(false);
   const [isStarted, setIsStarted] = React.useState(false);
@@ -167,6 +168,10 @@ export default function CrawlerView({ resetToForm, onSessionIdChange }: CrawlerV
         // Update current URL if provided
         if (data.url) {
           setCurrentUrl(data.url);
+          // Notify parent component about URL change
+          if (onUrlChange) {
+            onUrlChange(data.url);
+          }
         }
         
         // Update individual crawler statuses

@@ -51,6 +51,7 @@ interface ChatViewProps {
   visible?: boolean;
   onRunStatusChange: (sessionId: number, status: BaseRunStatus) => void;
   crawlerSessionId?: string | null;
+  crawlerUrl?: string | null;
 }
 
 type PlanUpdateHandler = (plan: IPlanStep[]) => void;
@@ -77,6 +78,7 @@ export default function ChatView({
   visible = true,
   onRunStatusChange,
   crawlerSessionId,
+  crawlerUrl,
 }: ChatViewProps) {
   const serverUrl = getServerUrl();
   const [error, setError] = React.useState<IStatus | null>({
@@ -1075,6 +1077,7 @@ export default function ChatView({
                   onPause={handlePause}
                   enable_upload={false}
                   onExecutePlan={handleExecutePlan}
+                  crawlerUrl={crawlerUrl}
                 />
               </div>
               <SampleTasks

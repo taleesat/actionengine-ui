@@ -27,9 +27,10 @@ type SessionWebSockets = {
 
 interface SessionManagerProps {
   crawlerSessionId?: string | null;
+  crawlerUrl?: string | null;
 }
 
-export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId }) => {
+export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId, crawlerUrl }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | undefined>();
@@ -305,6 +306,7 @@ export const SessionManager: React.FC<SessionManagerProps> = ({ crawlerSessionId
             visible={session?.id === s.id}
             onRunStatusChange={updateSessionRunStatus}
             crawlerSessionId={crawlerSessionId}
+            crawlerUrl={crawlerUrl}
           />
         </div>
       );

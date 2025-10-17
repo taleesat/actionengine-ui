@@ -18,6 +18,7 @@ const Page = ({ data }: Props) => {
   const { darkMode, user, setUser } = React.useContext(appContext);
   const [activeTab, setActiveTab] = React.useState<string>("agent");
   const [crawlerSessionId, setCrawlerSessionId] = React.useState<string | null>(null);
+  const [crawlerUrl, setCrawlerUrl] = React.useState<string | null>(null);
 
   // Mimic sign-in: if no user or user.email, set default user and localStorage
   React.useEffect(() => {
@@ -42,6 +43,10 @@ const Page = ({ data }: Props) => {
 
   const handleCrawlerSessionId = (sessionId: string | null) => {
     setCrawlerSessionId(sessionId);
+  };
+
+  const handleCrawlerUrl = (url: string | null) => {
+    setCrawlerUrl(url);
   };
 
   return (
@@ -90,7 +95,7 @@ const Page = ({ data }: Props) => {
                   label: "Action Engine Agent",
                   children: (
                     <div className="h-full">
-                      <SessionManager crawlerSessionId={crawlerSessionId} />
+                      <SessionManager crawlerSessionId={crawlerSessionId} crawlerUrl={crawlerUrl} />
                     </div>
                   ),
                 },
@@ -99,7 +104,7 @@ const Page = ({ data }: Props) => {
                   label: "Index Crawler",
                   children: (
                     <div className="h-full">
-                      <CrawlerManager onSessionIdChange={handleCrawlerSessionId} />
+                      <CrawlerManager onSessionIdChange={handleCrawlerSessionId} onUrlChange={handleCrawlerUrl} />
                     </div>
                   ),
                 },

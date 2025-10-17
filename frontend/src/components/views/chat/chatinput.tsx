@@ -76,6 +76,7 @@ interface ChatInputProps {
   onPause?: () => void;
   enable_upload?: boolean;
   onExecutePlan?: (plan: IPlan) => void;
+  crawlerUrl?: string | null;
 }
 
 const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
@@ -91,6 +92,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       onPause,
       enable_upload = false,
       onExecutePlan,
+      crawlerUrl,
     },
     ref
   ) => {
@@ -114,7 +116,31 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
     const [isRelevantPlansVisible, setIsRelevantPlansVisible] =
       React.useState(false);
     const [isPlanModalVisible, setIsPlanModalVisible] = React.useState(false);
-    const [selectedDomain, setSelectedDomain] = React.useState(AVAILABLE_DOMAINS[0].value);
+    // Create dynamic domains list including crawled URL if available
+    const dynamicDomains = React.useMemo(() => {
+      if (crawlerUrl) {
+        try {
+          const url = new URL(crawlerUrl.startsWith('http') ? crawlerUrl : `https://${crawlerUrl}`);
+          const domain = url.hostname;
+          const crawledDomain = { value: domain, label: `${domain} (crawled)` };
+          
+          // Check if this domain already exists in AVAILABLE_DOMAINS
+          const existingDomain = AVAILABLE_DOMAINS.find(d => d.value === domain || d.value.includes(domain));
+          if (!existingDomain) {
+            return [crawledDomain, ...AVAILABLE_DOMAINS];
+          } else {
+            // Replace the existing domain with the crawled version
+            return [crawledDomain, ...AVAILABLE_DOMAINS.filter(d => d.value !== existingDomain.value && !d.value.includes(domain))];
+          }
+        } catch (error) {
+          console.warn('Invalid crawler URL:', crawlerUrl);
+          return AVAILABLE_DOMAINS;
+        }
+      }
+      return AVAILABLE_DOMAINS;
+    }, [crawlerUrl]);
+
+    const [selectedDomain, setSelectedDomain] = React.useState(dynamicDomains[0].value);
     const textAreaDefaultHeight = "64px";
     const isInputDisabled =
       disabled ||
@@ -402,7 +428,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       doResetInput: boolean = true
     ) => {
       // Append the domain phrase to the query
-      const modifiedQuery = query + ` Perform the task on ${selectedDomain}`;
+      const modifiedQuery = query + ` If the former order specifies perform the task on that website. If the former order does not specify a site, perform the task on ${selectedDomain}`;
       
       if (attachedPlan) {
         onSubmit(modifiedQuery, files, accepted, attachedPlan);
@@ -717,7 +743,7 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                     backgroundColor: 'transparent',
                   }}
                 >
-                  {AVAILABLE_DOMAINS.map((domain) => (
+                  {dynamicDomains.map((domain) => (
                     <Select.Option key={domain.value} value={domain.value}>
                       {domain.label}
                     </Select.Option>

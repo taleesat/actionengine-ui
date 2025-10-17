@@ -5,9 +5,10 @@ import CrawlerHeader from "../crawlerheader";
 
 interface CrawlerManagerProps {
   onSessionIdChange?: (sessionId: string | null) => void;
+  onUrlChange?: (url: string | null) => void;
 }
 
-export const CrawlerManager: React.FC<CrawlerManagerProps> = ({ onSessionIdChange }) => {
+export const CrawlerManager: React.FC<CrawlerManagerProps> = ({ onSessionIdChange, onUrlChange }) => {
   const [messageApi, contextHolder] = message.useMessage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(() => {
@@ -49,7 +50,7 @@ export const CrawlerManager: React.FC<CrawlerManagerProps> = ({ onSessionIdChang
 
       <div className="flex flex-1 relative">
         <div className="flex-1 transition-all duration-200">
-          <CrawlerView resetToForm={showNewWorkspaceForm} onSessionIdChange={onSessionIdChange} />
+          <CrawlerView resetToForm={showNewWorkspaceForm} onSessionIdChange={onSessionIdChange} onUrlChange={onUrlChange} />
         </div>
       </div>
     </div>
