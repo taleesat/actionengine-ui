@@ -91,31 +91,6 @@ export const SessionManager: React.FC = () => {
     setIsLoading(false);
   }, [user?.email, setSessions, setSession]);
 
-  // Handle initial URL params
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sessionId = params.get("sessionId");
-
-    if (sessionId && !session) {
-      handleSelectSession({ id: parseInt(sessionId) } as Session);
-    }
-  }, []);
-
-  // Handle browser back/forward
-  useEffect(() => {
-    const handleLocationChange = () => {
-      const params = new URLSearchParams(window.location.search);
-      const sessionId = params.get("sessionId");
-
-      if (!sessionId && session) {
-        setSession(null);
-      }
-    };
-
-    window.addEventListener("popstate", handleLocationChange);
-    return () => window.removeEventListener("popstate", handleLocationChange);
-  }, [session]);
-
   const handleSaveSession = async (sessionData: Partial<Session>) => {
     if (!user || !user.email) return;
 
@@ -190,10 +165,6 @@ export const SessionManager: React.FC = () => {
       if (!data) {
         // Session not found
         messageApi.error("Session not found");
-        const params = new URLSearchParams(window.location.search);
-        params.delete("sessionId");
-        const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
-        window.history.pushState({}, "", newUrl);
         if (sessions.length > 0) {
           setSession(sessions[0]); // Fall back to first session
         } else {
@@ -202,16 +173,9 @@ export const SessionManager: React.FC = () => {
         return;
       }
       setSession(data);
-      const params = new URLSearchParams(window.location.search);
-      params.set("sessionId", selectedSession.id.toString());
-      window.history.pushState({}, "", `?${params.toString()}`);
     } catch (error) {
       console.error("Error loading session:", error);
       messageApi.error("Error loading session");
-      const params = new URLSearchParams(window.location.search);
-      params.delete("sessionId");
-      const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
-      window.history.pushState({}, "", newUrl);
       if (sessions.length > 0) {
         setSession(sessions[0]); // Fall back to first session
       } else {
@@ -347,11 +311,6 @@ export const SessionManager: React.FC = () => {
 
       setSessions([created, ...sessions]);
       setSession(created);
-      if (created.id) {
-        const params = new URLSearchParams(window.location.search);
-        params.set("sessionId", created.id.toString());
-        window.history.pushState({}, "", `?${params.toString()}`);
-      }
     } catch (error) {
       console.error("Error creating default session:", error);
       messageApi.error("Error creating default session");
