@@ -120,7 +120,7 @@ async def run_websocket(
         playwright_server.start_server()
         playwright_server_info = playwright_server.build_playwright_info()
         logger.info(f"Playwright server started for run {run_id} on ({playwright_server_info['playwright_endpoint']} and {playwright_server_info['novnc_endpoint']})")
-        await asyncio.sleep(2)  # Allow some time for the container to start
+        await asyncio.sleep(5)  # Allow some time for the container to start
 
         shell_output = io.StringIO()
 
