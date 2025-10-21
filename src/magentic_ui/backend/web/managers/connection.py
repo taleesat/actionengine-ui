@@ -141,7 +141,7 @@ class WebSocketManager:
             content = answer.get("content", "")
             if answer["type"] == "answer":
                 statistics = answer.get("statistics", {})
-                response = f"{content}\n- #LLM Calls: {statistics.get('lm_calls', 0)}\n- #Input tokens: {statistics.get('prompt_tokens', 0)}\n- #Output tokents: {statistics.get('completion_tokens', 0)}"
+                response = f"{content}\n"
                 answer_message = TextMessage(
                     source="Orchestrator",
                     models_usage=None,
