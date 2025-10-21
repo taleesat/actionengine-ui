@@ -53,19 +53,9 @@ export const getStatusIcon = (
         </div>
       );
     case "complete":
-      return (
-        <div className="text-sm mb-2">
-          <AlertTriangle size={20} className="inline-block mr-2 text-red-500" />
-          {errorMessage || "An error occurred"}
-        </div>
-      );
+      return null;
     case "error":
-      return (
-        <div className="text-sm mb-2">
-          <AlertTriangle size={20} className="inline-block mr-2 text-red-500" />
-          {errorMessage || "An error occurred"}
-        </div>
-      );
+      return null;
     case "stopped":
       return (
         <div className="text-sm mb-2 mt-4">
