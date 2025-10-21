@@ -32,7 +32,7 @@ const NewWorkspaceForm: React.FC<Props> = ({ onNewWorkspace, onLoadWorkspace }) 
     <div className="mt-4">
       <Alert
         message="Security Policy Notice"
-        description="This deployment is allowed to work with *.microsoft.com domain only due to the security policy. We are working on enabling more domains."
+        description="This deployment is allowed to work with only some domains due to the security policy. If the domain you want to work with is not enabled, please contact us."
         type="warning"
         showIcon
         style={{
