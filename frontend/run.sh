@@ -15,16 +15,22 @@ export WIKIPEDIA="http://wikipedia.org"
 export MAP="http://openstreetmap.org"
 export HOMEPAGE="http://homepage.com"
 
-export AZURE_OPENAI_ENDPOINT=${OPENAI_ENDPOINT}
-export AZURE_OPEN_AI_DEPLOYMENT_ID=${OPENAI_TEXT_MODEL}
-
 export OPENAI_API_KEY=""
 export OPENAI_TEXT_MODEL=${OPENAI_MODEL}
 export OPENAI_VISION_MODEL=${OPENAI_MODEL}
 
+export AZURE_OPENAI_ENDPOINT=${OPENAI_ENDPOINT}
+export AZURE_OPEN_AI_DEPLOYMENT_ID=${OPENAI_MODEL}
+
 export P24_LOGIN="azure_ad_token_provider"
 export P24_HEADLESS="true"
 
-export MCPSTUDIO_UI_PORT="8000"
+export ACTION_INDEX_FILE="/workspace/examples/pregen-indexes"
+export SETTINGS_FILE="/workspace/aml/benchmark_settings.yaml"
+
+export CRAWLER_APP_PATH="/workspace/src/project24/apps/crawlerApp.py"
+export PYTHON_EXECUTABLE="/workspace/.venv/bin/python"
+
+export MCPSTUDIO_UI_PORT="8082"
 playwright install
 xvfb-run magentic ui --host 0.0.0.0 --port $MCPSTUDIO_UI_PORT --config config.yaml
