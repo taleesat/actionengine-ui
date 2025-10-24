@@ -1,4 +1,10 @@
 import React from "react";
+import "antd/dist/reset.css";
+import "./src/styles/global.css";
+
+import AuthProvider from "./src/hooks/provider";
+
+export const wrapRootElement = AuthProvider;
 
 const codeToRunOnClient = `(function() {
   try {
