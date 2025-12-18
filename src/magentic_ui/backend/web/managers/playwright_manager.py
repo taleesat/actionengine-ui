@@ -37,6 +37,80 @@ def get_azure_credential():
         credential = DefaultAzureCredential()
     return credential
 
+class TSStagehandServer:
+
+    def __init__(self, server_address: str, server_port: int, deployment: str, sess_id: int):
+        self.server_address = server_address
+        self.server_port = server_port
+        self.deployment = deployment
+        self.sess_id = sess_id
+        self.ts_stagehand_server = None
+
+    def start_server(self):
+        protocol = "http"
+        url = f"{protocol}://{self.server_address}:{self.server_port}/launch/{self.sess_id}"
+        logger.info(f"Starting Playwright server at {url}")
+        if self.deployment == "msrhub":
+            azure_credential = get_azure_credential()
+            token = azure_credential.get_token("api://msrhub/.default")
+            headers = {
+                "Authorization": f"Bearer {token.token}",
+            }
+            response = requests.post(url, headers=headers, data={})
+        else:
+            response = requests.post(url, data={})  # empty body
+        if response.status_code != 200:
+            logger.error(f"Failed to start Playwright server: {response.text}")
+            raise RuntimeError(f"Failed to start Playwright server: {response.text}")
+        self.ts_stagehand_server = response.json()
+        logger.info(f"Playwright server started: {self.ts_stagehand_server}")
+
+    def stop_server(self):
+        protocol = "http"
+        url = f"{protocol}://{self.server_address}:{self.server_port}/stop/{self.sess_id}"
+        logger.info(f"Stopping Playwright server at {url}")
+        if self.deployment == "msrhub":
+            azure_credential = get_azure_credential()
+            token = azure_credential.get_token("api://msrhub/.default")
+            headers = {
+                "Authorization": f"Bearer {token.token}",
+            }
+            response = requests.post(url, headers=headers, data={}, verify=False)
+        else:
+            response = requests.post(url, data={})
+        if response.status_code != 200:
+            raise RuntimeError(f"Failed to stop Playwright server: {response.text}")
+    
+    def build_server_info(self) -> dict:
+        if self.deployment == "local":
+            novnc_endpoint = f"http://{self.server_address}:{self.ts_stagehand_server.get('novnc_port')}"
+            return {
+                "ts_stagehand_host": self.server_address,
+                "ts_stagehand_port": self.ts_stagehand_server.get('playwright_port'),
+                "novnc_endpoint": novnc_endpoint,
+            }
+        elif self.deployment == "msrhub":
+            playwright_service_name_prefix = os.getenv("PLAYWRIGHT_SERVICE_NAME_PREFIX")
+            instance_id = os.getenv("INSTANCE_ID")
+            app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
+            novnc_endpoint = f"https://{playwright_service_name_prefix}-{instance_id}-{self.ts_stagehand_server.get('novnc_port')}.{app_env_domain}"
+            return {
+                "ts_stagehand_host": f"{playwright_service_name_prefix}-{instance_id}-{self.ts_stagehand_server.get('playwright_port')}.msrhub.com",
+                "ts_stagehand_port": 80,
+                "novnc_endpoint": novnc_endpoint,
+            }
+        elif self.deployment == "github":
+            codespace_id = os.getenv("CODESPACE_ID")
+            novnc_endpoint = f"https://{codespace_id}-{self.ts_stagehand_server.get('novnc_port')}.app.github.dev"
+            return {
+                "ts_stagehand_host": self.server_address,
+                "ts_stagehand_port": self.ts_stagehand_server.get('playwright_port'),
+                "novnc_endpoint": novnc_endpoint,
+            }
+        else:
+            raise RuntimeError(f"Unsupported deployment type: {self.deployment}")
+
+
 class MultiPlaywrightServer:
 
     def __init__(self, server_address: str, server_port: int, deployment: str, sess_id: int):
@@ -111,9 +185,41 @@ class MultiPlaywrightServer:
             raise RuntimeError(f"Unsupported deployment type: {self.deployment}")
 
 all_multi_playwright_servers = set()
+all_ts_stagehand_servers = set()
 sess_lock = asyncio.Lock()
 ongoing_sess = set()
 max_ongoing_sess = int(os.getenv("MAX_USERS", 5))
+
+async def create_ts_stagehand_server_from_env() -> TSStagehandServer:
+    deployment = os.getenv("DEPLOYMENT", "local")
+    deployment = deployment.lower()
+    if deployment == "local":
+        ts_stagehand_server_address = os.getenv("TS_STAGEHAND_SERVER_ADDRESS", "localhost")
+        ts_stagehand_server_port = int(os.getenv("TS_STAGEHAND_SERVER_PORT", 3000))
+    elif deployment == "msrhub":
+        playwright_service_name_prefix = os.getenv("BROWSER_SERVICE_NAME_PREFIX")
+        instance_id = os.getenv("INSTANCE_ID")
+        ts_stagehand_server_address = f"{playwright_service_name_prefix}-{instance_id}.msrhub.com"
+        ts_stagehand_server_port = 80
+    elif deployment == "github":
+        ts_stagehand_server_address = os.getenv("TS_STAGEHAND_SERVER_ADDRESS", "localhost")
+        ts_stagehand_server_port = int(os.getenv("TS_STAGEHAND_SERVER_PORT", 3000))
+    else:
+        raise RuntimeError(f"Unsupported deployment type: {deployment}")
+    async with sess_lock:
+        if len(ongoing_sess) >= max_ongoing_sess:
+            raise RuntimeError("Maximum number of ongoing sessions reached")
+        sess_id = 0
+        while sess_id in ongoing_sess:
+            sess_id += 1
+        ongoing_sess.add(sess_id)
+    server = TSStagehandServer(ts_stagehand_server_address, ts_stagehand_server_port, deployment, sess_id)
+    all_ts_stagehand_servers.add(server)
+    return server
+
+async def return_ts_stagehand_server(server: TSStagehandServer) -> None:
+    async with sess_lock:
+        ongoing_sess.discard(server.sess_id)
 
 async def create_multi_playwright_server_from_env() -> MultiPlaywrightServer:
     deployment = os.getenv("DEPLOYMENT", "local")
