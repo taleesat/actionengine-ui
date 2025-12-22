@@ -1,6 +1,8 @@
 # Prerequisite
 
 ```
+sudo apt install python-is-python3 python3.12-venv
+
 python -m venv .venv
 
 source .venv/bin/activate
@@ -13,9 +15,9 @@ pip install -e .
 
 cd ui/frontend
 
-npm install -g gatsby-cli
+sudo npm install -g gatsby-cli
 
-npm install -g yarn
+sudo npm install -g yarn
 
 yarn install
 
