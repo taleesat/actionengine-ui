@@ -91,31 +91,6 @@ export const SessionManager: React.FC = () => {
     setIsLoading(false);
   }, [user?.email, setSessions, setSession]);
 
-  // Handle initial URL params
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sessionId = params.get("sessionId");
-
-    if (sessionId && !session) {
-      handleSelectSession({ id: parseInt(sessionId) } as Session);
-    }
-  }, []);
-
-  // Handle browser back/forward
-  useEffect(() => {
-    const handleLocationChange = () => {
-      const params = new URLSearchParams(window.location.search);
-      const sessionId = params.get("sessionId");
-
-      if (!sessionId && session) {
-        setSession(null);
-      }
-    };
-
-    window.addEventListener("popstate", handleLocationChange);
-    return () => window.removeEventListener("popstate", handleLocationChange);
-  }, [session]);
-
   const handleSaveSession = async (sessionData: Partial<Session>) => {
     if (!user || !user.email) return;
 
@@ -180,36 +155,6 @@ export const SessionManager: React.FC = () => {
     setIsLoading(false);
   };
 
-  const handleDeleteSession = async (sessionId: number) => {
-    if (!user?.email) return;
-
-    try {
-      setIsLoading(true);
-      // Close and remove socket if it exists
-      if (sessionSockets[sessionId]) {
-        sessionSockets[sessionId].socket.close();
-        setSessionSockets((prev) => {
-          const updated = { ...prev };
-          delete updated[sessionId];
-          return updated;
-        });
-      }
-
-      const response = await sessionAPI.deleteSession(sessionId, user.email);
-      setSessions(sessions.filter((s) => s.id !== sessionId));
-      if (session?.id === sessionId || sessions.length === 0) {
-        setSession(sessions[0] || null);
-        window.history.pushState({}, "", window.location.pathname); // Clear URL params
-      }
-      messageApi.success("Session deleted");
-    } catch (error) {
-      console.error("Error deleting session:", error);
-      messageApi.error("Error deleting session");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSelectSession = async (selectedSession: Session) => {
     if (!user?.email || !selectedSession.id) return;
 
@@ -220,7 +165,6 @@ export const SessionManager: React.FC = () => {
       if (!data) {
         // Session not found
         messageApi.error("Session not found");
-        window.history.pushState({}, "", window.location.pathname); // Clear URL
         if (sessions.length > 0) {
           setSession(sessions[0]); // Fall back to first session
         } else {
@@ -229,11 +173,9 @@ export const SessionManager: React.FC = () => {
         return;
       }
       setSession(data);
-      window.history.pushState({}, "", `?sessionId=${selectedSession.id}`);
     } catch (error) {
       console.error("Error loading session:", error);
       messageApi.error("Error loading session");
-      window.history.pushState({}, "", window.location.pathname); // Clear invalid URL
       if (sessions.length > 0) {
         setSession(sessions[0]); // Fall back to first session
       } else {
@@ -369,7 +311,6 @@ export const SessionManager: React.FC = () => {
 
       setSessions([created, ...sessions]);
       setSession(created);
-      window.history.pushState({}, "", `?sessionId=${created.id}`);
     } catch (error) {
       console.error("Error creating default session:", error);
       messageApi.error("Error creating default session");
@@ -380,13 +321,13 @@ export const SessionManager: React.FC = () => {
 
   const chatViews = useMemo(() => {
     return sessions.map((s: Session) => {
-      const status = sessionRunStatuses[s.id] as RunStatus;
-      const isSessionPotentiallyActive = [
+      const status = s.id ? sessionRunStatuses[s.id] as RunStatus : undefined;
+      const isSessionPotentiallyActive = status ? [
         "active",
         "awaiting_input",
         "pausing",
         "paused",
-      ].includes(status);
+      ].includes(status) : false;
 
       if (!isSessionPotentiallyActive && session?.id !== s.id) return null;
 
@@ -477,7 +418,7 @@ export const SessionManager: React.FC = () => {
 
       <div className="flex flex-1 relative">
         <div
-          className={`flex-1 transition-all -mr-4 duration-200 w-[200px] ml-64`}
+          className={`flex-1 transition-all -mr-4 duration-200 w-[200px] ml-0`}
         >
           {activeSubMenuItem === "current_session" ? (
             session && sessions.length > 0 ? (

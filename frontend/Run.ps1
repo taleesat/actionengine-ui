@@ -7,4 +7,6 @@ $env:MULTI_PLAYWRIGHT_SERVER_PORT = "3000"
 $env:DEPLOYMENT = "local"
 $env:PLAYWRIGHT_SERVICE_NAME= "bedrock-ui-1mtzx95"
 $env:PLAYWRIGHT_CONTAINER_APP_ENV_DOMAIN = "blackhill-940ce333.westus2.azurecontainerapps.io"
+$env:TS_STAGEHAND_SERVER_ADDRESS = "20.163.31.155"
+$env:TS_STAGEHAND_SERVER_PORT = "3000"
 magentic ui --host 0.0.0.0 --port 8082 --config config.yaml

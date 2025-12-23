@@ -104,9 +104,9 @@ async def run_websocket(
     try:
         logger.info(f"WebSocket connection established for run {run_id}")
 
-        playwright_server: playwright_manager.MultiPlaywrightServer | None = None
+        ts_stagehand_server: playwright_manager.TSStagehandServer | None = None
         try:
-            playwright_server = await playwright_manager.create_multi_playwright_server_from_env()
+            ts_stagehand_server = await playwright_manager.create_ts_stagehand_server_from_env()
         except Exception as e:
             logger.error(f"Failed to create Playwright server: {str(e)}")
             await websocket.send_json(
@@ -117,26 +117,23 @@ async def run_websocket(
                 }
             )
             return
-        playwright_server.start_server()
-        playwright_server_info = playwright_server.build_playwright_info()
-        logger.info(f"Playwright server started for run {run_id} on ({playwright_server_info['playwright_endpoint']} and {playwright_server_info['novnc_endpoint']})")
-        await asyncio.sleep(2)  # Allow some time for the container to start
+        ts_stagehand_server.start_server()
+        ts_stagehand_server_info = ts_stagehand_server.build_server_info()
+        logger.info(f"Playwright server started for run {run_id} on ({ts_stagehand_server_info['ts_stagehand_host']}:{ts_stagehand_server_info['ts_stagehand_port']} and {ts_stagehand_server_info['novnc_endpoint']})")
+        await asyncio.sleep(5)  # Allow some time for the container to start
 
         shell_output = io.StringIO()
 
-        def get_custom_stagehand_config():
-            stagehand_config: StagehandConfig = get_stagehand_config()
-            stagehand_config.env = "REMOTE"
-            stagehand_config.remote_browser_ws_endpoint = playwright_server_info["playwright_endpoint"]
-            return stagehand_config
-
-        mcpstudio_shell = AIRecorderShell(get_stagehand_config=get_custom_stagehand_config, output=shell_output)
+        os.environ["BEDROCK_TS_HOST"] = ts_stagehand_server_info["ts_stagehand_host"]
+        os.environ["BEDROCK_TS_PORT"] = str(ts_stagehand_server_info["ts_stagehand_port"])
+        os.environ["BEDROCK_TS_USE_WSS"] = "0"
+        mcpstudio_shell = AIRecorderShell(output=shell_output, use_typescript=True)
         await mcpstudio_shell._ensure_ai_ready()
         mcpstudio_shell.ai_recorder.set_show_recording_button(False)
 
         await ws_manager.send_novnc_endpoint(
             run_id,
-            playwright_server_info["novnc_endpoint"],
+            ts_stagehand_server_info["novnc_endpoint"],
         )
 
         # Initialize timeout tracking
@@ -206,6 +203,6 @@ async def run_websocket(
         logger.error(f"WebSocket error: {str(e)}")
     finally:
         await ws_manager.disconnect(run_id)
-        if playwright_server:
-            playwright_server.stop_server()
-            await playwright_manager.return_multi_playwright_server(playwright_server)
+        if ts_stagehand_server:
+            ts_stagehand_server.stop_server()
+            await playwright_manager.return_ts_stagehand_server(ts_stagehand_server)

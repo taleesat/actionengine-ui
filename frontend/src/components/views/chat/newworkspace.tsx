@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card, Form, Input, Button, Typography, Divider, Alert } from "antd";
 const { Title } = Typography;
 
@@ -9,6 +9,21 @@ type Props = {
 
 const NewWorkspaceForm: React.FC<Props> = ({ onNewWorkspace, onLoadWorkspace }) => {
   const [form] = Form.useForm();
+  const [initialWebsiteUrl, setInitialWebsiteUrl] = useState("https://microsoft.com");
+
+  // Parse URL parameters on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const siteParam = urlParams.get('site');
+    
+    if (siteParam) {
+      // Ensure the URL has a protocol
+      const websiteUrl = siteParam.startsWith('http://') || siteParam.startsWith('https://') 
+        ? siteParam 
+        : `https://${siteParam}`;
+      setInitialWebsiteUrl(websiteUrl);
+    }
+  }, []);
 
   const handleFinish = (workspaceName: string, websiteUrl: string) => {
     onNewWorkspace(workspaceName, websiteUrl);
@@ -64,7 +79,7 @@ const NewWorkspaceForm: React.FC<Props> = ({ onNewWorkspace, onLoadWorkspace }) 
             },
             {
               name: "websiteUrl",
-              value: "https://microsoft.com",
+              value: initialWebsiteUrl,
             }
           ]}
           onFinish={() => {
