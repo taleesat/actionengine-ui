@@ -3,6 +3,7 @@ import os
 import io
 import asyncio
 import json
+import traceback
 from datetime import datetime, timedelta, timezone
 
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential, AzureCliCredential, get_bearer_token_provider
@@ -200,6 +201,7 @@ async def run_websocket(
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected for run {run_id}")
     except Exception as e:
+        traceback.print_exc()
         logger.error(f"WebSocket error: {str(e)}")
     finally:
         await ws_manager.disconnect(run_id)

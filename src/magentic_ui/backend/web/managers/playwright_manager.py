@@ -90,12 +90,11 @@ class TSStagehandServer:
                 "novnc_endpoint": novnc_endpoint,
             }
         elif self.deployment == "msrhub":
-            playwright_service_name_prefix = os.getenv("PLAYWRIGHT_SERVICE_NAME_PREFIX")
-            instance_id = os.getenv("INSTANCE_ID")
+            browser_server_release_name = os.getenv("BROWSER_SERVER_RELEASE_NAME")
             app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
-            novnc_endpoint = f"https://{playwright_service_name_prefix}-{instance_id}-{self.ts_stagehand_server.get('novnc_port')}.{app_env_domain}"
+            novnc_endpoint = f"https://{browser_server_release_name}-{self.ts_stagehand_server.get('novnc_port')}.{app_env_domain}"
             return {
-                "ts_stagehand_host": f"{playwright_service_name_prefix}-{instance_id}-{self.ts_stagehand_server.get('playwright_port')}.msrhub.com",
+                "ts_stagehand_host": f"{browser_server_release_name}-{self.ts_stagehand_server.get('playwright_port')}.msrhub.com",
                 "ts_stagehand_port": 80,
                 "novnc_endpoint": novnc_endpoint,
             }
@@ -164,11 +163,10 @@ class MultiPlaywrightServer:
                 "novnc_endpoint": novnc_endpoint,
             }
         elif self.deployment == "msrhub":
-            playwright_service_name_prefix = os.getenv("PLAYWRIGHT_SERVICE_NAME_PREFIX")
-            instance_id = os.getenv("INSTANCE_ID")
+            browser_server_release_name = os.getenv("BROWSER_SERVER_RELEASE_NAME")
             app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
-            playwright_endpoint = f"ws://{playwright_service_name_prefix}-{instance_id}-{self.playwright_server.get('playwright_port')}.msrhub.com{playwright_ws_path}"
-            novnc_endpoint = f"https://{playwright_service_name_prefix}-{instance_id}-{self.playwright_server.get('novnc_port')}.{app_env_domain}"
+            playwright_endpoint = f"ws://{browser_server_release_name}-{self.playwright_server.get('playwright_port')}.msrhub.com{playwright_ws_path}"
+            novnc_endpoint = f"https://{browser_server_release_name}-{self.playwright_server.get('novnc_port')}.{app_env_domain}"
             return {
                 "playwright_endpoint": playwright_endpoint,
                 "novnc_endpoint": novnc_endpoint,
@@ -197,9 +195,8 @@ async def create_ts_stagehand_server_from_env() -> TSStagehandServer:
         ts_stagehand_server_address = os.getenv("TS_STAGEHAND_SERVER_ADDRESS", "localhost")
         ts_stagehand_server_port = int(os.getenv("TS_STAGEHAND_SERVER_PORT", 3000))
     elif deployment == "msrhub":
-        playwright_service_name_prefix = os.getenv("BROWSER_SERVICE_NAME_PREFIX")
-        instance_id = os.getenv("INSTANCE_ID")
-        ts_stagehand_server_address = f"{playwright_service_name_prefix}-{instance_id}.msrhub.com"
+        browser_server_release_name = os.getenv("BROWSER_SERVER_RELEASE_NAME")
+        ts_stagehand_server_address = f"{browser_server_release_name}.msrhub.com"
         ts_stagehand_server_port = 80
     elif deployment == "github":
         ts_stagehand_server_address = os.getenv("TS_STAGEHAND_SERVER_ADDRESS", "localhost")
@@ -228,11 +225,10 @@ async def create_multi_playwright_server_from_env() -> MultiPlaywrightServer:
         multi_playwright_server_address = os.getenv("MULTI_PLAYWRIGHT_SERVER_ADDRESS", "localhost")
         multi_playwright_server_port = int(os.getenv("MULTI_PLAYWRIGHT_SERVER_PORT", 3000))
     elif deployment == "msrhub":
-        playwright_service_name_prefix = os.getenv("PLAYWRIGHT_SERVICE_NAME_PREFIX")
-        instance_id = os.getenv("INSTANCE_ID")
+        browser_server_release_name = os.getenv("BROWSER_SERVER_RELEASE_NAME")
         #app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
-        #multi_playwright_server_address = f"{playwright_service_name_prefix}-{instance_id}.{app_env_domain}"
-        multi_playwright_server_address = f"{playwright_service_name_prefix}-{instance_id}.msrhub.com"
+        #multi_playwright_server_address = f"{browser_server_release_name}.{app_env_domain}"
+        multi_playwright_server_address = f"{browser_server_release_name}.msrhub.com"
         multi_playwright_server_port = 80
     elif deployment == "github":
         multi_playwright_server_address = os.getenv("MULTI_PLAYWRIGHT_SERVER_ADDRESS", "localhost")
