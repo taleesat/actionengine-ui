@@ -94,8 +94,8 @@ class TSStagehandServer:
             app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
             novnc_endpoint = f"https://{browser_server_release_name}-{self.ts_stagehand_server.get('novnc_port')}.{app_env_domain}"
             return {
-                "ts_stagehand_host": f"{browser_server_release_name}-{self.ts_stagehand_server.get('playwright_port')}.msrhub.com",
-                "ts_stagehand_port": 80,
+                "ts_stagehand_host": f"{browser_server_release_name}",
+                "ts_stagehand_port": self.ts_stagehand_server.get('playwright_port'),
                 "novnc_endpoint": novnc_endpoint,
             }
         elif self.deployment == "github":
@@ -165,7 +165,7 @@ class MultiPlaywrightServer:
         elif self.deployment == "msrhub":
             browser_server_release_name = os.getenv("BROWSER_SERVER_RELEASE_NAME")
             app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
-            playwright_endpoint = f"ws://{browser_server_release_name}-{self.playwright_server.get('playwright_port')}.msrhub.com{playwright_ws_path}"
+            playwright_endpoint = f"ws://{browser_server_release_name}:{self.playwright_server.get('playwright_port')}{playwright_ws_path}"
             novnc_endpoint = f"https://{browser_server_release_name}-{self.playwright_server.get('novnc_port')}.{app_env_domain}"
             return {
                 "playwright_endpoint": playwright_endpoint,
@@ -195,9 +195,8 @@ async def create_ts_stagehand_server_from_env() -> TSStagehandServer:
         ts_stagehand_server_address = os.getenv("TS_STAGEHAND_SERVER_ADDRESS", "localhost")
         ts_stagehand_server_port = int(os.getenv("TS_STAGEHAND_SERVER_PORT", 3000))
     elif deployment == "msrhub":
-        browser_server_release_name = os.getenv("BROWSER_SERVER_RELEASE_NAME")
-        ts_stagehand_server_address = f"{browser_server_release_name}.msrhub.com"
-        ts_stagehand_server_port = 80
+        ts_stagehand_server_address = os.getenv("BROWSER_SERVER_RELEASE_NAME")
+        ts_stagehand_server_port = int(os.getenv("TS_STAGEHAND_SERVER_PORT", 3000))
     elif deployment == "github":
         ts_stagehand_server_address = os.getenv("TS_STAGEHAND_SERVER_ADDRESS", "localhost")
         ts_stagehand_server_port = int(os.getenv("TS_STAGEHAND_SERVER_PORT", 3000))
@@ -226,10 +225,8 @@ async def create_multi_playwright_server_from_env() -> MultiPlaywrightServer:
         multi_playwright_server_port = int(os.getenv("MULTI_PLAYWRIGHT_SERVER_PORT", 3000))
     elif deployment == "msrhub":
         browser_server_release_name = os.getenv("BROWSER_SERVER_RELEASE_NAME")
-        #app_env_domain = os.getenv("CONTAINER_APP_ENV_DOMAIN")
-        #multi_playwright_server_address = f"{browser_server_release_name}.{app_env_domain}"
-        multi_playwright_server_address = f"{browser_server_release_name}.msrhub.com"
-        multi_playwright_server_port = 80
+        multi_playwright_server_address = f"{browser_server_release_name}"
+        multi_playwright_server_port = int(os.getenv("MULTI_PLAYWRIGHT_SERVER_PORT", 3000))
     elif deployment == "github":
         multi_playwright_server_address = os.getenv("MULTI_PLAYWRIGHT_SERVER_ADDRESS", "localhost")
         multi_playwright_server_port = int(os.getenv("MULTI_PLAYWRIGHT_SERVER_PORT", 3000))
