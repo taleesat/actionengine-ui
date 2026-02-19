@@ -1,0 +1,23 @@
+We have the docker image for the browser server.  To pull the image, please
+contact us with your alias, we will give you an access. You can pull it from
+here, actionengineacr.azurecr.io/multi-browser-server
+
+`docker pull actionengineacr.azurecr.io/multi-browser-server`
+
+The server will run a new browser when a user needs it for his or her session.
+One browser instance will opens 2 ports.
+1. Browser control port, this port is for Bedrock to control the browser.
+2. VNC port, this port is for a user to stream the browser's screen to the client.
+
+Because of this, the number of ports opened is dynamic, but we will set all
+port forwarding for all concurrent users when we start the container.
+1. For broswer control ports, it starts at 5000 and increases by 2 per a user.
+2. For VNC ports, it starts at 9000 and increases by 1 per a user.
+
+For example, for 2 concurrent users, you should forward ports, 5000, 5002,
+9000, and 9001 (5000 and 9000 for the first user, and 5002 and 9001 for the
+second user).
+
+The browser itself listens at port 3000. The command below shows how to start a
+container that supports two users.
+`docker run -p 3000:3000 -p 5000:5000 -p 5002:5002 -p 9000:9000 -p 9001:9001 -it --rm actionengineacr.azurecr.io/multi-browser-server`
