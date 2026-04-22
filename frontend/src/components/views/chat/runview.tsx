@@ -52,6 +52,8 @@ const RunView: React.FC<RunViewProps> = ({
   extractingResult,
   enable_upload = false,
 }) => {
+  const commitSha = process.env.GATSBY_COMMIT_SHA;
+  const versionText = commitSha ? `Build: ${commitSha}` : "Development";
   const threadContainerRef = useRef<HTMLDivElement | null>(null);
   const [novncEndpoint, setNovncEndpoint] = useState<string | undefined>();
   const [detailViewerExpanded, setDetailViewerExpanded] = useState(false);
@@ -662,6 +664,7 @@ const RunView: React.FC<RunViewProps> = ({
             <u><a href="https://www.microsoft.com/en-us/privacy/data-privacy-notice" className="hover:text-gray-600">Data Privacy Notice</a></u>
           </p>
         </div>
+        <div> Revision: {versionText} </div>
       </footer>
     </div>
   );

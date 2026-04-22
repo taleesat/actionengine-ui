@@ -8,6 +8,8 @@ type Props = {
 };
 
 const NewWorkspaceForm: React.FC<Props> = ({ onNewWorkspace, onLoadWorkspace }) => {
+  const commitSha = process.env.GATSBY_COMMIT_SHA;
+  const versionText = commitSha ? `Build: ${commitSha}` : "Development";
   const [form] = Form.useForm();
   const [initialWebsiteUrl, setInitialWebsiteUrl] = useState("https://microsoft.com");
 
@@ -147,6 +149,7 @@ const NewWorkspaceForm: React.FC<Props> = ({ onNewWorkspace, onLoadWorkspace }) 
             <u><a href="https://www.microsoft.com/en-us/privacy/data-privacy-notice" className="hover:text-gray-600">Data Privacy Notice</a></u>
           </p>
         </div>
+        <div> Revision: {versionText} </div>
       </footer>
     </div>
   );

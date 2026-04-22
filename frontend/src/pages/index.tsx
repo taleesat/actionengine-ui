@@ -5,16 +5,10 @@ import type { HeadFC } from "gatsby";
 
 // markup
 const IndexPage = ({ data }: any) => {
-  const commitSha = process.env.GATSBY_COMMIT_SHA;
-  const versionText = commitSha ? `Build: ${commitSha}` : "In development";
-
   return (
     <MagenticUILayout meta={data.site.siteMetadata} title="Home" link={"/"}>
       <main style={{ height: "100%" }} className=" h-full ">
       </main>
-      <footer style={{ textAlign: "center", padding: "8px", fontSize: "12px", color: "#888" }}>
-        {versionText}
-      </footer>
     </MagenticUILayout>
   );
 };
