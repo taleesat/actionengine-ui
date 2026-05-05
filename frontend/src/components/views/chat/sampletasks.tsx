@@ -14,11 +14,16 @@ const SAMPLE_TASKS = [
   "Search arXiv for the latest papers on computer use agents",
 ];
 */
+/*
 const SAMPLE_TASKS = [
   "Find a recipe for a vegetarian lasagna that has at least a four-star rating on https://www.allrecipes.com/.",
   "Discover a suitable chocolate cupcake recipe on https://www.allrecipes.com that has a preparation time of under 1 hour.",
   "Find out the starting price for the most recent model of the iMac on https://apple.com.",
   "Check if there are trade-in offers for the latest model of iPhone on https://apple.com.",
+];
+*/
+const SAMPLE_TASKS = [
+  "Change my Reddit bio to \"Pro Python Developer with 20 years of Experience\" on http://4.236.122.196:9999/",
 ];
 
 const SampleTasks: React.FC<SampleTasksProps> = ({ onSelect }) => {

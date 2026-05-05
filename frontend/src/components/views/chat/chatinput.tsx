@@ -42,22 +42,23 @@ const LARGE_TEXT_THRESHOLD = 1500;
 
 // Available domains for task execution
 const AVAILABLE_DOMAINS = [
-  { value: "allrecipes.com", label: "Allrecipes" },
-  { value: "amazon.com", label: "Amazon" },
-  { value: "apple.com", label: "Apple" },
-  { value: "arxiv.org", label: "arXiv" },
-  { value: "bbc.com", label: "BBC News" },
-  { value: "booking.com", label: "Booking" },
-  { value: "dictionary.cambridge.org", label: "Cambridge Dictionary" },
-  { value: "coursera.org", label: "Coursera" },
-  { value: "espn.com", label: "ESPN" },
-  { value: "github.com", label: "GitHub" },
-  { value: "gitlab.com", label: "GitLab" },
-  { value: "google.com/flights", label: "Google Flights" },
-  { value: "maps.google.com", label: "Google Maps" },
-  { value: "huggingface.co", label: "Hugging Face" },
-  { value: "wikipedia.org", label: "Wikipedia" },
-  { value: "wolframalpha.com", label: "Wolfram Alpha" }
+  //{ value: "allrecipes.com", label: "Allrecipes" },
+  //{ value: "amazon.com", label: "Amazon" },
+  //{ value: "apple.com", label: "Apple" },
+  //{ value: "arxiv.org", label: "arXiv" },
+  //{ value: "bbc.com", label: "BBC News" },
+  //{ value: "booking.com", label: "Booking" },
+  //{ value: "dictionary.cambridge.org", label: "Cambridge Dictionary" },
+  //{ value: "coursera.org", label: "Coursera" },
+  //{ value: "espn.com", label: "ESPN" },
+  //{ value: "github.com", label: "GitHub" },
+  //{ value: "gitlab.com", label: "GitLab" },
+  //{ value: "google.com/flights", label: "Google Flights" },
+  //{ value: "maps.google.com", label: "Google Maps" },
+  //{ value: "huggingface.co", label: "Hugging Face" },
+  //{ value: "wikipedia.org", label: "Wikipedia" },
+  //{ value: "wolframalpha.com", label: "Wolfram Alpha" }
+  {value: "4.236.122.196:9999", label: "Reddit"}
 ];
 
 interface ChatInputProps {
