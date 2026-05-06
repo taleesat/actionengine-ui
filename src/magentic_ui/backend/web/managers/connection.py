@@ -137,6 +137,7 @@ class WebSocketManager:
         step = 0
         while True:
             answer = str(await websocket_client.recv())
+            logger.info(f"Received message from action engine for run {run_id}: {answer}")
             answer = json.loads(answer)
             content = answer.get("content", "")
             if answer["type"] == "answer":
@@ -207,7 +208,7 @@ class WebSocketManager:
         if run_id not in self._connections or run_id in self._closed_connections:
             raise ValueError(f"No active connection for run {run_id}")
         if run_id not in self._action_engine_managers:
-            websocket_client: ClientConnection = await connect("ws://localhost:8000/api/ws/index-magenticone")
+            websocket_client: ClientConnection = await connect("ws://localhost:8000/api/ws/sage")
             self._action_engine_managers[run_id] = websocket_client
         else:
             websocket_client: ClientConnection = self._action_engine_managers[run_id]
@@ -264,6 +265,7 @@ class WebSocketManager:
             await websocket_client.send(json.dumps(message_data))
 
             action_engine_novnc = json.loads(str(await websocket_client.recv()))
+            logger.info(f"Received message from action engine for run {run_id}: {action_engine_novnc}")
             content = action_engine_novnc.get("content", {})
             novnc_endpoint = content.get("novnc_endpoint")
             vnc_message: TextMessage = TextMessage(
