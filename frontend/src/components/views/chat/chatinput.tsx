@@ -15,7 +15,6 @@ import {
   Modal,
   Dropdown,
   Menu,
-  Select,
 } from "antd";
 import type { UploadFile, UploadProps, RcFile } from "antd/es/upload/interface";
 import { FileTextIcon, ImageIcon, XIcon, UploadIcon } from "lucide-react";
@@ -40,26 +39,6 @@ const ALLOWED_FILE_TYPES = [
 // Threshold for large text files (in characters)
 const LARGE_TEXT_THRESHOLD = 1500;
 
-// Available domains for task execution
-const AVAILABLE_DOMAINS = [
-  //{ value: "allrecipes.com", label: "Allrecipes" },
-  //{ value: "amazon.com", label: "Amazon" },
-  //{ value: "apple.com", label: "Apple" },
-  //{ value: "arxiv.org", label: "arXiv" },
-  //{ value: "bbc.com", label: "BBC News" },
-  //{ value: "booking.com", label: "Booking" },
-  //{ value: "dictionary.cambridge.org", label: "Cambridge Dictionary" },
-  //{ value: "coursera.org", label: "Coursera" },
-  //{ value: "espn.com", label: "ESPN" },
-  //{ value: "github.com", label: "GitHub" },
-  //{ value: "gitlab.com", label: "GitLab" },
-  //{ value: "google.com/flights", label: "Google Flights" },
-  //{ value: "maps.google.com", label: "Google Maps" },
-  //{ value: "huggingface.co", label: "Hugging Face" },
-  //{ value: "wikipedia.org", label: "Wikipedia" },
-  //{ value: "wolframalpha.com", label: "Wolfram Alpha" }
-  {value: "4.236.122.196:9999", label: "Reddit"}
-];
 
 interface ChatInputProps {
   onSubmit: (
@@ -117,31 +96,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
     const [isRelevantPlansVisible, setIsRelevantPlansVisible] =
       React.useState(false);
     const [isPlanModalVisible, setIsPlanModalVisible] = React.useState(false);
-    // Create dynamic domains list including crawled URL if available
-    const dynamicDomains = React.useMemo(() => {
-      if (crawlerUrl) {
-        try {
-          const url = new URL(crawlerUrl.startsWith('http') ? crawlerUrl : `https://${crawlerUrl}`);
-          const domain = url.hostname;
-          const crawledDomain = { value: domain, label: `${domain} (crawled)` };
-          
-          // Check if this domain already exists in AVAILABLE_DOMAINS
-          const existingDomain = AVAILABLE_DOMAINS.find(d => d.value === domain || d.value.includes(domain));
-          if (!existingDomain) {
-            return [crawledDomain, ...AVAILABLE_DOMAINS];
-          } else {
-            // Replace the existing domain with the crawled version
-            return [crawledDomain, ...AVAILABLE_DOMAINS.filter(d => d.value !== existingDomain.value && !d.value.includes(domain))];
-          }
-        } catch (error) {
-          console.warn('Invalid crawler URL:', crawlerUrl);
-          return AVAILABLE_DOMAINS;
-        }
-      }
-      return AVAILABLE_DOMAINS;
-    }, [crawlerUrl]);
-
-    const [selectedDomain, setSelectedDomain] = React.useState(dynamicDomains[0].value);
     const textAreaDefaultHeight = "64px";
     const isInputDisabled =
       disabled ||
@@ -428,13 +382,10 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
       accepted: boolean,
       doResetInput: boolean = true
     ) => {
-      // Append the domain phrase to the query
-      const modifiedQuery = query + ` If the former order specifies perform the task on that website. If the former order does not specify a site, perform the task on ${selectedDomain}`;
-      
       if (attachedPlan) {
-        onSubmit(modifiedQuery, files, accepted, attachedPlan);
+        onSubmit(query, files, accepted, attachedPlan);
       } else {
-        onSubmit(modifiedQuery, files, accepted);
+        onSubmit(query, files, accepted);
       }
 
       if (doResetInput) {
@@ -730,28 +681,6 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
             onDrop={handleDrop}
           >
             <div className="flex w-full">
-              {/* Domain Selection Dropdown - Left side of input */}
-              <div className={`flex items-center border-l border-t border-b border-accent ${
-                darkMode === "dark" ? "bg-[#444444]" : "bg-white"
-              } rounded-l-lg px-2`}>
-                <Select
-                  value={selectedDomain}
-                  onChange={setSelectedDomain}
-                  className="min-w-[120px]"
-                  size="small"
-                  bordered={false}
-                  style={{
-                    backgroundColor: 'transparent',
-                  }}
-                >
-                  {dynamicDomains.map((domain) => (
-                    <Select.Option key={domain.value} value={domain.value}>
-                      {domain.label}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </div>
-
               <div className="flex-1">
                 <form
                   onSubmit={(e) => {
@@ -785,8 +714,8 @@ const ChatInput = React.forwardRef<{ focus: () => void }, ChatInputProps>(
                         : enable_upload
                         ? dragOver
                           ? "Drop files here..."
-                          : "Type your message here..."
-                        : "Type your message here..."
+                          : "Enter your command here..."
+                        : "Enter your command here..."
                     }
                     disabled={isInputDisabled}
                   />

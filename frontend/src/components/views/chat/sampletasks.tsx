@@ -23,7 +23,7 @@ const SAMPLE_TASKS = [
 ];
 */
 const SAMPLE_TASKS = [
-  "Change my Reddit bio to \"Pro Python Developer with 20 years of Experience\" on http://4.236.122.196:9999/",
+  "Change my Reddit bio to \"Pro Python Developer with 20 years of Experience\"",
 ];
 
 const SampleTasks: React.FC<SampleTasksProps> = ({ onSelect }) => {

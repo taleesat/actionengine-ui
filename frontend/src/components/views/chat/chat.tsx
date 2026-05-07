@@ -1046,9 +1046,7 @@ export default function ChatView({
                 Action Engine agent is a web agent enhanced with action index.
               </div>
               <div className="text-secondary text-lg mb-6">
-                It comes with the pre-crawled index from some web pages. You can pick the site from the drop-down list.
-                <br />
-                If you want to work with other sites, you can create a new index from the Index Crawler tab.
+                It comes with the pre-crawled index for some web pages.
               </div>
 
               <div className="w-full">

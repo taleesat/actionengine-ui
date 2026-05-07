@@ -2,9 +2,8 @@ import * as React from "react";
 import { graphql } from "gatsby";
 import { appContext } from "../hooks/provider";
 import "antd/dist/reset.css";
-import { ConfigProvider, theme, Tabs } from "antd";
+import { ConfigProvider, theme } from "antd";
 import { SessionManager } from "../components/views/manager";
-import { CrawlerManager } from "../components/views/crawler_manager";
 
 const classNames = (...classes: (string | undefined | boolean)[]) => {
   return classes.filter(Boolean).join(" ");
@@ -16,9 +15,6 @@ type Props = {
 
 const Page = ({ data }: Props) => {
   const { darkMode, user, setUser } = React.useContext(appContext);
-  const [activeTab, setActiveTab] = React.useState<string>("agent");
-  const [crawlerSessionId, setCrawlerSessionId] = React.useState<string | null>(null);
-  const [crawlerUrl, setCrawlerUrl] = React.useState<string | null>(null);
 
   // Mimic sign-in: if no user or user.email, set default user and localStorage
   React.useEffect(() => {
@@ -36,18 +32,6 @@ const Page = ({ data }: Props) => {
       darkMode === "dark" ? "dark bg-primary" : "light bg-primary"
     }`;
   }, [darkMode]);
-
-  const handleTabChange = (key: string) => {
-    setActiveTab(key);
-  };
-
-  const handleCrawlerSessionId = (sessionId: string | null) => {
-    setCrawlerSessionId(sessionId);
-  };
-
-  const handleCrawlerUrl = (url: string | null) => {
-    setCrawlerUrl(url);
-  };
 
   return (
     <div className="h-screen flex">
@@ -72,44 +56,9 @@ const Page = ({ data }: Props) => {
           }}
         >
           <main className="flex-1 p-1 text-primary" style={{ height: "100%" }}>
-            <div className="mb-4 px-4 pt-4">
-              <h1 className="text-2xl font-bold text-center">
-                Action Engine Agent (Index-Enhanced Web Agent) & Action Index Crawler (Crawling for Actions on Web Pages)
-              </h1>
+            <div className="h-full">
+              <SessionManager />
             </div>
-            <Tabs
-              activeKey={activeTab}
-              onChange={handleTabChange}
-              type="card"
-              size="large"
-              className="h-full"
-              tabBarStyle={{
-                margin: 0,
-                padding: "0 16px",
-                backgroundColor: darkMode === "dark" ? "#1f1f1f" : "#fafafa",
-                borderBottom: `1px solid ${darkMode === "dark" ? "#333" : "#d9d9d9"}`,
-              }}
-              items={[
-                {
-                  key: "agent",
-                  label: "Action Engine Agent",
-                  children: (
-                    <div className="h-full">
-                      <SessionManager crawlerSessionId={crawlerSessionId} crawlerUrl={crawlerUrl} />
-                    </div>
-                  ),
-                },
-                {
-                  key: "crawler",
-                  label: "Index Crawler",
-                  children: (
-                    <div className="h-full">
-                      <CrawlerManager onSessionIdChange={handleCrawlerSessionId} onUrlChange={handleCrawlerUrl} />
-                    </div>
-                  ),
-                },
-              ]}
-            />
           </main>
         </ConfigProvider>
       </div>
