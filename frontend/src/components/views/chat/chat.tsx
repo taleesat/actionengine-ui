@@ -26,7 +26,6 @@ import {
   IPlanStep,
   convertPlanStepsToJsonString,
 } from "../../types/plan";
-import SampleTasks from "./sampletasks";
 import ProgressBar from "./progressbar";
 
 // Extend RunStatus for sidebar status reporting
@@ -1078,36 +1077,6 @@ export default function ChatView({
                   crawlerUrl={crawlerUrl}
                 />
               </div>
-              <SampleTasks
-                onSelect={(task: string) => {
-                  if (chatInputRef.current) {
-                    // Set the input value and trigger submit
-                    chatInputRef.current.focus();
-                    // Set value in textarea
-                    const textarea = document.getElementById(
-                      "queryInput"
-                    ) as HTMLTextAreaElement;
-                    if (textarea) {
-                      textarea.value = task;
-                      // Trigger input event for React state
-                      const event = new Event("input", { bubbles: true });
-                      textarea.dispatchEvent(event);
-                    }
-                    // Submit the task
-                    setTimeout(() => {
-                      if (chatInputRef.current) {
-                        chatInputRef.current.focus();
-                        // Simulate pressing Enter
-                        const enterEvent = new KeyboardEvent("keydown", {
-                          key: "Enter",
-                          bubbles: true,
-                        });
-                        textarea?.dispatchEvent(enterEvent);
-                      }
-                    }, 100);
-                  }
-                }}
-              />
             </div>
           )}
         </div>
